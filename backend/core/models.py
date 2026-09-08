@@ -10,6 +10,12 @@ class Country(models.Model):
         ordering = ['name']
         verbose_name_plural = 'countries'
 
+    class Schema:
+        display_field = 'name'
+        list_display = ['name', 'code']
+        list_sort = [{'field': 'name', 'direction': 'asc'}]
+        search_fields = ['name', 'code']
+
     def save(self, *args, **kwargs):
         self.code = self.code.upper()
         super().save(*args, **kwargs)
@@ -41,7 +47,7 @@ class Contact(models.Model):
     )
 
     job_title = models.CharField(max_length=255, blank=True)
-    tax_id = models.CharField(max_length=100, blank=True)
+    tax_id = models.CharField(max_length=100, blank=True, verbose_name='tax ID')
 
     active = models.BooleanField(default=True)
 
@@ -51,7 +57,7 @@ class Contact(models.Model):
     website = models.URLField(blank=True)
 
     street = models.CharField(max_length=255, blank=True)
-    street2 = models.CharField(max_length=255, blank=True)
+    street2 = models.CharField(max_length=255, blank=True, verbose_name='street 2')
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=100, blank=True)
     zip = models.CharField(max_length=20, blank=True)
@@ -70,6 +76,38 @@ class Contact(models.Model):
 
     class Meta:
         ordering = ['name']
+
+    class Schema:
+        display_field = 'display_name'
+        list_display = ['name', 'type', 'email', 'phone', 'city', 'country']
+        list_sort = [{'field': 'name', 'direction': 'asc'}]
+        list_filter_defaults = {'active': True}
+        search_fields = ['name', 'email', 'phone', 'tax_id']
+
+        # Django has no distinct field class for these — CharField is all it
+        # sees. The registry type has to be stated explicitly.
+        field_types = {
+            'phone': 'phone',
+            'mobile': 'phone',
+        }
+
+        # Single equality condition is all the spec needs today. If a future
+        # module needs AND/OR, extend this shape — don't bolt a second one on.
+        # Nested class bodies can't see Contact's class attributes (Python
+        # class scoping doesn't nest), so these repeat the literal values of
+        # TYPE_PERSON / TYPE_COMPANY rather than referencing them.
+        visible_when = {
+            'job_title': {'field': 'type', 'equals': 'person'},
+            'tax_id': {'field': 'type', 'equals': 'company'},
+            'website': {'field': 'type', 'equals': 'company'},
+        }
+
+        # Restricts the `parent` picker to companies — mirrors the same rule
+        # Contact.clean() enforces server-side; this just lets the UI filter
+        # candidates before the user picks one that would fail validation.
+        domains = {
+            'parent': {'type': 'company'},
+        }
 
     def clean(self):
         if self.parent_id is not None:
