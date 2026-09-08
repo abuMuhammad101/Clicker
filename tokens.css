@@ -1,0 +1,226 @@
+/* ==========================================================================
+   Clicker — Design Tokens
+   --------------------------------------------------------------------------
+   Tuned for ERP density. Power users, all-day sessions, hundreds of records
+   on screen. Every value here is inherited by every generated screen, so
+   changes are cheap now and expensive later.
+
+   Typeface: IBM Plex Sans (UI), IBM Plex Mono (identifiers and codes only)
+   Neutrals: cool-cast greys, drawn from IBM Carbon, pairs with Plex by design
+   Accent:   ink violet — chosen because green/amber/red carry data meaning
+             in status chips and the accent must not compete with them
+   ========================================================================== */
+
+:root {
+  /* ---------- Typeface ---------- */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* ---------- Type scale ----------
+     13px body is the ERP sweet spot. Small enough for density, large enough
+     for an eight-hour day. Everything else is derived from it. */
+  --text-micro: 11px;    /* column headers, chip labels, helper text */
+  --text-sm: 12px;       /* list cells, secondary text */
+  --text-base: 13px;     /* body, form inputs, default */
+  --text-md: 14px;       /* emphasised body */
+  --text-lg: 16px;       /* section headings */
+  --text-xl: 19px;       /* page titles */
+  --text-2xl: 24px;      /* rare — empty states, onboarding */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.45;
+  --leading-relaxed: 1.6;
+
+  --tracking-tight: -0.011em;   /* applied at 16px and above */
+  --tracking-normal: 0;
+  --tracking-wide: 0.01em;      /* micro text only, aids legibility at 11px */
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  /* ---------- Neutrals ---------- */
+  --white: #ffffff;
+  --grey-05: #f7f8f9;
+  --grey-10: #f2f4f6;
+  --grey-15: #eaecef;
+  --grey-20: #dde1e6;
+  --grey-30: #c1c7cd;
+  --grey-40: #a2a9b0;
+  --grey-50: #878d96;
+  --grey-60: #697077;
+  --grey-70: #4d5358;
+  --grey-80: #343a3f;
+  --grey-90: #21272a;
+  --grey-100: #121619;
+
+  /* ---------- Semantic surface & text ---------- */
+  --surface: var(--white);
+  --surface-sunken: var(--grey-05);
+  --surface-hover: var(--grey-10);
+  --surface-selected: #eeedfb;
+  --surface-overlay: var(--white);
+
+  --border-subtle: var(--grey-15);
+  --border: var(--grey-20);
+  --border-strong: var(--grey-30);
+
+  --text: var(--grey-90);
+  --text-secondary: var(--grey-70);
+  --text-muted: var(--grey-60);
+  --text-disabled: var(--grey-40);
+  --text-on-accent: var(--white);
+
+  /* ---------- Accent ---------- */
+  --accent: #4a3fcf;
+  --accent-hover: #3d33b5;
+  --accent-active: #332a99;
+  --accent-subtle: #eeedfb;
+  --accent-border: #c9c5f2;
+  --focus-ring: #4a3fcf;
+  --focus-ring-offset: var(--white);
+
+  /* ---------- Status ----------
+     These carry meaning. They are data, not decoration. Each has a text
+     colour that passes contrast on its own subtle background. */
+  --positive: #0e7c5a;
+  --positive-subtle: #e3f5ee;
+  --positive-border: #a7ddc9;
+
+  --warning: #a45c07;
+  --warning-subtle: #fdf1e0;
+  --warning-border: #f0cfa0;
+
+  --danger: #b8322d;
+  --danger-subtle: #fceceb;
+  --danger-border: #eeb8b5;
+
+  --info: #0f6fa8;
+  --info-subtle: #e5f1f9;
+  --info-border: #a9d0e8;
+
+  --neutral-chip: var(--grey-60);
+  --neutral-chip-subtle: var(--grey-10);
+  --neutral-chip-border: var(--grey-20);
+
+  /* ---------- Spacing ----------
+     4px base. The small end is used far more than the large end, which is
+     the opposite of a marketing site and the whole point. */
+  --space-0: 0;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 12px;
+  --space-6: 16px;
+  --space-7: 20px;
+  --space-8: 24px;
+  --space-9: 32px;
+  --space-10: 40px;
+  --space-11: 48px;
+
+  /* ---------- Radii ----------
+     Small. Large radii read as consumer software and waste vertical space
+     at row scale. */
+  --radius-sm: 3px;
+  --radius: 5px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-full: 9999px;
+
+  /* ---------- Control heights ----------
+     The single most consequential density decision. 32px default gives a
+     comfortable target without wasting a row. */
+  --control-height-sm: 24px;
+  --control-height: 30px;
+  --control-height-lg: 36px;
+
+  --control-padding-x: var(--space-4);
+  --control-padding-x-sm: var(--space-3);
+
+  /* ---------- Table ----------
+     Tokens no general design system has. These govern the list renderer. */
+  --row-height-compact: 28px;
+  --row-height: 34px;
+  --row-height-comfortable: 42px;
+
+  --table-header-height: 32px;
+  --cell-padding-x: var(--space-5);
+  --cell-padding-x-compact: var(--space-4);
+
+  --column-min-width: 80px;
+  --column-default-width: 180px;
+
+  --row-border: var(--border-subtle);
+  --row-hover: var(--grey-05);
+  --row-selected: var(--surface-selected);
+  --row-selected-hover: #e5e3f8;
+
+  /* No zebra striping. Hairline row borders read cleaner at density and
+     don't fight with status chips for attention. */
+
+  /* ---------- Elevation ----------
+     One shadow, used sparingly, for things that genuinely float. Cards do
+     not get shadows — borders are enough and cost no vertical space. */
+  --shadow-popover: 0 4px 12px -2px rgba(18, 22, 25, 0.12),
+                    0 0 0 1px rgba(18, 22, 25, 0.06);
+  --shadow-modal: 0 16px 48px -8px rgba(18, 22, 25, 0.2),
+                  0 0 0 1px rgba(18, 22, 25, 0.06);
+
+  /* ---------- Motion ----------
+     Only in response to user action. Nothing animates on its own. */
+  --duration-fast: 90ms;
+  --duration: 140ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* ---------- Layout ---------- */
+  --sidebar-width: 232px;
+  --sidebar-width-collapsed: 48px;
+  --topbar-height: 44px;
+  --form-label-width: 168px;
+  --form-field-max-width: 420px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration: 0ms;
+  }
+}
+
+/* ==========================================================================
+   shadcn/ui bridge
+   --------------------------------------------------------------------------
+   shadcn components read these variable names. Mapping Clicker's tokens onto
+   them means every copied-in shadcn component inherits the density and
+   palette above without being individually restyled.
+   ========================================================================== */
+
+:root {
+  --background: var(--surface);
+  --foreground: var(--text);
+
+  --card: var(--surface);
+  --card-foreground: var(--text);
+
+  --popover: var(--surface-overlay);
+  --popover-foreground: var(--text);
+
+  --primary: var(--accent);
+  --primary-foreground: var(--text-on-accent);
+
+  --secondary: var(--grey-10);
+  --secondary-foreground: var(--text);
+
+  --muted: var(--grey-05);
+  --muted-foreground: var(--text-muted);
+
+  --accent-bg: var(--surface-hover);
+  --accent-foreground: var(--text);
+
+  --destructive: var(--danger);
+  --destructive-foreground: var(--white);
+
+  --input: var(--border);
+  --ring: var(--focus-ring);
+}

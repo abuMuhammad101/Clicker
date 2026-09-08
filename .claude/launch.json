@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "django-backend",
+      "runtimeExecutable": "E:\\Projects\\clicker-starter\\backend\\.venv\\Scripts\\python.exe",
+      "runtimeArgs": ["E:\\Projects\\clicker-starter\\backend\\manage.py", "runserver", "0.0.0.0:8000"],
+      "port": 8000
+    }
+  ]
+}
