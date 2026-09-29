@@ -1,4 +1,7 @@
+@import 'tailwindcss';
 @import '../../tokens.css';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
 
 *,
 *::before,
@@ -24,4 +27,57 @@ body {
 code,
 pre {
   font-family: var(--font-mono);
+}
+
+/*
+ * shadcn/Tailwind theme layer — maps Tailwind's utility-class theme keys
+ * onto tokens.css. This is plumbing only: no color or radius value is
+ * declared here, everything points at tokens.css (including the bridge
+ * block at its bottom), which stays the single source of truth.
+ *
+ * shadcn's own init generates a `--color-accent: var(--accent)` line here
+ * by default — wrong for us. Tailwind's "accent" slot is a neutral hover/
+ * highlight surface (used by menu items, select options, etc.), completely
+ * unrelated to Clicker's own `--accent` token, which is the ink-violet
+ * brand color. Colliding those would turn every shadcn hover state violet.
+ * tokens.css's bridge already separates these correctly under
+ * `--accent-bg`/`--accent-foreground` — reference those instead.
+ *
+ * Sidebar and chart color keys are dropped: no Sidebar or Chart component
+ * exists yet, and tokens.css defines no values for them. Add both when a
+ * session actually builds one, not before.
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent-bg);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Tailwind's radius keys are unprefixed, so they'd self-reference if
+     pointed at tokens.css's identically-named --radius-sm/md/lg — see the
+     aliases defined in tokens.css's bridge block for why. */
+  --radius-sm: var(--shadcn-radius-sm);
+  --radius-md: var(--shadcn-radius-md);
+  --radius-lg: var(--shadcn-radius-lg);
+  --radius-xl: var(--shadcn-radius-lg);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
 }

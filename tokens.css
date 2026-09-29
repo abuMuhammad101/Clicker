@@ -223,4 +223,15 @@
 
   --input: var(--border);
   --ring: var(--focus-ring);
+
+  /* Tailwind v4's radius theme keys are unprefixed — --radius-sm,
+     --radius-md, --radius-lg — and collide by name with the tokens of the
+     same name above. A theme layer that wrote e.g. `--radius-sm:
+     var(--radius-sm)` would self-reference: per the CSS custom-properties
+     spec that's a cycle, and it resolves to nothing, not to the value
+     above. These give the Tailwind theme layer a same-value, differently
+     named source to point at instead. */
+  --shadcn-radius-sm: var(--radius-sm);
+  --shadcn-radius-md: var(--radius-md);
+  --shadcn-radius-lg: var(--radius-lg);
 }

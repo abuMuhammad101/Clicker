@@ -1,4 +1,5 @@
 import path from 'path'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
@@ -6,7 +7,12 @@ const repoRoot = path.resolve(import.meta.dirname, '..')
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    alias: {
+      '@': path.resolve(import.meta.dirname, 'src'),
+    },
+  },
   // .env lives at the repo root, shared with the backend — not duplicated
   // per app. See CLAUDE.md's two-machine workflow section.
   envDir: repoRoot,
