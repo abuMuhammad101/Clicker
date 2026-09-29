@@ -196,3 +196,70 @@ _Backfilled 2026-09-29 from commit `e00b62e` — same gap as above._
 
 - Decisions for the Notion Decision Log: none new — today was verification
   and documentation catch-up, not design work.
+
+## 2026-09-29 | office | field components session
+
+- Resolved open item 1 above: `backend/schema/engine.py` now emits a
+  `groups` key (an ordered list of `{label, fields}`) alongside `fields`,
+  and passes through Django's `help_text`. Two defined fallbacks, not one
+  silent one — a model with no `groups` declared gets a single
+  `{label: null}` group (Country proves this path); a model that declares
+  groups but misses a field gets that field appended to a trailing,
+  visibly-labelled "Ungrouped" group rather than vanishing. `Contact.Schema`
+  now declares Identity / Communication / Address / Classification,
+  covering all 20 fields. Verified against the real JSON for both models,
+  not just read the code.
+- Installed Tailwind v4 + shadcn/ui (Radix primitives) in `frontend/` and
+  rewrote the generated theme layer to reference `tokens.css`'s existing
+  shadcn bridge instead of shadcn's own default palette. Caught two real
+  bugs doing it, not cosmetic ones: shadcn's default init maps Tailwind's
+  neutral "accent" hover-surface slot straight to our ink-violet brand
+  `--accent` (every hover state would've rendered bright violet); and
+  Tailwind's radius theme keys are unprefixed and collide by name with
+  `tokens.css`'s own `--radius-sm/-md/-lg` — referencing them directly is a
+  CSS custom-property self-reference (a cycle, resolves to nothing per
+  spec), fixed with new same-value aliases in `tokens.css`'s bridge block.
+- Added `GET /api/data/<app_label>/<model_name>/search/` — a minimal,
+  generic search endpoint the many_to_one picker needs and nothing else
+  had yet. Reuses the schema engine's own `search_fields`/`display_field`,
+  domain filters are exact-match against known field names only.
+- Built all 8 registry field components Contacts uses — text, longtext,
+  selection, boolean, email, phone, url, many_to_one — form component and
+  list cell for each, all 8 CLAUDE.md states. Gallery at `/gallery`
+  (dev-only, not part of the schema-driven app) renders every
+  type/state combination side by side; that page was the actual
+  deliverable, not the components in isolation.
+- Two more real density bugs found by actually verifying against computed
+  styles, not eyeballing: stock shadcn controls come in at 32px (Tailwind's
+  own `h-8`) against our 30px `--control-height`, and — separately — render
+  body text at 12px, not 13px, because shadcn's `text-base md:text-sm`
+  resolves through `tokens.css`'s own `--text-sm` at desktop width instead
+  of `--text-base` (which `tokens.css`'s own comment says is explicitly for
+  "form inputs"). Both fixed with one small unlayered CSS rule targeting
+  shadcn's stable `data-slot` hooks — cascade layers mean unlayered CSS
+  always beats Tailwind's layered utilities, so it's a single global rule,
+  not a per-component fight.
+- many_to_one verified against live Neon data in the browser, not stubbed:
+  the gallery's "search open" demo shows real Contact rows, correctly
+  filtered to companies only via the schema's own `domain` declaration.
+
+- Half-finished: nothing broken. Open item 2 below (tokens.css deploy path)
+  is still open — untouched this session.
+
+- **Next single action:** Phase 1 step 6 — the form renderer, now that the
+  schema carries grouping and the field components exist to render into
+  it. List renderer after that.
+
+- Open items carried forward:
+  1. ~~Schema engine has no field grouping and drops help_text~~ — resolved
+     this session.
+  2. `tokens.css` lives at the repo root; a deploy host with `frontend/` as
+     its root directory won't see it. Still needs a build-command decision
+     before the first real deploy — not urgent while everything is local.
+
+- Decisions for the Notion Decision Log: shadcn's own default color/radius
+  variables are never used as-is anywhere in Clicker — every shadcn
+  component's theme must resolve through `tokens.css`'s bridge, including
+  new alias variables added there specifically to avoid CSS custom-property
+  self-reference. Worth stating explicitly since it's easy for a future
+  `shadcn add` to reintroduce shadcn's own defaults by accident.
