@@ -71,34 +71,44 @@ export function SchemaViewer() {
               </div>
             </dl>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>Label</th>
-                  <th>Type</th>
-                  <th>Required</th>
-                  <th>Visible when</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(state.schema.fields).map(([name, field]) => (
-                  <tr key={name}>
-                    <td className="field-name">{name}</td>
-                    <td>{field.label}</td>
-                    <td>
-                      <span className="type-chip">{field.type}</span>
-                    </td>
-                    <td>{field.required ? <span className="required-dot">●</span> : '—'}</td>
-                    <td className="visible-when">
-                      {field.visible_when
-                        ? `${field.visible_when.field} = ${field.visible_when.equals}`
-                        : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {state.schema.groups.map((group, index) => (
+              <div className="schema-viewer__group" key={group.label ?? `_ungrouped_${index}`}>
+                {group.label && <h3 className="schema-viewer__group-label">{group.label}</h3>}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Field</th>
+                      <th>Label</th>
+                      <th>Type</th>
+                      <th>Required</th>
+                      <th>Visible when</th>
+                      <th>Help text</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {group.fields.map((name) => {
+                      const field = state.schema.fields[name]
+                      return (
+                        <tr key={name}>
+                          <td className="field-name">{name}</td>
+                          <td>{field.label}</td>
+                          <td>
+                            <span className="type-chip">{field.type}</span>
+                          </td>
+                          <td>{field.required ? <span className="required-dot">●</span> : '—'}</td>
+                          <td className="visible-when">
+                            {field.visible_when
+                              ? `${field.visible_when.field} = ${field.visible_when.equals}`
+                              : '—'}
+                          </td>
+                          <td className="help-text">{field.help_text ?? '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ))}
 
             <details className="schema-viewer__raw">
               <summary>Raw JSON</summary>

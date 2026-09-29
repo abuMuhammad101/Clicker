@@ -68,6 +68,10 @@ def _field_schema(field, overrides):
     if max_length:
         entry['max_length'] = max_length
 
+    help_text = getattr(field, 'help_text', '')
+    if help_text:
+        entry['help_text'] = str(help_text)
+
     if field.has_default():
         entry['default'] = field.get_default()
 
@@ -82,6 +86,47 @@ def _field_schema(field, overrides):
             entry['domain'] = domain
 
     return entry
+
+
+def _build_groups(schema_cls, field_names):
+    """
+    Form layout, as data. Two distinct "no explicit group" signals, not one:
+
+    - The model declares no `groups` at all (e.g. Country) → one group with
+      `label: None`. The renderer shows the fields with no section heading.
+      This is the correct, unremarkable default for a model too small to
+      need sections.
+    - The model declares `groups` but misses some fields (a module author's
+      oversight, not a design choice) → those fields are appended as a
+      trailing group literally labelled "Ungrouped", so a missing field is
+      visible in the rendered form instead of silently absent from it.
+    """
+    declared = getattr(schema_cls, 'groups', None)
+
+    if not declared:
+        return [{'label': None, 'fields': list(field_names)}]
+
+    groups = []
+    seen = set()
+    valid_names = set(field_names)
+
+    for group in declared:
+        label = group['label']
+        group_fields = group['fields']
+        unknown = [f for f in group_fields if f not in valid_names]
+        if unknown:
+            raise ValueError(
+                f'Schema.groups for group "{label}" references field(s) '
+                f'{unknown} that do not exist on this model.'
+            )
+        groups.append({'label': label, 'fields': list(group_fields)})
+        seen.update(group_fields)
+
+    leftover = [name for name in field_names if name not in seen]
+    if leftover:
+        groups.append({'label': 'Ungrouped', 'fields': leftover})
+
+    return groups
 
 
 def build_schema(model):
@@ -107,6 +152,7 @@ def build_schema(model):
         'verbose_name': str(meta.verbose_name),
         'verbose_name_plural': str(meta.verbose_name_plural),
         'display_field': getattr(schema_cls, 'display_field', None),
+        'groups': _build_groups(schema_cls, fields.keys()),
         'list': {
             'columns': getattr(schema_cls, 'list_display', list(fields.keys())),
             'sort': getattr(schema_cls, 'list_sort', []),

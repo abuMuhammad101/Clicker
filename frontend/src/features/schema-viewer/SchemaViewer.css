@@ -91,6 +91,24 @@
   color: var(--text);
 }
 
+.schema-viewer__group {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.schema-viewer__group:last-of-type {
+  border-bottom: none;
+}
+
+.schema-viewer__group-label {
+  margin: 0;
+  padding: var(--space-5) var(--cell-padding-x) var(--space-2);
+  font-size: var(--text-micro);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: var(--weight-medium);
+}
+
 .schema-viewer table {
   width: 100%;
   border-collapse: collapse;
@@ -143,9 +161,17 @@
   color: var(--danger);
 }
 
-.schema-viewer .visible-when {
+.schema-viewer .visible-when,
+.schema-viewer .help-text {
   color: var(--text-muted);
   font-size: var(--text-micro);
+}
+
+.schema-viewer .help-text {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .schema-viewer__raw {

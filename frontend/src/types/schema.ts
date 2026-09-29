@@ -48,6 +48,18 @@ export interface FieldSchema {
   choices?: Choice[]
   target?: FieldTarget
   domain?: Record<string, unknown>
+  help_text?: string
+}
+
+export interface FieldGroup {
+  /**
+   * null means "the model declared no groups at all" (e.g. Country) — render
+   * the fields with no section heading. A literal "Ungrouped" label means
+   * groups were declared but these fields weren't assigned to one; render it
+   * visibly, since that's a module author's oversight, not a design choice.
+   */
+  label: string | null
+  fields: string[]
 }
 
 export interface ListSort {
@@ -68,6 +80,7 @@ export interface ModelSchema {
   verbose_name: string
   verbose_name_plural: string
   display_field: string | null
+  groups: FieldGroup[]
   list: ListSchema
   fields: Record<string, FieldSchema>
 }

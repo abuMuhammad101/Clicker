@@ -44,10 +44,16 @@ class Contact(models.Model):
         blank=True,
         on_delete=models.PROTECT,
         related_name='children',
+        help_text='Must be a company. Leave blank for a standalone contact.',
     )
 
     job_title = models.CharField(max_length=255, blank=True)
-    tax_id = models.CharField(max_length=100, blank=True, verbose_name='tax ID')
+    tax_id = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name='tax ID',
+        help_text='VAT number, EIN, or local tax identifier — format varies by country.',
+    )
 
     active = models.BooleanField(default=True)
 
@@ -79,6 +85,16 @@ class Contact(models.Model):
 
     class Schema:
         display_field = 'display_name'
+
+        # Order here is form layout, not Django's declaration order — group
+        # order and field order within a group are both explicit, on purpose.
+        groups = [
+            {'label': 'Identity', 'fields': ['id', 'name', 'type', 'parent', 'job_title', 'tax_id']},
+            {'label': 'Communication', 'fields': ['email', 'phone', 'mobile', 'website']},
+            {'label': 'Address', 'fields': ['street', 'street2', 'city', 'state', 'zip', 'country']},
+            {'label': 'Classification', 'fields': ['active', 'is_customer', 'is_vendor', 'notes']},
+        ]
+
         list_display = ['name', 'type', 'email', 'phone', 'city', 'country']
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         list_filter_defaults = {'active': True}
