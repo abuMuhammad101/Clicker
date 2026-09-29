@@ -1,0 +1,60 @@
+.field-shell {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.field-shell__label {
+  flex: none;
+  width: var(--form-label-width);
+  padding-top: 6px;
+  text-align: right;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  line-height: var(--leading-tight);
+}
+
+.field-shell__label--readonly {
+  color: var(--text-muted);
+}
+
+.field-shell__required {
+  color: var(--danger);
+  margin-left: var(--space-1);
+}
+
+.field-shell__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: var(--form-field-max-width);
+}
+
+.field-shell__message {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-micro);
+}
+
+.field-shell__message--error {
+  color: var(--danger);
+}
+
+.field-shell__message--help {
+  color: var(--text-muted);
+}
+
+/* Readonly renders as plain text, not an input — no border, no background,
+   normal text color, not muted. This is the "looks different from disabled"
+   requirement: disabled keeps the input's shape and greys it out; readonly
+   drops the input chrome entirely because it was never editable by this
+   user in the first place. */
+.field-shell__readonly-value {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height);
+  font-size: var(--text-base);
+  color: var(--text);
+}
+
+.field-shell__readonly-value--empty {
+  color: var(--text-muted);
+}

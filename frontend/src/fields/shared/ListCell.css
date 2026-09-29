@@ -1,0 +1,39 @@
+.list-cell {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  min-width: var(--column-min-width);
+  max-width: var(--column-default-width);
+  font-size: var(--text-sm);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.list-cell__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-cell--empty {
+  color: var(--text-muted);
+}
+
+.list-cell--numeric {
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-cell__chip {
+  display: inline-block;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--neutral-chip-subtle);
+  border: 1px solid var(--neutral-chip-border);
+  color: var(--neutral-chip);
+  font-size: var(--text-micro);
+  line-height: var(--leading-tight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

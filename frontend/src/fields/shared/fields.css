@@ -1,0 +1,41 @@
+/*
+ * Global density override for shadcn form controls.
+ *
+ * Tailwind's own height utilities (h-8, data-[size=default]:h-8, ...) come
+ * out to 32px — Tailwind's own spacing scale, unrelated to our
+ * --control-height (30px) token. Remapping Tailwind's global spacing scale
+ * to make 30px land on a whole step would ripple through every size/gap/
+ * padding value in every shadcn component, not just height — not worth it
+ * for a 2px difference.
+ *
+ * Targeting shadcn's stable data-slot hooks with plain, unlayered CSS
+ * instead: Tailwind's @import compiles utilities into named cascade layers
+ * (base/components/utilities), and per the CSS cascade-layers spec,
+ * unlayered CSS always beats layered CSS regardless of source order or
+ * specificity. One rule here, no per-component className fights, no
+ * !important.
+ *
+ * Checkbox is deliberately excluded — it's a fixed 16px square (size-4),
+ * a different concept from control height, not a density variable here.
+ *
+ * Font-size needs the same treatment for a different reason: shadcn's
+ * Input/Textarea/Select apply `text-base md:text-sm` — 16px on narrow
+ * viewports (avoids iOS Safari's auto-zoom on focus), 13px-equivalent on
+ * desktop. At desktop width that `md:text-sm` resolves through tokens.css's
+ * own --text-sm (12px, "list cells, secondary text") rather than
+ * --text-base (13px, tokens.css's own comment: "body, form inputs,
+ * default") — form input text was rendering one size too small. Unlayered
+ * CSS beats a layered utility regardless of which media query triggered
+ * it, so setting it here fixes both breakpoints at once.
+ */
+[data-slot='input'],
+[data-slot='select-trigger'],
+[data-slot='textarea'] {
+  height: var(--control-height);
+  font-size: var(--text-base);
+}
+
+[data-slot='textarea'] {
+  height: auto;
+  min-height: 64px;
+}
