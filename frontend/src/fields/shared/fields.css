@@ -41,6 +41,59 @@
 }
 
 /*
+ * Hover. The stroke steps from --border to --border-strong; nothing else
+ * moves. Skipped for states where the border already means something
+ * (focused, error, checked) or where the control can't be used (disabled,
+ * readonly). The transition covers the focus halo too, so hover → focus is
+ * one continuous change. tokens.css zeroes the durations under
+ * prefers-reduced-motion.
+ */
+[data-slot='input'],
+[data-slot='textarea'],
+[data-slot='select-trigger'],
+[data-slot='checkbox'],
+[data-slot='popover-trigger'][role='combobox'] {
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease);
+}
+
+:is(
+    [data-slot='input'],
+    [data-slot='textarea'],
+    [data-slot='select-trigger'],
+    [data-slot='checkbox'],
+    [data-slot='popover-trigger'][role='combobox']
+  ):hover:not(
+    :disabled,
+    [readonly],
+    :focus-visible,
+    .force-focused,
+    [aria-invalid='true'],
+    [data-state='checked'],
+    [aria-expanded='true']
+  ) {
+  border-color: var(--border-strong);
+}
+
+/*
+ * The many_to_one trigger is a shadcn outline Button, which fills grey and
+ * darkens its text on hover and while open. A field shouldn't behave
+ * differently from the text input next to it, so undo both: the stroke
+ * rule above is its only hover response.
+ */
+[data-slot='popover-trigger'][role='combobox']:is(:hover, [aria-expanded='true']) {
+  background-color: var(--background);
+}
+
+[data-slot='popover-trigger'][role='combobox'].text-muted-foreground:is(
+    :hover,
+    [aria-expanded='true']
+  ) {
+  color: var(--muted-foreground);
+}
+
+/*
  * Focus and error halos. shadcn draws a 3px ring at 50% accent on top of the
  * accent border, which reads heavy at 30px control height. Same unlayered
  * technique as above: override Tailwind's --tw-ring-shadow so the ring
