@@ -4,13 +4,16 @@
   background: var(--surface-sunken);
 }
 
-/* Width follows the field layout, not the viewport: label column + gap +
-   the widest a field grows, plus the sheet's own side padding. */
+/* Forms are one column. Width follows the field layout, not the viewport:
+   label column + gap + the widest a field grows, plus the sheet's own side
+   padding. The sheet sits left-aligned and never stretches: the width to
+   its right is reserved for related content (a record's children, activity)
+   later, not for wider inputs or a second column of fields. */
 .form-sheet {
   max-width: calc(
     var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8)
   );
-  margin: 0 auto;
+  margin: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
