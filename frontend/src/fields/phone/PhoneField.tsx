@@ -52,7 +52,7 @@ export function PhoneField({
         value={value ?? ''}
         onChange={(event) => onChange?.(event.target.value || null)}
         disabled={disabled}
-        placeholder={placeholder ?? '+1 555 123 4567'}
+        placeholder={placeholder}
         aria-invalid={!!error}
         className={cn(forceFocused && FORCE_FOCUS_CLASSES)}
       />

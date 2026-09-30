@@ -48,7 +48,7 @@ export function UrlField({
         value={value ?? ''}
         onChange={(event) => onChange?.(event.target.value || null)}
         disabled={disabled}
-        placeholder={placeholder ?? 'https://example.com'}
+        placeholder={placeholder}
         aria-invalid={!!error}
         className={cn(forceFocused && FORCE_FOCUS_CLASSES)}
       />

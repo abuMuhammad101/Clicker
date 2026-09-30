@@ -58,9 +58,19 @@ class Contact(models.Model):
     active = models.BooleanField(default=True)
 
     email = models.EmailField(blank=True)
-    phone = models.CharField(max_length=50, blank=True)
-    mobile = models.CharField(max_length=50, blank=True)
-    website = models.URLField(blank=True)
+    # Format hints live in help_text, not in placeholders: a placeholder that
+    # looks like a phone number reads as a stored value at a glance.
+    phone = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='International format: + and the country code, then the number.',
+    )
+    mobile = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text='International format: + and the country code, then the number.',
+    )
+    website = models.URLField(blank=True, help_text='Full address, starting with https://')
 
     street = models.CharField(max_length=255, blank=True)
     street2 = models.CharField(max_length=255, blank=True, verbose_name='street 2')
