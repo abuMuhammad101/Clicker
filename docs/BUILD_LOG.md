@@ -263,3 +263,39 @@ _Backfilled 2026-09-29 from commit `e00b62e` — same gap as above._
   new alias variables added there specifically to avoid CSS custom-property
   self-reference. Worth stating explicitly since it's easy for a future
   `shadcn add` to reintroduce shadcn's own defaults by accident.
+
+## 2026-09-30 | second machine (D:\projects\Clicker) | setup session
+
+- Fresh clone, set up from scratch. No feature work, per instruction.
+- Installed Python via the Windows Python install manager, which pulled
+  3.14.7 (office is 3.14.4). Node 24.19, npm 11.17, git 2.55 were already
+  present.
+- Created repo-root `.env`: `DATABASE_URL` pasted from the password manager,
+  and a fresh dev `SECRET_KEY` that deliberately doesn't match the office
+  machine.
+- Backend: `.venv` created, `requirements.txt` installed clean. Ran
+  `migrate --plan` first as a dry run: all 4 `core` migrations were already
+  applied, then `migrate` said "No migrations to apply". That confirms both
+  machines point at the same Neon database.
+- Frontend: `npm install` added 425 packages with 0 vulnerabilities.
+- Verified end to end: `/api/schema/core/contact/` returns 20 fields and
+  `/country/` returns 3, and the frontend fetches both. The ink violet
+  accent comes through from `tokens.css`, and `document.fonts` shows IBM
+  Plex Sans 400/500/600 and Plex Mono 400 actually loaded, not a fallback.
+  `/gallery` renders, and the many_to_one company search hits live Neon data.
+- Fixed `.claude/launch.json`: it had the office machine's absolute paths
+  (`E:\Projects\clicker-starter\...`), so it couldn't start anything here.
+  The paths are now repo-relative and work on both machines.
+- **Port conflict again, machine-local only:** other apps on this machine
+  hold 8000 and 5173. This session ran on 8001/5174 without changing any
+  committed config. The workaround is a gitignored repo-root `.env.local`
+  (`VITE_API_URL=http://localhost:8001/api`); the servers were started on
+  the alternate ports by hand. Delete `.env.local` here once 8000 is free.
+
+- Half-finished: nothing. Open item 2 (tokens.css deploy path) is still
+  open and untouched.
+
+- **Next single action:** Phase 1 step 6, the form renderer. Unchanged from
+  the previous entry.
+
+- Decisions for the Notion Decision Log: none.
