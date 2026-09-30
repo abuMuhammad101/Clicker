@@ -14,8 +14,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
+import { ListCell } from '@/fields/shared/ListCell'
 import { tokenPx } from '@/lib/tokens'
 import { useModelSchema } from '@/lib/useModelSchema'
+import { isVisible } from '@/lib/visibility'
 import { cn } from '@/lib/utils'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
@@ -127,16 +129,18 @@ function ListView({
         // which here may be an unloaded slot or an empty field. A first
         // click always means ascending.
         sortDescFirst: false,
-        cell: ({ row }) =>
-          row.original.record ? (
-            renderListCell({
-              schema: field,
-              value: row.original.record.values[name],
-              label: row.original.record.labels[name] ?? null,
-            })
-          ) : (
-            <Skeleton className="h-3 w-3/5" />
-          ),
+        cell: ({ row }) => {
+          const record = row.original.record
+          if (!record) return <Skeleton className="h-3 w-3/5" />
+          // Hidden means not applicable: a field that doesn't apply to this
+          // row shows as empty, whatever value is stored behind it.
+          if (!isVisible(field, record.values)) return <ListCell empty />
+          return renderListCell({
+            schema: field,
+            value: record.values[name],
+            label: record.labels[name] ?? null,
+          })
+        },
       }
     })
   }, [schema])

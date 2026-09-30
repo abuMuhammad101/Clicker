@@ -4,8 +4,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
 import { useModelSchema } from '@/lib/useModelSchema'
+import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
-import type { FieldSchema, ModelSchema } from '@/types/schema'
+import type { ModelSchema } from '@/types/schema'
 import './FormRenderer.css'
 
 /**
@@ -107,11 +108,6 @@ function FormSheet({
   )
 }
 
-function isVisible(field: FieldSchema, values: Record<string, unknown>) {
-  const condition = field.visible_when
-  return !condition || values[condition.field] === condition.equals
-}
-
 function initialValues(schema: ModelSchema, record: RecordEnvelope | null) {
   if (record) return record.values
   // A new record starts from the schema's defaults. A boolean with no
@@ -168,8 +164,8 @@ function EditableForm({
     setFieldErrors({})
     setFormErrors([])
 
-    // Every editable field is sent, visible or not: hiding a field is a
-    // presentation rule, not a decision to clear its value.
+    // Every editable field is sent, visible or not: hidden means not
+    // applicable, not cleared — switching back must bring the value back.
     const payload = Object.fromEntries(
       Object.entries(schema.fields)
         .filter(([, field]) => !field.read_only)
