@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react'
+import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -49,6 +49,11 @@ export function ManyToOneField({
   const open = forceOpen ?? openState
   const [query, setQuery] = useState('')
   const { options, loading: searching } = useManyToOneSearch(target, domain, query, open)
+  // The label of the option the user just picked. The parent only holds the
+  // id, and its `displayValue` still describes the previous value until the
+  // record is reloaded — so the pick's own label wins while it matches.
+  const [picked, setPicked] = useState<{ value: number; label: string } | null>(null)
+  const shownLabel = picked && picked.value === value ? picked.label : displayValue
 
   if (loading) {
     return (
@@ -66,7 +71,7 @@ export function ManyToOneField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
-      readOnlyValue={displayValue || undefined}
+      readOnlyValue={shownLabel || undefined}
     >
       <Popover open={open} onOpenChange={setOpenState}>
         <PopoverTrigger asChild>
@@ -80,11 +85,11 @@ export function ManyToOneField({
             disabled={disabled}
             className={cn(
               'h-[var(--control-height)] w-full justify-between font-normal text-[length:var(--text-base)]',
-              !displayValue && 'text-muted-foreground',
+              !shownLabel && 'text-muted-foreground',
               forceFocused && FORCE_FOCUS_CLASSES,
             )}
           >
-            <span className="truncate">{displayValue || placeholder || 'Search…'}</span>
+            <span className="truncate">{shownLabel || placeholder || 'Search…'}</span>
             <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -100,6 +105,25 @@ export function ManyToOneField({
               ) : (
                 <>
                   <CommandEmpty>No results.</CommandEmpty>
+                  {/* An optional relation must be removable, not just
+                      replaceable — otherwise a parent, once set, is set
+                      forever. Required relations never offer it. */}
+                  {value != null && !required && (
+                    <CommandGroup>
+                      <CommandItem
+                        value="__clear__"
+                        onSelect={() => {
+                          onChange?.(null)
+                          setPicked(null)
+                          setOpenState(false)
+                        }}
+                        className="text-muted-foreground"
+                      >
+                        <X className="size-4" />
+                        Clear
+                      </CommandItem>
+                    </CommandGroup>
+                  )}
                   <CommandGroup>
                     {options.map((option) => (
                       <CommandItem
@@ -107,6 +131,7 @@ export function ManyToOneField({
                         value={String(option.value)}
                         onSelect={() => {
                           onChange?.(option.value)
+                          setPicked(option)
                           setOpenState(false)
                         }}
                       >
