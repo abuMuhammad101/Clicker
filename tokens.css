@@ -79,6 +79,10 @@
   --accent-border: #c9c5f2;
   --focus-ring: #4a3fcf;
   --focus-ring-offset: var(--white);
+  /* Soft halo outside the focused control's border. The border itself turns
+     --focus-ring; the halo only supports it, so it stays thin and faint. */
+  --focus-ring-width: 2px;
+  --focus-halo: rgb(74 63 207 / 0.16);
 
   /* ---------- Status ----------
      These carry meaning. They are data, not decoration. Each has a text

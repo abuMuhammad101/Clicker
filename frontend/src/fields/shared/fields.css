@@ -39,3 +39,31 @@
   height: auto;
   min-height: 64px;
 }
+
+/*
+ * Focus and error halos. shadcn draws a 3px ring at 50% accent on top of the
+ * accent border, which reads heavy at 30px control height. Same unlayered
+ * technique as above: override Tailwind's --tw-ring-shadow so the ring
+ * utilities keep composing box-shadow, just thinner. Error keeps its own
+ * colour (from the aria-invalid utilities) and only gets the width.
+ */
+[data-slot='input']:focus-visible,
+[data-slot='textarea']:focus-visible,
+[data-slot='select-trigger']:focus-visible,
+[data-slot='checkbox']:focus-visible,
+[data-slot='button']:focus-visible,
+[data-slot='popover-trigger']:focus-visible,
+[data-slot='input-group']:has([data-slot='input-group-control']:focus-visible),
+.force-focused {
+  --tw-ring-shadow: 0 0 0 var(--focus-ring-width) var(--focus-halo);
+}
+
+[data-slot='input'][aria-invalid='true'],
+[data-slot='textarea'][aria-invalid='true'],
+[data-slot='select-trigger'][aria-invalid='true'],
+[data-slot='checkbox'][aria-invalid='true'],
+[data-slot='button'][aria-invalid='true'],
+[data-slot='popover-trigger'][aria-invalid='true'],
+[data-slot='input-group']:has([aria-invalid='true']) {
+  --tw-ring-shadow: 0 0 0 var(--focus-ring-width) var(--tw-ring-color);
+}

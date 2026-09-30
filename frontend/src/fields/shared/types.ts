@@ -32,7 +32,8 @@ export interface ListCellProps<T> {
  * Gallery-only: reproduces shadcn's own focus-visible ring as plain,
  * always-on classes, since real DOM focus can only apply to one element at
  * a time and the gallery needs to show every component's focused look
- * simultaneously, side by side.
+ * simultaneously, side by side. `force-focused` hooks into the same halo
+ * rule as real :focus-visible in fields.css, so the two can't drift apart.
  */
-export const FORCE_FOCUS_CLASSES = 'border-ring ring-3 ring-ring/50'
+export const FORCE_FOCUS_CLASSES = 'border-ring ring-3 force-focused'
 
