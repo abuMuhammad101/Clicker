@@ -1,0 +1,145 @@
+.form-page {
+  min-height: 100vh;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface-sunken);
+}
+
+/* Width follows the field layout, not the viewport: label column + gap +
+   the widest a field grows, plus the sheet's own side padding. */
+.form-sheet {
+  max-width: calc(
+    var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8)
+  );
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding: var(--space-5) var(--space-8);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.form-header__text {
+  min-width: 0;
+}
+
+/* A record name can be any length; it truncates here rather than pushing
+   the Save button off the sheet. The full name is in the title attribute. */
+.form-header__title {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.form-header__meta {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.form-header__model {
+  color: inherit;
+  text-decoration: none;
+}
+
+.form-header__model:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.form-header__model::first-letter {
+  text-transform: uppercase;
+}
+
+/* Record identifiers are the one place Plex Mono belongs. */
+.form-header__id {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.form-header__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.form-header__status {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.form-banner {
+  margin: var(--space-6) var(--space-8) 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  background: var(--danger-subtle);
+  font-size: var(--text-base);
+  color: var(--danger);
+}
+
+.form-banner p {
+  margin: 0;
+}
+
+.form-banner p + p {
+  margin-top: var(--space-2);
+}
+
+.form-body {
+  padding: var(--space-6) var(--space-8) var(--space-8);
+}
+
+.form-section + .form-section {
+  margin-top: var(--space-8);
+}
+
+.form-section__label {
+  margin: 0 0 var(--space-5);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.form-section__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.form-sheet--error {
+  padding: var(--space-8);
+}
+
+.form-error__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.form-error__message {
+  margin: var(--space-2) 0 var(--space-6);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}

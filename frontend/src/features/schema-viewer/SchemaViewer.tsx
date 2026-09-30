@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import './SchemaViewer.css'
-import { useModelSchema } from './useModelSchema'
+import { useModelSchema } from '@/lib/useModelSchema'
 
 const MODELS = [
   { appLabel: 'core', modelName: 'contact', label: 'Contact' },

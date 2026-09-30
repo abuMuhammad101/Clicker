@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { apiGet, ApiError } from '../../lib/api'
-import type { ModelSchema } from '../../types/schema'
+import { apiGet, ApiError } from '@/lib/api'
+import type { ModelSchema } from '@/types/schema'
 
 type State =
   | { status: 'loading' }
