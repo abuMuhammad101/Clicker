@@ -89,7 +89,7 @@ class Contact(models.Model):
         # Order here is form layout, not Django's declaration order — group
         # order and field order within a group are both explicit, on purpose.
         groups = [
-            {'label': 'Identity', 'fields': ['id', 'name', 'type', 'parent', 'job_title', 'tax_id']},
+            {'label': 'Identity', 'fields': ['name', 'type', 'parent', 'job_title', 'tax_id']},
             {'label': 'Communication', 'fields': ['email', 'phone', 'mobile', 'website']},
             {'label': 'Address', 'fields': ['street', 'street2', 'city', 'state', 'zip', 'country']},
             {'label': 'Classification', 'fields': ['active', 'is_customer', 'is_vendor', 'notes']},

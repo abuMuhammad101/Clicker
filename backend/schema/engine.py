@@ -88,6 +88,32 @@ def _field_schema(field, overrides):
     return entry
 
 
+def display_label(obj):
+    """
+    The human label for one record: its model's `Schema.display_field` if
+    declared, else `str()`. The one definition of "what a record is called",
+    shared by the search endpoint, the record endpoint's FK labels, and the
+    record envelope's own title.
+    """
+    display_field = getattr(getattr(type(obj), 'Schema', None), 'display_field', None)
+    return str(getattr(obj, display_field)) if display_field else str(obj)
+
+
+def get_exposed_model(app_label, model_name):
+    """
+    Resolves a URL's app_label/model_name to a model, but only if that model
+    opted in by declaring a `Schema` inner class. Without this gate the
+    generic endpoints would serve any installed model — auth.User included,
+    password hashes and all. Raises LookupError for anything not exposed.
+    """
+    from django.apps import apps
+
+    model = apps.get_model(app_label, model_name)
+    if not hasattr(model, 'Schema'):
+        raise LookupError(f'{app_label}.{model_name} does not declare a Schema')
+    return model
+
+
 def _build_groups(schema_cls, field_names):
     """
     Form layout, as data. Two distinct "no explicit group" signals, not one:
@@ -146,13 +172,21 @@ def build_schema(model):
             continue
         fields[field.name] = _field_schema(field, overrides)
 
+    # An auto-created primary key is the record's identity, not something a
+    # user fills in — the form shows it in its header, not as a field. It
+    # stays in `fields` (a list column may still want it); it just never
+    # lands in a form group by default. A model can still place it in a
+    # group explicitly if it ever has a reason to.
+    auto_pk = meta.pk.name if isinstance(meta.pk, djm.AutoField) else None
+    form_field_names = [name for name in fields if name != auto_pk]
+
     return {
         'model': meta.model_name,
         'app_label': meta.app_label,
         'verbose_name': str(meta.verbose_name),
         'verbose_name_plural': str(meta.verbose_name_plural),
         'display_field': getattr(schema_cls, 'display_field', None),
-        'groups': _build_groups(schema_cls, fields.keys()),
+        'groups': _build_groups(schema_cls, form_field_names),
         'list': {
             'columns': getattr(schema_cls, 'list_display', list(fields.keys())),
             'sort': getattr(schema_cls, 'list_sort', []),
