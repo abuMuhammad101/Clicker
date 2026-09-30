@@ -299,3 +299,82 @@ _Backfilled 2026-09-29 from commit `e00b62e` — same gap as above._
   the previous entry.
 
 - Decisions for the Notion Decision Log: none.
+
+## 2026-09-30 | second machine | step 6a: form renderer
+
+- Generic record API at `/api/data/<app>/<model>/` (list, create) and
+  `/<pk>/` (retrieve, PATCH). Records come back as an envelope:
+  `{id, display, values, labels}`. A many_to_one value is a bare id, and
+  its human label sits in `labels`, so the value has the same shape on read
+  and write. There's no per-model serializer; one is built from the model
+  at request time.
+- `Contact.clean()` now runs on every API save: the serializer builds the
+  would-be record and calls `full_clean()`. Verified that a person as
+  parent and a self-parent are both rejected with 400s keyed by field.
+- Only models that declare a `Schema` class are served (data, search and
+  schema endpoints). Without that gate the generic API would have exposed
+  `auth.User` with password hashes.
+- The schema engine now leaves the auto-created `id` out of form groups; the
+  form header shows it as `#5` in Plex Mono. Removed `id` from
+  `Contact.Schema.groups` to match.
+- Form renderer at `/<app>/<model>/<id>` (and `/new`). It handles sections,
+  help text, required markers, live `visible_when`, picker domains, a
+  two-stage loading state, an error state with retry, and server errors
+  mapped to fields. Errors on hidden fields go to a banner so nothing is
+  swallowed. A type with no form component renders a visible notice.
+  Country's form works with zero code.
+- many_to_one picker gained a Clear option (optional relations only) and
+  remembers the label of what was just picked.
+
+- Half-finished: nothing. Save/discard/dirty state is step 6c by design.
+
+- **Next single action:** Phase 1 step 6b, the list renderer.
+
+- Open items:
+  2. `tokens.css` deploy path. Still open, unchanged.
+  3. **The API has no authentication.** Anyone who can reach the backend
+     can read and write records. Fine while it only runs locally; must be
+     wired to Django auth before the first deploy. Deferred deliberately by
+     Hassan on 2026-09-30.
+
+- Decisions for the Notion Decision Log: hidden (`visible_when`) fields
+  keep their values and are still saved, matching Odoo; pending Hassan's
+  confirmation, along with dropping the phone placeholder and one vs. two
+  form columns.
+
+## 2026-09-30 | second machine | step 6b: list renderer
+
+- List renderer at `/<app>/<model>` on TanStack Table v9 (headless: sort
+  state, column sizing, resizing) plus TanStack Virtual. Columns come from
+  `list_display` in order, each cell from a list-cell registry that mirrors
+  the form registry. Default sort from `list_sort`; header click toggles
+  asc/desc (never "unsorted"). Search is debounced and runs server-side
+  across `search_fields`. Column resize by dragging the header edge;
+  double-click resets it. Clicking a row opens the form (ctrl/cmd-click
+  opens a new tab; links inside cells still work). Empty (no records vs. no
+  matches), loading, and error states. The Country list works with zero
+  code.
+- Backend list endpoint gained `?q=` and `?ordering=`. Text sorts
+  case-insensitively; empty values sort last in both directions; a
+  many_to_one sorts by its target's `Meta.ordering` (country by name, not
+  id); the pk is always the final tiebreaker so offset windows never skip
+  or duplicate rows.
+- Verified density against computed styles: 34px rows, 32px header,
+  11px headers, 12px Plex Sans cells, hairline borders, no striping.
+  Verified virtualisation with 5,000 synthetic rows served from an
+  in-browser fetch stub (nothing written to Neon): 32 DOM rows, a
+  170,000px scroll height, and a jump to row 3,000 fetched only the two
+  pages covering it.
+- The form header's model name now links back to the list.
+
+- Half-finished: nothing. Going back from a form to a list starts at the
+  top (plain page loads, no client-side routing yet). Default list filters
+  (`list_filter_defaults`, e.g. `active = true`) aren't applied yet, since
+  there is no filter UI to turn them off, so archived records still show.
+
+- **Next single action:** Phase 1 step 6c, save/discard behaviour, dirty
+  state and unsaved-changes warnings in the form.
+
+- Decisions for the Notion Decision Log: continuous virtualised scroll with
+  windowed fetching instead of pagination. Written to the Notion Decision
+  Log on 2026-09-30.
