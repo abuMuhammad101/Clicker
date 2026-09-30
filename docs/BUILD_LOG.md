@@ -378,3 +378,41 @@ _Backfilled 2026-09-29 from commit `e00b62e` — same gap as above._
 - Decisions for the Notion Decision Log: continuous virtualised scroll with
   windowed fetching instead of pagination. Written to the Notion Decision
   Log on 2026-09-30.
+
+## 2026-09-30 | second machine | 6a/6b decisions applied
+
+- **Hidden fields keep their values; hidden means not applicable.** The
+  visibility rule moved to one shared function (`frontend/src/lib/visibility.ts`)
+  used by the form and the list renderer. A list cell for a field that
+  doesn't apply to its row shows "—", whatever is stored. No current
+  Contact list column has `visible_when`, so that path is in place but not
+  exercised by today's data.
+- **No placeholders that look like data.** Removed the default placeholders
+  from PhoneField (`+1 555 123 4567`), EmailField (`name@example.com`) and
+  UrlField (`https://example.com`). Format hints moved to `help_text` on
+  `Contact.phone`, `.mobile` and `.website`; migration
+  `core.0005_phone_website_help_text` is a no-op at the SQL level and is
+  applied on Neon. **Pull before migrating on the office machine.** The
+  remaining placeholders ("Search…", "Select…") are instructions, not data.
+- **Forms are one column, left-aligned.** Sheet width is label column + gap
+  + `--form-field-max-width` + padding, from tokens (652px today). The width
+  to the right is reserved for related content later, not for stretching
+  fields or adding a second column.
+
+- Half-finished: nothing.
+
+- **Next single action:** Phase 1 step 6c, save/discard behaviour, dirty
+  state and unsaved-changes warnings in the form.
+
+- ⛔ **HARD BLOCKER: nothing gets deployed to a public URL until Phase 2
+  auth exists.** The API has no authentication: anyone who can reach the
+  backend can read and write every exposed record. This replaces open item
+  3 above. It is not a "before deploy" reminder; it is a gate, and it
+  applies to demo deploys and "just for a day" deploys too.
+
+- Open items: 2. `tokens.css` deploy path (unchanged).
+
+- Decisions for the Notion Decision Log: "hidden fields keep their values;
+  hidden means not applicable" written to Notion on 2026-09-30. Placeholder
+  and single-column rules are recorded here and in code comments; they
+  are conventions, not reversible bets.
