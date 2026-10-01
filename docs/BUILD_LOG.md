@@ -509,3 +509,56 @@ were fixed, both backend-only, documented below rather than glossed over.
   zero-frontend-edits-per-module — holds under a real second model with a
   cross-app relationship and a field type never exercised before. Worth
   recording as the thesis validation, not just a build note.
+
+## 2026-10-01 | office | decimal field component
+
+Closed the one gap step 7 found. `DecimalField` + `DecimalListCell`, same
+8-state pattern as the other 7 types, plus two extra demo rows (negative,
+zero-not-empty) the other types didn't need.
+
+- Backend: `schema/engine.py` now emits `max_digits`/`decimal_places` on
+  every decimal field's schema entry — precision and scale come from the
+  Django field, never guessed by the component.
+- `formatDecimalDisplay`/`isValidDecimalInput`/`parseDecimalInput` in
+  `fields/decimal/decimalFormat.ts`, shared by both components. Typing
+  keeps a raw, unformatted local buffer (`1234.5`) separate from the
+  committed `value`; losing focus swaps to the formatted display
+  (`1,234.50`) computed fresh from `value`, not from what was typed — the
+  same split tokens.css's readonly-vs-disabled rule already demanded
+  elsewhere, applied to a new axis (editing vs. display, not editable vs.
+  not). An invalid keystroke is rejected outright (the regex/digit-count
+  check runs before any state update), not accepted and corrected after.
+  Negative values get `--danger` text color once committed; empty renders
+  as nothing (the FieldShell "—" convention), zero renders as "0.00" —
+  distinct, on purpose, since an unset cost isn't a cost of zero.
+- Right-alignment and tabular figures: `text-right tabular-nums` on the
+  form input, the existing `list-cell--numeric` modifier (built in step 5,
+  unused until now) on the list cell. The list renderer's own
+  `isNumericType` already right-aligns the column/header — the component
+  doesn't depend on that, so it also looks correct standalone in the
+  gallery, which has no such wrapper.
+- Verified against the real Product form, not just the gallery: a
+  `form_input`-driven edit (gallery's own typed-keystroke test doesn't
+  register in this session's hidden browser pane — isolated by confirming
+  the *validation logic* directly, then switching to `form_input`, which
+  triggers the framework's real value setter) went through the actual
+  save button, PATCHed Neon, and read back correctly on a fresh fetch.
+  Restored the original seed value afterward — no lasting change to demo
+  data.
+- Confirmed directly: no "No form component for type 'decimal' yet." text
+  anywhere on the Product form, no "decimal?" text anywhere in the Product
+  list. `sales_price`/`cost`/`weight` render, edit, and save correctly.
+
+- Half-finished: nothing. `integer`, `date`, `datetime`, `currency`
+  deliberately not built — no model uses them yet, per instruction.
+
+- **Next single action:** Phase 1 step 6c — save/discard behaviour, dirty
+  state, unsaved-changes warnings. Nothing left blocking it; step 7's one
+  finding is closed.
+
+- ⛔ Hard blocker unchanged: no public deploy until Phase 2 auth exists.
+
+- Open items: 2. `tokens.css` deploy path (unchanged). 4 (decimal gap) is
+  now resolved — removed from the open list.
+
+- Decisions for the Notion Decision Log: none new.

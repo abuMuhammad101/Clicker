@@ -44,6 +44,8 @@ export interface FieldSchema {
   read_only: boolean
   visible_when: VisibleWhen | null
   max_length?: number
+  max_digits?: number
+  decimal_places?: number
   default?: unknown
   choices?: Choice[]
   target?: FieldTarget

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { FieldSchema, FieldType } from '@/types/schema'
 import { BooleanListCell } from './boolean/BooleanListCell'
+import { DecimalListCell } from './decimal/DecimalListCell'
 import { EmailListCell } from './email/EmailListCell'
 import { LongtextListCell } from './longtext/LongtextListCell'
 import { ManyToOneListCell } from './many-to-one/ManyToOneListCell'
@@ -32,6 +33,12 @@ const LIST_CELLS: Partial<Record<FieldType, Renderer>> = {
   phone: (a) => <PhoneListCell value={asString(a.value)} />,
   url: (a) => <UrlListCell value={asString(a.value)} />,
   boolean: (a) => <BooleanListCell value={a.value === true} />,
+  decimal: (a) => (
+    <DecimalListCell
+      value={typeof a.value === 'number' ? a.value : null}
+      decimalPlaces={a.schema.decimal_places ?? 2}
+    />
+  ),
   selection: (a) => <SelectionListCell value={asString(a.value)} choices={a.schema.choices ?? []} />,
   many_to_one: (a) => <ManyToOneListCell label={a.label} />,
 }

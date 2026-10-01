@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { FieldSchema, FieldType } from '@/types/schema'
 import { BooleanField } from './boolean/BooleanField'
+import { DecimalField } from './decimal/DecimalField'
 import { EmailField } from './email/EmailField'
 import { LongtextField } from './longtext/LongtextField'
 import { ManyToOneField } from './many-to-one/ManyToOneField'
@@ -52,6 +53,14 @@ const FORM_COMPONENTS: Partial<Record<FieldType, Renderer>> = {
   phone: (a) => <PhoneField {...common(a)} value={asString(a.value)} />,
   url: (a) => <UrlField {...common(a)} value={asString(a.value)} />,
   boolean: (a) => <BooleanField {...common(a)} value={a.value === true} />,
+  decimal: (a) => (
+    <DecimalField
+      {...common(a)}
+      value={typeof a.value === 'number' ? a.value : null}
+      maxDigits={a.schema.max_digits ?? 10}
+      decimalPlaces={a.schema.decimal_places ?? 2}
+    />
+  ),
   selection: (a) => (
     <SelectionField {...common(a)} value={asString(a.value)} choices={a.schema.choices ?? []} />
   ),

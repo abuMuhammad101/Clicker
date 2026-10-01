@@ -68,6 +68,12 @@ def _field_schema(field, overrides):
     if max_length:
         entry['max_length'] = max_length
 
+    if base_type == 'decimal':
+        # Precision and scale come from the field, not a frontend guess —
+        # a decimal component has no correct default for either.
+        entry['max_digits'] = field.max_digits
+        entry['decimal_places'] = field.decimal_places
+
     help_text = getattr(field, 'help_text', '')
     if help_text:
         entry['help_text'] = str(help_text)

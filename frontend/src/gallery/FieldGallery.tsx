@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { BooleanField } from '@/fields/boolean/BooleanField'
 import { BooleanListCell } from '@/fields/boolean/BooleanListCell'
+import { DecimalField } from '@/fields/decimal/DecimalField'
+import { DecimalListCell } from '@/fields/decimal/DecimalListCell'
 import { EmailField } from '@/fields/email/EmailField'
 import { EmailListCell } from '@/fields/email/EmailListCell'
 import { LongtextField } from '@/fields/longtext/LongtextField'
@@ -553,6 +555,138 @@ export function FieldGallery() {
             }
             empty={<UrlListCell value={null} />}
           />
+        </div>
+      </TypeSection>
+
+      <TypeSection type="decimal" source="Product.sales_price (max_digits=10, decimal_places=2)">
+        <div className="gallery__section">
+          <h3 className="gallery__section-title">Form states</h3>
+          <div className="gallery__states">
+            <StateRow label="Default">
+              <DecimalField
+                name="decimal-default"
+                label="Sales price"
+                value={null}
+                maxDigits={10}
+                decimalPlaces={2}
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Focused">
+              <DecimalField
+                name="decimal-focused"
+                label="Sales price"
+                value={1234.5}
+                maxDigits={10}
+                decimalPlaces={2}
+                onChange={noop}
+                forceFocused
+              />
+            </StateRow>
+            <StateRow label="Filled">
+              <DecimalField
+                name="decimal-filled"
+                label="Sales price"
+                value={1234.5}
+                maxDigits={10}
+                decimalPlaces={2}
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Disabled">
+              <DecimalField
+                name="decimal-disabled"
+                label="Sales price"
+                value={1234.5}
+                maxDigits={10}
+                decimalPlaces={2}
+                disabled
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Readonly">
+              <DecimalField
+                name="decimal-readonly"
+                label="Sales price"
+                value={1234.5}
+                maxDigits={10}
+                decimalPlaces={2}
+                readOnly
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Error">
+              <DecimalField
+                name="decimal-error"
+                label="Sales price"
+                value={99999999999}
+                maxDigits={10}
+                decimalPlaces={2}
+                error="Sales price exceeds 10 digits."
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Required + empty">
+              <DecimalField
+                name="decimal-required"
+                label="Sales price"
+                value={null}
+                maxDigits={10}
+                decimalPlaces={2}
+                required
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Loading">
+              <DecimalField
+                name="decimal-loading"
+                label="Sales price"
+                value={null}
+                maxDigits={10}
+                decimalPlaces={2}
+                loading
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Negative (distinct)">
+              <DecimalField
+                name="decimal-negative"
+                label="Cost adjustment"
+                value={-42.5}
+                maxDigits={10}
+                decimalPlaces={2}
+                onChange={noop}
+              />
+            </StateRow>
+            <StateRow label="Zero, not empty">
+              <DecimalField
+                name="decimal-zero"
+                label="Cost"
+                value={0}
+                maxDigits={10}
+                decimalPlaces={2}
+                onChange={noop}
+              />
+            </StateRow>
+          </div>
+        </div>
+        <div className="gallery__section">
+          <h3 className="gallery__section-title">List cell</h3>
+          <ListCellRow
+            filled={<DecimalListCell value={1234.5} decimalPlaces={2} />}
+            empty={<DecimalListCell value={null} decimalPlaces={2} />}
+          />
+          <div className="gallery__list-row" style={{ marginTop: 'var(--space-3)' }}>
+            <div className="gallery__list-row-label">Negative / zero</div>
+            <div className="gallery__list-cells">
+              <div className="gallery__list-cell-slot">
+                <DecimalListCell value={-42.5} decimalPlaces={2} />
+              </div>
+              <div className="gallery__list-cell-slot">
+                <DecimalListCell value={0} decimalPlaces={2} />
+              </div>
+            </div>
+          </div>
         </div>
       </TypeSection>
 
