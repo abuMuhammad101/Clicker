@@ -645,3 +645,142 @@ Product per instruction.
 - Open items: 2. `tokens.css` deploy path (unchanged).
 
 - Decisions for the Notion Decision Log: none new.
+
+## 2026-10-01 | second machine | Phase 2 step 2a: authentication
+
+- **Django session auth, locked by default.** `REST_FRAMEWORK` now requires
+  an authenticated user on every API view; only `/api/auth/login/` and
+  `/api/auth/csrf/` opt out. A custom `SessionAuthentication`
+  (`accounts/authentication.py`) declares a challenge so anonymous requests
+  get **401**, not DRF's default 403. That's how the frontend tells "sign in
+  again" from "not allowed".
+- New `accounts` app with four endpoints: `csrf/` (public), `login/`
+  (public, CSRF-enforced against login-CSRF, one generic error for any bad
+  credential), `logout/` (ends the session server-side) and `me/` (401 or
+  the user). The CSRF token travels in JSON, so both cookies are httpOnly.
+  Sessions have a 12-hour *idle* timeout (`SESSION_SAVE_EVERY_REQUEST`).
+  Cookies are `Secure` whenever `DEBUG` is off. CORS allows credentials;
+  CSRF trusted origins default to the CORS origins.
+- Verified with Django's test client (CSRF checks on): every schema, data
+  and search endpoint gives 401 logged out, including Product. Login
+  without a CSRF token gets 403, a wrong password and an unknown user get
+  the same 400, and a correct login sets an httpOnly + SameSite=Lax cookie
+  and rotates the CSRF token. A write without the CSRF header gets 403;
+  after logout, 401 again.
+- **Frontend:** `AuthProvider` checks `/auth/me/` once per load. Every route
+  except `/login` is gated: anonymous visitors go to
+  `/login?next=<path>` and come back there after signing in (`next` only
+  accepts same-app paths, so it isn't an open redirect; verified with
+  `next=https://evil.example`). The login screen reuses `TextField` and
+  `FieldShell`; the password is a password-type `Input` in a `FieldShell`,
+  since password isn't a registry type. The card narrows the existing
+  `--form-label-width` / `--form-field-max-width` tokens locally instead of
+  adding a layout. New `TopBar` (44px, `--topbar-height`) with the user's
+  name and Sign out; list and form pages now size to the area under it.
+- **Session expiry mid-task:** any 401 after sign-in opens a
+  non-dismissable "Your session has ended" prompt *over* the current page.
+  The username is fixed, focus goes to the password, and "Use another
+  account" is available. Nothing navigates or unmounts. Verified live: with
+  an unsaved City edit, I deleted the session server-side and pressed Save.
+  The prompt appeared, the edit survived, the form banner said why it
+  wasn't saved, re-signing in closed the prompt, and Save then went
+  through. (Emma's city was reverted afterwards.)
+- **Test account:** `dev-verify` (not staff, not superuser), created for
+  verifying the logged-in path. Its credentials live only in this
+  machine's `.env` (`DEV_TEST_USERNAME`/`DEV_TEST_PASSWORD`, shape in
+  `.env.example`). Deactivate it before any deployed environment shares
+  this database.
+- Deleted this machine's `.env.local`: ports 8000/5173 were free again.
+- **Note: each machine signs its own sessions.** The two machines use
+  different `SECRET_KEY`s against one shared database, so a session from
+  one machine is unreadable on the other ("Session data corrupted" in
+  logs). Harmless: sign in separately on each machine.
+
+- Half-finished: nothing in scope. Password reset, registration, SSO, MFA,
+  remember-me were explicitly out of scope; not started. Login has no rate
+  limiting yet.
+
+- **Next single action:** Hassan signs in as `Hassan` at
+  `localhost:5173/login` and judges the login card, the top bar, and the
+  session-expired prompt by eye. None of them could be screenshotted this
+  session.
+
+- ⛔ **Hard blocker, updated.** The original blocker (no authentication) is
+  resolved by this step. A public deploy still requires: (1) a custom
+  domain so frontend and API are the same site, since the session cookie
+  won't cross from `*.pages.dev` to `*.onrender.com`; (2) login rate
+  limiting; (3) `dev-verify` deactivated on any database a deploy uses.
+
+- Open items: 2. `tokens.css` deploy path (unchanged).
+
+- Decisions for the Notion Decision Log: "Session authentication over JWT",
+  written to Notion on 2026-10-01, including the same-site deployment
+  consequence.
+
+## 2026-10-02 | second machine | Phase 2 step 2b: module registry and app shell
+
+- **Registry endpoint** `GET /api/registry/` (signed-in only) returns the
+  installed apps that have at least one exposed model, and those models
+  (`model`, `label`, `label_singular`, `route`). It's built by
+  `build_registry()` in `schema/engine.py` from Django's app registry,
+  using the same opt-in rule as the API (a `Schema` class), so auth,
+  sessions and admin never appear. Apps keep `INSTALLED_APPS` order; models
+  within an app are alphabetical by label (no ordering metadata until a
+  module needs it). Module display names come from each app's own
+  `AppConfig.verbose_name`: `core` → "Contacts", `catalog` → "Catalog".
+- **Proved generated, not hand-written:** no file in `src/shell`, `src/lib`,
+  `App.tsx` or `features/auth` names a module or model. Uninstalling
+  `catalog` via an in-memory settings override removes the Catalog group
+  from the registry, and restoring it brings it back, with no file
+  changes.
+- **App shell** (`src/shell/`): full-height sidebar generated from the
+  registry and grouped by app, collapsible between `--sidebar-width` and
+  `--sidebar-width-collapsed`. The choice is remembered per browser; the
+  sidebar starts collapsed below 1100px if no choice was saved. The top bar
+  (`--topbar-height`) has breadcrumbs (module › model › record name), the
+  user, and Sign out. The record name comes from the form via a small
+  page-label context; everything else is derived from the URL and the
+  registry. Both renderers render inside the shell; `/` opens the first
+  registered model, and a registry miss shows "Nothing here".
+- **Client-side navigation** (`lib/router.ts`, `lib/Link.tsx`, ~120 lines,
+  no dependency): `navigate()`, `useLocation()`, a `<Link>` that keeps
+  cmd/middle-click working, and `useNavigationBlocker()`. 6c's
+  unsaved-changes dialog now intercepts *every* in-app navigation (sidebar,
+  breadcrumbs, the form's own link, browser back/forward) and continues to
+  wherever the user was actually going. Verified: an edited product plus a
+  sidebar click opened the dialog with the edit intact, and "Discard &
+  leave" went to Contacts (not the product list) without saving.
+- Verified live, signed in: Contacts → Countries → Products → a product →
+  Back, all in one page load (a `window` marker survived every step).
+  Breadcrumbs and the active link are correct at each step; collapse
+  measures 48px; at 1024px with the sidebar expanded there's no horizontal
+  overflow and the form fits.
+- **Routes moved:** `/gallery` → `/dev/gallery`, and the schema viewer
+  (was `/`) → `/dev/schema`. Neither is in the nav.
+
+- Half-finished: nothing in scope. Global search, favourites, recents,
+  dashboard and notifications were out of scope and are absent (no search
+  affordance either).
+
+- **Next single action:** Hassan judges the shell by eye (sidebar density,
+  active state, collapsed state, breadcrumbs) at `localhost:5173`. No
+  screenshots were possible this session either.
+
+- **Gap for Hassan:** collapsed, a model shows its initial, and Contacts
+  and Countries are both "C". Proper fix: an icon per model as `Schema`
+  metadata (e.g. `Schema.icon = 'users'`, a lucide name), which the
+  registry would pass through. Not added, because it's a schema-format
+  decision.
+- Also open: the form header's own "Contacts" link now duplicates the
+  breadcrumb. Kept for now; candidate for removal.
+
+- ⛔ Deploy blocker unchanged (see 2a): custom same-site domain, login
+  rate limiting, `dev-verify` deactivated.
+
+- Open items: 2. `tokens.css` deploy path (unchanged).
+
+- Decisions for the Notion Decision Log: a small hand-written router
+  instead of react-router. React-router's navigation blocking needs its
+  data-router setup, which is more to integrate than the ~120 lines this
+  needed; revisit if routes grow nested layouts or data loading. Not yet
+  written to Notion.
