@@ -17,7 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from schema.views import RegistryView
+
 urlpatterns = [
+    path('api/registry/', RegistryView.as_view(), name='registry'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
     path('api/schema/', include('schema.urls')),

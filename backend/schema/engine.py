@@ -115,9 +115,56 @@ def get_exposed_model(app_label, model_name):
     from django.apps import apps
 
     model = apps.get_model(app_label, model_name)
-    if not hasattr(model, 'Schema'):
+    if not is_exposed(model):
         raise LookupError(f'{app_label}.{model_name} does not declare a Schema')
     return model
+
+
+def is_exposed(model):
+    """A model is part of Clicker's UI and API exactly when it declares a Schema."""
+    return hasattr(model, 'Schema')
+
+
+def _sentence_case(text):
+    text = str(text)
+    return text[:1].upper() + text[1:]
+
+
+def build_registry():
+    """
+    What exists: every installed app with at least one exposed model, and
+    those models. Derived entirely from Django's app registry — the same
+    opt-in rule (a `Schema` class) that exposes a model to the API exposes
+    it to navigation. Installing a module makes it appear; there is no
+    second, hand-maintained list of what the nav contains.
+
+    Apps keep INSTALLED_APPS order. Models within an app are alphabetical
+    by label: predictable, and needs no extra metadata. (If a module ever
+    needs a deliberate order, that's a `Schema` attribute, added then.)
+    """
+    from django.apps import apps
+
+    registry = []
+    for app_config in apps.get_app_configs():
+        models = [
+            {
+                'model': model._meta.model_name,
+                'label': _sentence_case(model._meta.verbose_name_plural),
+                'label_singular': _sentence_case(model._meta.verbose_name),
+                'route': f'/{app_config.label}/{model._meta.model_name}',
+            }
+            for model in app_config.get_models()
+            if is_exposed(model)
+        ]
+        if not models:
+            continue
+        models.sort(key=lambda entry: entry['label'].lower())
+        registry.append({
+            'app_label': app_config.label,
+            'label': _sentence_case(app_config.verbose_name),
+            'models': models,
+        })
+    return registry
 
 
 def _build_groups(schema_cls, field_names):
