@@ -52,6 +52,20 @@ def _int_param(request, name, default, maximum=None):
     return min(value, maximum) if maximum is not None else value
 
 
+def _coerce_domain_value(field, value):
+    """
+    Everything off a query string is a string — `?is_vendor=true` arrives
+    as the Python string 'true', not a bool. Most field types accept that
+    fine (CharField, IntegerField's own lookup), but BooleanField does not:
+    Contact.objects.filter(is_vendor='true') raises ValidationError, it
+    doesn't coerce. A domain filter on a boolean field would 500 the picker
+    without this.
+    """
+    if isinstance(field, djm.BooleanField):
+        return value.strip().lower() in ('1', 'true', 't', 'yes')
+    return value
+
+
 def _search(queryset, schema, query):
     """Case-insensitive contains across the schema's search_fields."""
     query = query.strip()
@@ -190,14 +204,14 @@ class ModelSearchView(APIView):
         schema = build_schema(model)
         queryset = _search(model.objects.all(), schema, request.GET.get('q', ''))
 
-        # Domain filters (e.g. ?type=company for the parent picker) — exact
-        # match, and only against field names the schema actually knows
-        # about. Anything else in the query string is silently ignored
-        # rather than raising, since arbitrary junk in a search box's
-        # request shouldn't 500 the picker.
+        # Domain filters (e.g. ?type=company for the parent picker, or
+        # ?is_vendor=true for a boolean one) — exact match, and only against
+        # field names the schema actually knows about. Anything else in the
+        # query string is silently ignored rather than raising, since
+        # arbitrary junk in a search box's request shouldn't 500 the picker.
         valid_fields = set(schema['fields'].keys())
         filters = {
-            key: value
+            key: _coerce_domain_value(model._meta.get_field(key), value)
             for key, value in request.GET.items()
             if key in valid_fields
         }

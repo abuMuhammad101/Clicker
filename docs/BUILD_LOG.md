@@ -416,3 +416,96 @@ _Backfilled 2026-09-29 from commit `e00b62e` — same gap as above._
   hidden means not applicable" written to Notion on 2026-09-30. Placeholder
   and single-column rules are recorded here and in code comments; they
   are conventions, not reversible bets.
+
+## 2026-10-01 | office | resequenced: step 7 before 6c
+
+Hassan resequenced the build order after the previous entry was written:
+**Phase 1 step 7 (the Product model, zero-frontend-change test) now comes
+before step 6c (save/discard, dirty state).** Step 7 is the Phase 1 exit
+criterion and a test, not a build — if it surfaces a renderer problem,
+better to find it before 6c adds more form-renderer complexity on top of a
+possibly-wrong foundation. Recorded here per instruction; the previous
+entry's "next single action" (6c) is superseded by this one.
+
+## 2026-10-01 | office | step 7: Product, the zero-frontend-change test
+
+**Result: the architecture passed. Zero frontend files touched — confirmed
+with `git status` after, not just intended.** Two real bugs surfaced and
+were fixed, both backend-only, documented below rather than glossed over.
+
+- New `catalog` app, `Product` model: name, sku (unique), type (selection:
+  goods/service), description (longtext), sales_price (decimal), cost
+  (decimal), active (boolean, default true), supplier (many_to_one →
+  `core.Contact`, cross-app), barcode (text), weight (decimal).
+  `Schema` class: four groups (Identity, Pricing, Logistics,
+  Classification), `list_display`, `list_sort`, `search_fields`, and
+  `domains = {'supplier': {'is_vendor': True}}` — the first domain on a
+  boolean field; every prior domain (`Contact.parent`) filtered on a
+  string selection field instead.
+- Migrated and seeded 15 real products (hardware, packaging, and services,
+  one archived) via `catalog`'s own `seed_products` management command.
+- **Bug 1, found before writing any Product code:** `manage.py seed` ran
+  `core`'s seed command, not `catalog`'s — Django resolves management
+  commands by name across all installed apps, and `core`'s `seed` wins the
+  naming collision silently. Renamed catalog's command to `seed_products`
+  rather than touch the established `core` one.
+- **Bug 2, found by testing the boolean domain filter before trusting it:**
+  `backend/data/views.py`'s domain-filter code passed raw query-string
+  values straight into `.filter(**filters)`. That's fine for a string field
+  (`?type=company`) but `Contact.objects.filter(is_vendor='true')` — the
+  literal string, lowercase, exactly what `String(true)` produces on the
+  frontend — raises `ValidationError: "true" value must be either True or
+  False`, not a silent miscoercion. Reproduced with a direct shell call
+  before changing anything, fixed with one small per-field-type coercion
+  function, reproduced the live HTTP request afterward to confirm the fix
+  (`GET .../search/?is_vendor=true` → 200, two correct vendors). This is a
+  backend implementation gap, not a schema design failure — the schema
+  JSON (`domain: {"is_vendor": true}`) was always a reasonable shape; nothing
+  about it needed to change.
+- Opened both `/catalog/product` (list) and `/catalog/product/<id>` (form)
+  in the browser with the frontend completely untouched. Verified, not
+  assumed: the cross-app FK target (`{app_label: "core", model: "contact"}`)
+  resolved and labelled correctly, the supplier picker's vendor-only domain
+  filter worked through the real UI (not just a direct API hit — opened the
+  picker, saw exactly Globex Industries and Sofia Almeida, nothing else),
+  grouping, selection choices, boolean checkbox, and search/sort on the
+  list all rendered with zero frontend code specific to Product. Console
+  and network clean on both pages.
+- **The one honest gap: `decimal` has no form component or list cell.**
+  Not "built but unexercised" as assumed going in — checking
+  `frontend/src/fields/registry.tsx` and `listRegistry.tsx` directly showed
+  it was never built; Contact never needed it, so nobody had. `sales_price`,
+  `cost`, and `weight` show the registry's own designed fallback: the list
+  column reads "decimal?" in red, the form field reads "No form component
+  for type 'decimal' yet." — visible and legible, not a blank space or a
+  crash. This is the generic-type-registry safety net working exactly as
+  built, not a schema or renderer design failure: nothing about Product
+  required editing the renderer *for Product* — the gap is in the
+  type-component library, which was always going to need a decimal
+  component for some future model, independent of this one. Deliberately
+  not built this session — the instruction was zero frontend changes, and
+  that includes filling this gap without being asked.
+
+- Half-finished: `sales_price`, `cost`, and `weight` are visible-but-broken
+  on every Product record until `DecimalField`/`DecimalListCell` exist.
+  Right-alignment and tabular figures are already half-wired
+  (`NUMERIC_TYPES` in `listRegistry.tsx` already includes `'decimal'`) —
+  only the components themselves are missing.
+
+- **Next single action:** Hassan's call — build `DecimalField` +
+  `DecimalListCell` (closes the one gap this test found) before 6c, or
+  proceed to 6c with the three decimal fields intentionally left showing
+  the fallback. Either way, Phase 1's exit criteria are met: a new model
+  got working form and list views with no React edits, 8+ field types
+  render correctly, and one many_to_one relationship (two, counting the
+  cross-app one) works end to end.
+
+- ⛔ Hard blocker unchanged: no public deploy until Phase 2 auth exists.
+
+- Open items: 2. `tokens.css` deploy path (unchanged). New: 4. `decimal`
+  has no form component or list cell — see above.
+
+- Decisions for the Notion Decision Log: Phase 1's core bet — schema-first,
+  zero-frontend-edits-per-module — holds under a real second model with a
+  cross-app relationship and a field type never exercised before. Worth
+  recording as the thesis validation, not just a build note.
