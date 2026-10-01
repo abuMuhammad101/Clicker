@@ -36,6 +36,41 @@ CORS_ALLOWED_ORIGINS = env.list(
     'CORS_ALLOWED_ORIGINS',
     default=['http://localhost:5173', 'http://127.0.0.1:5173'],
 )
+# The frontend authenticates with the session cookie, so cross-origin
+# requests must be allowed to carry credentials, and the same origins must
+# be trusted to submit CSRF-protected writes.
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=CORS_ALLOWED_ORIGINS)
+
+
+# Authentication
+#
+# Session auth, not tokens: an httpOnly session cookie the browser carries
+# and page scripts can't read, CSRF protection on every write, a logout that
+# actually ends the session server-side, and Django's permission system with
+# nothing in between. See the Decision Log, "Session authentication over JWT".
+#
+# The session cookie is SameSite=Lax, so the frontend and API must be served
+# from the same site (one registrable domain) once deployed.
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SECURE = not DEBUG
+# The CSRF token reaches the frontend in JSON (see accounts/views.py), so the
+# cookie half never needs to be readable by page scripts either.
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
+# An idle timeout, not a fixed lifetime: every request pushes expiry out,
+# so a session ends after 12 hours untouched — overnight, not mid-task.
+SESSION_COOKIE_AGE = 60 * 60 * 12
+SESSION_SAVE_EVERY_REQUEST = True
+
+REST_FRAMEWORK = {
+    # Locked by default. Every API view requires a logged-in user unless it
+    # explicitly opts out (only the login and CSRF endpoints do).
+    'DEFAULT_AUTHENTICATION_CLASSES': ['accounts.authentication.SessionAuthentication'],
+    'DEFAULT_PERMISSION_CLASSES': ['rest_framework.permissions.IsAuthenticated'],
+}
 
 
 # Application definition
@@ -49,6 +84,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'accounts',
     'core',
     'catalog',
     'schema',
