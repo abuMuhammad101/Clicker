@@ -16,6 +16,7 @@ export function UrlField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: FieldProps<string>) {
   if (loading) {
@@ -34,6 +35,7 @@ export function UrlField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={
         value ? (
           <a href={value} target="_blank" rel="noreferrer" className="truncate hover:underline">

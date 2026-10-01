@@ -562,3 +562,86 @@ zero-not-empty) the other types didn't need.
   now resolved — removed from the open list.
 
 - Decisions for the Notion Decision Log: none new.
+
+## 2026-10-01 | office | step 6c: save/discard and dirty state
+
+Generic throughout — nothing model-specific, verified on both Contact and
+Product per instruction.
+
+- **Field-level dirty tracking**, derived fresh on every render by comparing
+  current values against a `baseline` (the loaded record, or a new record's
+  schema defaults) — not a remembered "was this ever touched" flag. That's
+  what makes reverting a field to its original value clean again for free,
+  with no special-case code: the comparison just stops finding a difference.
+  A small ink-violet dot on the label (`FieldShell`'s existing
+  required-asterisk slot, same pattern) marks a dirty field — threaded
+  through `FieldProps` and all 9 field components, since the dot lives in
+  each component's own `FieldShell` call, not in a wrapper the form renderer
+  could apply from outside.
+- **Save/Discard** both disabled while clean, Save shows "Saving…" in
+  flight. On success, `values` *and* the dirty-comparison `baseline` reset
+  from the server's response (not from what was sent) — a computed or
+  server-normalised field can legitimately differ from the request.
+  Discard asks for confirmation (count-aware: "The field you changed" vs.
+  "The N fields you changed") before reverting to baseline.
+- **Unsaved-changes interception, two different mechanisms on purpose**:
+  `beforeunload` for genuine browser-level unload (tab close, reload, typed
+  URL, back/forward) — no modern browser allows customising that dialog's
+  text, so there's no point trying for anything richer. The one in-app
+  link (the breadcrumb back to the list) gets its own click-intercepted,
+  three-option dialog instead: Cancel, Discard & leave, Save & leave — the
+  save option awaits the real save and only navigates on success, staying
+  put with errors visible on failure, same as a plain failed save.
+- **Create**: the route (`/<app>/<model>/new` → `FormRenderer` with no
+  `recordId`) already existed from step 6a, but nothing linked to it — the
+  list had no way to reach it. Added a "New {model}" button to the list
+  toolbar. An untouched new form is clean by construction (baseline =
+  schema defaults, same comparison as any other form), so Save/Discard stay
+  disabled and leaving prompts nothing, with no create-specific logic
+  anywhere.
+- **Bug found and fixed while testing, not assumed correct from reading the
+  code:** shadcn's `AlertDialogAction` does not auto-dismiss on click —
+  unlike `Cancel`, which closes via the dialog's own controlled
+  `open`/`onOpenChange`, `Action` leaves closing entirely to the consumer
+  (sensible once you consider it's meant for actions that might be async
+  and might fail, like this session's own Save & leave). The plain Discard
+  confirmation assumed the same auto-dismiss and silently didn't close.
+  Fixed by having `discard()` close its own dialog explicitly.
+- Verified live end to end on both models, not just read the diff: clean
+  on load, dirty on edit, clean again on revert-to-original, full
+  create→save→clean→URL-updates-to-/core/contact/13 cycle, a save that
+  intentionally fails (blanked a required `name`) correctly staying dirty
+  with the input preserved and the field-level error shown, and all three
+  choices in the leave-while-dirty dialog (Cancel stays with edits intact;
+  Discard & leave navigates after reverting; Save & leave PATCHes first,
+  confirmed via a direct fetch of the record, *then* navigates).
+
+- **Honest gap in this session's verification, not papered over:** the
+  Discard and leave dialogs' visual close *animation* couldn't be confirmed
+  in this environment — `animationend` never fired even with the keyframe
+  present and correctly configured and the tab fronted, which blocked
+  Radix's animation-driven unmount from completing, independent of the
+  `discard()` fix (confirmed separately: `data-state` flips to `"closed"`
+  correctly, the application state is provably right, only the exit
+  transition's completion is unconfirmed). Worth Hassan clicking Discard
+  once himself to confirm the dialog actually closes smoothly on screen.
+- Left two test contacts in Neon from this session's verification (ids
+  visible via `/core/contact` — one named for the dirty-state test). Not
+  cleaned up: there's still no delete endpoint (by design, from step 6a —
+  archiving is the intended path). Harmless, same category as "Sarah".
+
+- Half-finished: nothing in scope. Optimistic updates, concurrent-edit
+  detection, autosave, draft persistence all explicitly out of scope per
+  instruction — not started.
+
+- **Next single action:** Hassan's call. Phase 1's three exit criteria are
+  all met as of step 7 (zero-frontend-change model, 9 field types across
+  their states, two many_to_one relationships including a cross-app one) —
+  Phase 1 could be considered done, or there's room for more Phase 1
+  polish before calling it. Worth a decision, not an assumption.
+
+- ⛔ Hard blocker unchanged: no public deploy until Phase 2 auth exists.
+
+- Open items: 2. `tokens.css` deploy path (unchanged).
+
+- Decisions for the Notion Decision Log: none new.

@@ -1,4 +1,14 @@
 import { useEffect, useState } from 'react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { renderFormField } from '@/fields/registry'
@@ -120,6 +130,25 @@ function initialValues(schema: ModelSchema, record: RecordEnvelope | null) {
   )
 }
 
+/**
+ * Field-level dirty state: compared against `baseline` (what was loaded, or
+ * the schema's defaults for a new record), not against some remembered
+ * "has this ever been touched" flag — so reverting a field to its original
+ * value makes it clean again, the same way undoing a typo would. read_only
+ * fields (the auto pk) never count: nothing ever edits them.
+ */
+function dirtyFieldNames(
+  schema: ModelSchema,
+  values: Record<string, unknown>,
+  baseline: Record<string, unknown>,
+) {
+  return new Set(
+    Object.entries(schema.fields)
+      .filter(([name, field]) => !field.read_only && !Object.is(values[name] ?? null, baseline[name] ?? null))
+      .map(([name]) => name),
+  )
+}
+
 function EditableForm({
   schema,
   record: initialRecord,
@@ -137,6 +166,12 @@ function EditableForm({
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, initialRecord),
   )
+  // What the form would revert to: the loaded record's values, or a new
+  // record's schema defaults. Reset to the server's response on every
+  // successful save, which is what makes the form clean again afterward.
+  const [baseline, setBaseline] = useState<Record<string, unknown>>(() =>
+    initialValues(schema, initialRecord),
+  )
   // Labels describe the values as loaded. Once a field is edited its loaded
   // label is stale (a cleared parent must not keep showing the old name),
   // so it's dropped; the picker shows its own pick's label until the next
@@ -148,10 +183,31 @@ function EditableForm({
   const [formErrors, setFormErrors] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [justSaved, setJustSaved] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  // Set while an in-app link is held back pending the user's choice in the
+  // unsaved-changes dialog — the href it would have gone to.
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
+
+  const dirtyFields = dirtyFieldNames(schema, values, baseline)
+  const isDirty = dirtyFields.size > 0
 
   useEffect(() => {
     document.title = record ? `${record.display} · Clicker` : `New ${schema.verbose_name} · Clicker`
   }, [record, schema.verbose_name])
+
+  // Browser-level unload (close tab, reload, typed URL, back/forward) gets
+  // the browser's own blunt prompt — no modern browser allows replacing
+  // that text, so there's no point trying. In-app navigation (the link
+  // below) gets the richer save/discard/cancel choice instead.
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
 
   const setValue = (name: string, value: unknown) => {
     setValues((current) => ({ ...current, [name]: value }))
@@ -159,7 +215,7 @@ function EditableForm({
     setJustSaved(false)
   }
 
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     setSaving(true)
     setFieldErrors({})
     setFormErrors([])
@@ -177,10 +233,15 @@ function EditableForm({
         ? await apiSend<RecordEnvelope>('PATCH', `/data/${appLabel}/${model}/${record.id}/`, payload)
         : await apiSend<RecordEnvelope>('POST', `/data/${appLabel}/${model}/`, payload)
       setRecord(saved)
+      // The server's response is the new baseline, not just the new display
+      // — a computed or server-modified field (a default filled in, a
+      // normalised value) can differ from exactly what was sent.
       setValues(saved.values)
+      setBaseline(saved.values)
       setLabels(saved.labels)
       setJustSaved(true)
       onSaved?.(saved)
+      return true
     } catch (error) {
       if (error instanceof ApiError && error.validation) {
         const mapped = mapValidationErrors(schema, values, error.validation)
@@ -190,9 +251,43 @@ function EditableForm({
         const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
         setFormErrors([`Not saved: ${message}`])
       }
+      return false
     } finally {
       setSaving(false)
     }
+  }
+
+  const discard = () => {
+    setValues(baseline)
+    setLabels(record?.labels ?? {})
+    setFieldErrors({})
+    setFormErrors([])
+    setJustSaved(false)
+    // AlertDialogAction doesn't auto-close on its own — unlike Cancel, it's
+    // meant for actions that might not be done yet (an async save, say),
+    // so closing is always the consumer's call, not Radix's default.
+    setConfirmDiscard(false)
+  }
+
+  const modelHref = `/${appLabel}/${model}`
+
+  const handleModelLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isDirty) return
+    event.preventDefault()
+    setPendingNavigation(modelHref)
+  }
+
+  const handleSaveAndLeave = async () => {
+    const ok = await save()
+    setPendingNavigation(null)
+    if (ok) window.location.assign(modelHref)
+    // On failure the dialog closes, leaving the form on screen with its
+    // errors showing — the same place a plain failed save lands.
+  }
+
+  const handleDiscardAndLeave = () => {
+    setPendingNavigation(null)
+    window.location.assign(modelHref)
   }
 
   return (
@@ -210,7 +305,7 @@ function EditableForm({
             {record ? record.display : `New ${schema.verbose_name}`}
           </h1>
           <p className="form-header__meta">
-            <a className="form-header__model" href={`/${appLabel}/${model}`}>
+            <a className="form-header__model" href={modelHref} onClick={handleModelLinkClick}>
               {schema.verbose_name_plural}
             </a>
             {record && <span className="form-header__id">#{record.id}</span>}
@@ -218,7 +313,16 @@ function EditableForm({
         </div>
         <div className="form-header__actions">
           {justSaved && <span className="form-header__status">Saved</span>}
-          <Button type="submit" disabled={saving} className="h-[var(--control-height)]">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={saving || !isDirty}
+            onClick={() => setConfirmDiscard(true)}
+            className="h-[var(--control-height)]"
+          >
+            Discard
+          </Button>
+          <Button type="submit" disabled={saving || !isDirty} className="h-[var(--control-height)]">
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
@@ -237,8 +341,57 @@ function EditableForm({
         values={values}
         labels={labels}
         errors={fieldErrors}
+        dirtyFields={dirtyFields}
         onChange={setValue}
       />
+
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {dirtyFields.size === 1 ? 'The field you changed' : `The ${dirtyFields.size} fields you changed`}{' '}
+              will revert to {record ? 'their saved values' : 'blank'}. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={discard}>Discard</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={pendingNavigation != null} onOpenChange={(open) => !open && setPendingNavigation(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to this {schema.verbose_name}. Save them, discard them, or stay
+              on this page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingNavigation(null)}>Cancel</AlertDialogCancel>
+            <Button variant="outline" onClick={handleDiscardAndLeave} className="h-[var(--control-height)]">
+              Discard &amp; leave
+            </Button>
+            <AlertDialogAction
+              // Prevent the default auto-dismiss: the save is async and can
+              // fail, in which case this dialog must stay closed-by-us only
+              // after the attempt resolves, not the instant the button is
+              // clicked — otherwise a failed save would flash the dialog
+              // shut before the errors it's about to show even render.
+              onClick={(event) => {
+                event.preventDefault()
+                void handleSaveAndLeave()
+              }}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save & leave'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }
@@ -280,6 +433,7 @@ function FormBody({
   values,
   labels,
   errors,
+  dirtyFields,
   onChange,
   loading,
 }: {
@@ -287,6 +441,7 @@ function FormBody({
   values: Record<string, unknown>
   labels: Record<string, string | null>
   errors: Record<string, string>
+  dirtyFields?: Set<string>
   onChange?: (name: string, value: unknown) => void
   loading?: boolean
 }) {
@@ -313,6 +468,7 @@ function FormBody({
                     onChange: (value) => onChange?.(name, value),
                     error: errors[name],
                     loading,
+                    dirty: dirtyFields?.has(name),
                   })}
                 </div>
               ))}

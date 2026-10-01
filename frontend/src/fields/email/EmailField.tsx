@@ -16,6 +16,7 @@ export function EmailField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: FieldProps<string>) {
   if (loading) {
@@ -34,6 +35,7 @@ export function EmailField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={
         value ? (
           <a href={`mailto:${value}`} className="hover:underline">

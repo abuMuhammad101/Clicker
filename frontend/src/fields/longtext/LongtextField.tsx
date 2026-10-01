@@ -16,6 +16,7 @@ export function LongtextField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: FieldProps<string>) {
   if (loading) {
@@ -34,6 +35,7 @@ export function LongtextField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={
         value ? <span className="whitespace-pre-wrap">{value}</span> : undefined
       }

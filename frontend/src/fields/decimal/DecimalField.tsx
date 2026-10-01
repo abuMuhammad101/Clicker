@@ -32,6 +32,7 @@ export function DecimalField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: DecimalFieldProps) {
   const [focused, setFocused] = useState(false)
@@ -66,6 +67,7 @@ export function DecimalField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={
         value != null ? (
           <span className={cn('tabular-nums', isNegative && 'text-[color:var(--danger)]')}>

@@ -9,6 +9,8 @@ interface FieldShellProps {
   error?: string
   helpText?: string
   readOnly?: boolean
+  /** True once this field's value differs from what the form loaded with. */
+  dirty?: boolean
   /** Pre-formatted display value used only when readOnly is true. */
   readOnlyValue?: ReactNode
   children: ReactNode
@@ -21,6 +23,7 @@ export function FieldShell({
   error,
   helpText,
   readOnly,
+  dirty,
   readOnlyValue,
   children,
 }: FieldShellProps) {
@@ -30,6 +33,7 @@ export function FieldShell({
         htmlFor={htmlFor}
         className={cn('field-shell__label', readOnly && 'field-shell__label--readonly')}
       >
+        {dirty && <span className="field-shell__dirty-dot" aria-hidden="true" />}
         {label}
         {required && <span className="field-shell__required">*</span>}
       </label>

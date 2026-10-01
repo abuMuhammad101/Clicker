@@ -42,6 +42,7 @@ export function ManyToOneField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
   forceOpen,
 }: ManyToOneFieldProps) {
@@ -71,6 +72,7 @@ export function ManyToOneField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={shownLabel || undefined}
     >
       <Popover open={open} onOpenChange={setOpenState}>

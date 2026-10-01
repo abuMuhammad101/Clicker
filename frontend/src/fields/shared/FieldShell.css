@@ -5,6 +5,10 @@
 }
 
 .field-shell__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-2);
   flex: none;
   width: var(--form-label-width);
   padding-top: 6px;
@@ -12,6 +16,17 @@
   font-size: var(--text-base);
   color: var(--text-secondary);
   line-height: var(--leading-tight);
+}
+
+/* A changed-but-unsaved field, distinguishable from an untouched one.
+   Ink violet, not a status colour — this isn't an error or a warning, it's
+   the same "you did this" meaning the accent carries everywhere else. */
+.field-shell__dirty-dot {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
 }
 
 .field-shell__label--readonly {

@@ -20,6 +20,8 @@ export interface FieldProps<T> {
   error?: string
   helpText?: string
   placeholder?: string
+  /** True once this field's value differs from what the form loaded with. */
+  dirty?: boolean
   /** Gallery-only. Never set by the real form renderer. */
   forceFocused?: boolean
 }

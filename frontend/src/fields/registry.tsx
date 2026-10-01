@@ -26,6 +26,8 @@ export interface FormFieldArgs {
   error?: string
   loading?: boolean
   disabled?: boolean
+  /** True once this field's value differs from what the form loaded with. */
+  dirty?: boolean
 }
 
 type Renderer = (args: FormFieldArgs) => ReactNode
@@ -40,6 +42,7 @@ function common(args: FormFieldArgs) {
     error: args.error,
     loading: args.loading,
     disabled: args.disabled,
+    dirty: args.dirty,
     onChange: args.onChange,
   }
 }

@@ -9,7 +9,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -208,26 +208,34 @@ function ListView({
             <span className="list-toolbar__count">{total.toLocaleString()}</span>
           )}
         </h1>
-        <div className="list-search">
-          <Search className="list-search__icon" aria-hidden />
-          <Input
-            value={searchInput}
-            onChange={(event) => setSearchInput(event.target.value)}
-            onKeyDown={(event) => event.key === 'Escape' && setSearchInput('')}
-            placeholder={`Search ${plural}…`}
-            aria-label={`Search ${plural}`}
-            className="list-search__input"
-          />
-          {searchInput && (
-            <button
-              type="button"
-              className="list-search__clear"
-              onClick={() => setSearchInput('')}
-              aria-label="Clear search"
-            >
-              <X className="size-3.5" />
-            </button>
-          )}
+        <div className="list-toolbar__actions">
+          <div className="list-search">
+            <Search className="list-search__icon" aria-hidden />
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              onKeyDown={(event) => event.key === 'Escape' && setSearchInput('')}
+              placeholder={`Search ${plural}…`}
+              aria-label={`Search ${plural}`}
+              className="list-search__input"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                className="list-search__clear"
+                onClick={() => setSearchInput('')}
+                aria-label="Clear search"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+          <Button asChild className="h-[var(--control-height)]">
+            <a href={`/${appLabel}/${model}/new`}>
+              <Plus className="size-4" aria-hidden />
+              New {schema.verbose_name}
+            </a>
+          </Button>
         </div>
       </div>
 

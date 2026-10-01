@@ -20,6 +20,7 @@ export function PhoneField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: FieldProps<string>) {
   if (loading) {
@@ -38,6 +39,7 @@ export function PhoneField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={
         value ? (
           <a href={`tel:${value}`} className="hover:underline">

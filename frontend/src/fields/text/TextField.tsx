@@ -16,6 +16,7 @@ export function TextField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: FieldProps<string>) {
   if (loading) {
@@ -34,6 +35,7 @@ export function TextField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={value || undefined}
     >
       <Input

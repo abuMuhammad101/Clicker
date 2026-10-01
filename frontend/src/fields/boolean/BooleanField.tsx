@@ -14,6 +14,7 @@ export function BooleanField({
   loading,
   error,
   helpText,
+  dirty,
   forceFocused,
 }: FieldProps<boolean>) {
   if (loading) {
@@ -34,6 +35,7 @@ export function BooleanField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={value ? 'Yes' : 'No'}
     >
       <div className="flex h-[var(--control-height)] items-center">

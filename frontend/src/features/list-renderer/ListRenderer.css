@@ -37,6 +37,12 @@
   color: var(--text-muted);
 }
 
+.list-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
 .list-search {
   position: relative;
   width: 280px;

@@ -32,6 +32,7 @@ export function SelectionField({
   error,
   helpText,
   placeholder,
+  dirty,
   forceFocused,
 }: SelectionFieldProps) {
   if (loading) {
@@ -52,6 +53,7 @@ export function SelectionField({
       error={error}
       helpText={helpText}
       readOnly={readOnly}
+      dirty={dirty}
       readOnlyValue={selected?.label}
     >
       <Select value={value ?? undefined} onValueChange={(next) => onChange?.(next)} disabled={disabled}>
