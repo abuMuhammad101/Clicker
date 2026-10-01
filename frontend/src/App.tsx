@@ -1,48 +1,60 @@
-import { FormRenderer } from './features/form-renderer/FormRenderer'
-import { ListRenderer } from './features/list-renderer/ListRenderer'
-import { SchemaViewer } from './features/schema-viewer/SchemaViewer'
-import { FieldGallery } from './gallery/FieldGallery'
+import { useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { useAuth } from './features/auth/authContext'
+import { LoginScreen } from './features/auth/LoginScreen'
+import { loginUrl, safeNext } from './features/auth/redirects'
+import { SessionExpiredDialog } from './features/auth/SessionExpiredDialog'
+import './features/auth/auth.css'
+import { useLocation } from './lib/router'
+import { AppShell } from './shell/AppShell'
 
-// Still no router dependency. List → form navigation now exists, but as
-// plain page loads, which is enough to prove the loop. The cost is that
-// going back to a list starts it at the top; client-side routing (and
-// scroll restoration with it) is the fix when that starts to hurt.
-//
-//   /gallery                    field component gallery (dev-only)
-//   /<app>/<model>              list, e.g. /core/contact
-//   /<app>/<model>/<id>         edit a record, e.g. /core/contact/5
-//   /<app>/<model>/new          create a record
-//   anything else               schema viewer
-const LIST_ROUTE = /^\/([a-z_]+)\/([a-z_]+)\/?$/
-const RECORD_ROUTE = /^\/([a-z_]+)\/([a-z_]+)\/(\d+|new)\/?$/
-
+/**
+ * The auth gate. Every route except /login requires a session; an
+ * anonymous visitor is sent to /login?next=<where they were going> and
+ * returned there after signing in. Everything signed-in lives inside
+ * AppShell, which owns the routes. A session that ends mid-page doesn't
+ * navigate anywhere: the shell stays mounted and SessionExpiredDialog asks
+ * for the password on top.
+ */
 function App() {
-  const path = window.location.pathname
-  if (path.startsWith('/gallery')) return <FieldGallery />
+  const { state, retry } = useAuth()
+  const { pathname, search } = useLocation()
 
-  const list = LIST_ROUTE.exec(path)
-  if (list) return <ListRenderer appLabel={list[1]} model={list[2]} />
-
-  const match = RECORD_ROUTE.exec(path)
-  if (match) {
-    const [, appLabel, model, id] = match
+  if (state.status === 'checking') return <div className="boot-screen" aria-busy="true" />
+  if (state.status === 'unreachable') {
     return (
-      <FormRenderer
-        appLabel={appLabel}
-        model={model}
-        recordId={id === 'new' ? undefined : Number(id)}
-        onSaved={(record) => {
-          // A created record gets its real URL, so a reload reopens it
-          // instead of starting another new one.
-          if (id === 'new') {
-            window.history.replaceState(null, '', `/${appLabel}/${model}/${record.id}`)
-          }
-        }}
-      />
+      <div className="boot-screen boot-screen--error" role="alert">
+        <h1 className="boot-screen__title">Clicker can’t reach its server</h1>
+        <p className="boot-screen__message">{state.message}</p>
+        <Button variant="outline" onClick={retry} className="h-[var(--control-height)]">
+          Try again
+        </Button>
+      </div>
     )
   }
 
-  return <SchemaViewer />
+  if (pathname === '/login') {
+    if (state.status === 'authenticated') {
+      return <Redirect to={safeNext(new URLSearchParams(search).get('next'))} />
+    }
+    return <LoginScreen />
+  }
+
+  if (state.status === 'anonymous') return <Redirect to={loginUrl(pathname + search)} />
+
+  return (
+    <>
+      <AppShell user={state.user} />
+      {state.expired && <SessionExpiredDialog user={state.user} />}
+    </>
+  )
+}
+
+function Redirect({ to }: { to: string }) {
+  useEffect(() => {
+    window.location.replace(to)
+  }, [to])
+  return <div className="boot-screen" />
 }
 
 export default App

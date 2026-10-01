@@ -1,5 +1,5 @@
 .form-page {
-  min-height: 100vh;
+  min-height: 100%;
   padding: var(--space-8) var(--space-6);
   background: var(--surface-sunken);
 }

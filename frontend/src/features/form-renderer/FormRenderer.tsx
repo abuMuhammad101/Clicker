@@ -13,6 +13,9 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
+import { Link } from '@/lib/Link'
+import { navigate, useNavigationBlocker } from '@/lib/router'
+import { useCurrentPageLabel } from '@/shell/pageLabel'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
@@ -191,14 +194,17 @@ function EditableForm({
   const dirtyFields = dirtyFieldNames(schema, values, baseline)
   const isDirty = dirtyFields.size > 0
 
+  const pageLabel = record ? record.display : `New ${schema.verbose_name}`
   useEffect(() => {
-    document.title = record ? `${record.display} · Clicker` : `New ${schema.verbose_name} · Clicker`
-  }, [record, schema.verbose_name])
+    document.title = `${pageLabel} · Clicker`
+  }, [pageLabel])
+  // The shell's breadcrumb ends with what this form is showing.
+  useCurrentPageLabel(pageLabel)
 
-  // Browser-level unload (close tab, reload, typed URL, back/forward) gets
-  // the browser's own blunt prompt — no modern browser allows replacing
-  // that text, so there's no point trying. In-app navigation (the link
-  // below) gets the richer save/discard/cancel choice instead.
+  // Browser-level unload (close tab, reload, typed URL) gets the browser's
+  // own blunt prompt — no modern browser allows replacing that text, so
+  // there's no point trying. In-app navigation gets the richer
+  // save/discard/cancel choice instead (useNavigationBlocker below).
   useEffect(() => {
     if (!isDirty) return
     const handler = (event: BeforeUnloadEvent) => {
@@ -271,23 +277,24 @@ function EditableForm({
 
   const modelHref = `/${appLabel}/${model}`
 
-  const handleModelLinkClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
-    if (!isDirty) return
-    event.preventDefault()
-    setPendingNavigation(modelHref)
-  }
+  // Any in-app navigation while dirty — this header's link, the sidebar,
+  // a breadcrumb, browser back/forward — is held back and routed through
+  // the leave dialog below, with wherever it was headed.
+  useNavigationBlocker(isDirty, setPendingNavigation)
 
   const handleSaveAndLeave = async () => {
+    const destination = pendingNavigation
     const ok = await save()
     setPendingNavigation(null)
-    if (ok) window.location.assign(modelHref)
+    if (ok && destination) navigate(destination, { force: true })
     // On failure the dialog closes, leaving the form on screen with its
     // errors showing — the same place a plain failed save lands.
   }
 
   const handleDiscardAndLeave = () => {
+    const destination = pendingNavigation
     setPendingNavigation(null)
-    window.location.assign(modelHref)
+    if (destination) navigate(destination, { force: true })
   }
 
   return (
@@ -305,9 +312,9 @@ function EditableForm({
             {record ? record.display : `New ${schema.verbose_name}`}
           </h1>
           <p className="form-header__meta">
-            <a className="form-header__model" href={modelHref} onClick={handleModelLinkClick}>
+            <Link className="form-header__model" to={modelHref}>
               {schema.verbose_name_plural}
-            </a>
+            </Link>
             {record && <span className="form-header__id">#{record.id}</span>}
           </p>
         </div>

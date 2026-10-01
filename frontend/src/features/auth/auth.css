@@ -1,0 +1,96 @@
+/* ---------- Sign in ----------
+   The sign-in fields reuse the form's FieldShell, which lays out from the
+   --form-label-width / --form-field-max-width tokens. Two fields don't need
+   a 168px label column, so the card narrows those same tokens locally
+   rather than introducing a second field layout. */
+.login-page {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 15vh var(--space-6) var(--space-8);
+  background: var(--surface-sunken);
+}
+
+.login-card,
+.session-expired {
+  --form-label-width: 72px;
+  --form-field-max-width: 240px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: calc(var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8));
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.login-card__title {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.sign-in-form__fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sign-in-form__error {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius);
+  background: var(--danger-subtle);
+  font-size: var(--text-base);
+  color: var(--danger);
+}
+
+.sign-in-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.session-expired.session-expired {
+  max-width: calc(var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-6));
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+}
+
+/* ---------- Boot ----------
+   Checking the session takes one request. Nothing animates while it
+   happens (motion only in response to user action); the surface is just
+   blank, so a signed-in user never sees a flash of the login form. */
+.boot-screen {
+  min-height: 100vh;
+  background: var(--surface-sunken);
+}
+
+.boot-screen--error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: 15vh var(--space-8);
+}
+
+.boot-screen__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.boot-screen__message {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}

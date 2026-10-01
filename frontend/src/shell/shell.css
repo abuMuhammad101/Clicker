@@ -1,0 +1,321 @@
+/* ---------- Frame ----------
+   Sidebar full height on the left; on the right, the top bar and then the
+   page. The page area owns its scrolling: the list scrolls inside itself,
+   the form scrolls this area. Nothing scrolls the window. */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  background: var(--surface);
+}
+
+.app-shell__main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.app-shell__page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---------- Sidebar ---------- */
+.sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: var(--sidebar-width);
+  border-right: 1px solid var(--border);
+  background: var(--surface-sunken);
+  transition: width var(--duration) var(--ease);
+}
+
+.sidebar--collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.sidebar__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  height: var(--topbar-height);
+  padding: 0 var(--space-3) 0 var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar--collapsed .sidebar__head {
+  justify-content: center;
+  padding: 0;
+}
+
+.sidebar__brand {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidebar__toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.sidebar__toggle:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar__toggle:focus-visible,
+.sidebar__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.sidebar__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--space-4) var(--space-3);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.sidebar__group + .sidebar__group {
+  margin-top: var(--space-6);
+}
+
+.sidebar--collapsed .sidebar__group + .sidebar__group {
+  margin-top: var(--space-3);
+}
+
+.sidebar__group-label {
+  margin: 0 0 var(--space-2);
+  padding: 0 var(--space-3);
+  overflow: hidden;
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wide);
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.sidebar__divider {
+  margin: 0 var(--space-2) var(--space-3);
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.sidebar__group:first-child .sidebar__divider {
+  display: none;
+}
+
+.sidebar__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar__list li + li {
+  margin-top: var(--space-1);
+}
+
+.sidebar__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--row-height-compact);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.sidebar__link:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.sidebar__link--active,
+.sidebar__link--active:hover {
+  background: var(--surface-selected);
+  color: var(--accent);
+  font-weight: var(--weight-medium);
+}
+
+.sidebar--collapsed .sidebar__link {
+  justify-content: center;
+  padding: 0;
+}
+
+/* The collapsed state's stand-in for an icon: the model's initial on a
+   small tile. Shown in both states so the expanded list keeps the same
+   left edge and the collapse doesn't make things jump sideways. */
+.sidebar__initial {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+}
+
+.sidebar__link--active .sidebar__initial {
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.sidebar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__skeleton {
+  height: var(--row-height-compact);
+  margin-bottom: var(--space-1);
+}
+
+.sidebar__error {
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.sidebar__error p {
+  margin: 0 0 var(--space-2);
+}
+
+.sidebar__retry {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+/* ---------- Top bar ---------- */
+.top-bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  height: var(--topbar-height);
+  padding: 0 var(--space-6);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.top-bar__account {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* A long name truncates; it never pushes Sign out off screen. */
+.top-bar__user {
+  max-width: 200px;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- Breadcrumbs ----------
+   Every crumb can truncate, the last one (the record name, any length)
+   most of all; the bar never wraps or pushes the account controls away. */
+.breadcrumbs {
+  min-width: 0;
+}
+
+.breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.breadcrumbs__item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: var(--text-base);
+}
+
+.breadcrumbs__item:not(:last-child) {
+  flex: none;
+  max-width: 200px;
+}
+
+.breadcrumbs__separator {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0 var(--space-2);
+  color: var(--text-disabled);
+}
+
+.breadcrumbs__link,
+.breadcrumbs__text,
+.breadcrumbs__current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breadcrumbs__text {
+  color: var(--text-muted);
+}
+
+.breadcrumbs__link {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.breadcrumbs__link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.breadcrumbs__current {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+/* ---------- Page-level messages ---------- */
+.shell-message {
+  padding: var(--space-10) var(--space-6);
+}
+
+.shell-message__title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.shell-message__text {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}

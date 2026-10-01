@@ -1,9 +1,10 @@
-/* The list owns the whole viewport and scrolls inside itself: the toolbar
-   and column headers stay put while thousands of rows move under them. */
+/* The list owns the whole page area under the top bar and scrolls inside
+   itself: the toolbar and column headers stay put while thousands of rows
+   move under them. */
 .list-page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: var(--surface);
 }
 

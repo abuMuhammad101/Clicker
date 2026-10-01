@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { ListCell } from '@/fields/shared/ListCell'
+import { Link } from '@/lib/Link'
+import { navigate } from '@/lib/router'
 import { tokenPx } from '@/lib/tokens'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
@@ -196,7 +198,7 @@ function ListView({
     if ((event.target as HTMLElement).closest('a')) return
     const url = recordUrl(appLabel, model, record.id)
     if ('metaKey' in event && (event.metaKey || event.ctrlKey)) window.open(url, '_blank')
-    else window.location.assign(url)
+    else navigate(url)
   }
 
   return (
@@ -231,10 +233,10 @@ function ListView({
             )}
           </div>
           <Button asChild className="h-[var(--control-height)]">
-            <a href={`/${appLabel}/${model}/new`}>
+            <Link to={`/${appLabel}/${model}/new`}>
               <Plus className="size-4" aria-hidden />
               New {schema.verbose_name}
-            </a>
+            </Link>
           </Button>
         </div>
       </div>
