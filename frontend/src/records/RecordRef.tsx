@@ -3,7 +3,7 @@ import type { ModelRef, RecordId } from './paths'
 import { recordPath } from './paths'
 import { openRecord, type Surface } from './surfaces'
 
-interface RecordRefProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href'> {
+interface RecordRefProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'href' | 'id'> {
   model: ModelRef
   id: RecordId
   /** Where a plain click asks for the record to open. Defaults to the page. */

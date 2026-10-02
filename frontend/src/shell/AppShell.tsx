@@ -5,6 +5,7 @@ import { FormRenderer } from '@/features/form-renderer/FormRenderer'
 import { ListRenderer } from '@/features/list-renderer/ListRenderer'
 import { SchemaViewer } from '@/features/schema-viewer/SchemaViewer'
 import { FieldGallery } from '@/gallery/FieldGallery'
+import { PeekHost } from '@/surfaces/PeekHost'
 import { navigate, useLocation } from '@/lib/router'
 import { parseListPath, parseRecordPath, recordPath, sameTarget, useSurface } from '@/records'
 import { Sidebar } from './Sidebar'
@@ -97,6 +98,7 @@ export function AppShell({ user }: { user: User }) {
           <Page pathname={pathname} apps={apps} onLabelChange={setPageLabel} />
         </main>
       </div>
+      <PeekHost apps={apps} />
     </div>
   )
 }

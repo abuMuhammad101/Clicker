@@ -1,0 +1,124 @@
+/* The peek drawer. Chrome only: the form inside brings none of its own, and is
+   themed to sit flush in the drawer through the form's documented custom
+   properties rather than by reaching into its classes. */
+
+.peek__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--grey-100) 28%, transparent);
+}
+
+.peek {
+  --peek-width: calc(
+    var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8)
+  );
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--peek-width), 100vw);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-modal);
+  outline: none;
+  /* Motion only in response to the user: this runs when they open it, and
+     tokens.css zeroes the duration under prefers-reduced-motion. */
+  animation: peek-in var(--duration) var(--ease);
+}
+
+@keyframes peek-in {
+  from {
+    transform: translateX(var(--space-8));
+    opacity: 0;
+  }
+}
+
+.peek__bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--topbar-height);
+  padding: 0 var(--space-5) 0 var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.peek__kind {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+.peek__back {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  max-width: 220px;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.peek__back:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.peek__back-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.peek__depth {
+  font-size: var(--text-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.peek__spacer {
+  flex: 1 1 auto;
+}
+
+.peek__kbd {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--text-muted);
+}
+
+.peek__close {
+  display: flex;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.peek__close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* The drawer is the scroll container for its layers, the way the shell's page
+   area is for a page. */
+.peek__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  --form-sheet-border: 0;
+  --form-sheet-radius: 0;
+  --form-sheet-max-width: none;
+}
+
+.peek__layer {
+  height: 100%;
+  overflow: auto;
+}
