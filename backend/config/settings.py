@@ -89,6 +89,7 @@ INSTALLED_APPS = [
     'catalog',
     'schema',
     'data',
+    'userstate',
 ]
 
 MIDDLEWARE = [

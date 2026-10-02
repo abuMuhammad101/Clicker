@@ -20,6 +20,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from schema.engine import build_schema, display_label, get_exposed_model
+from userstate.services import record_view
 
 from .serializers import serialize_record, serializer_for
 
@@ -177,7 +178,11 @@ class ModelRecordDetailView(APIView):
     def get(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
         schema = build_schema(model)
-        return Response(serialize_record(self._get_object(model, schema, pk), schema))
+        obj = self._get_object(model, schema, pk)
+        # Opening a record, on any surface, is what the Recents home shows.
+        # Recorded here rather than by a surface, so a new surface can't forget.
+        record_view(request.user, obj)
+        return Response(serialize_record(obj, schema))
 
     def patch(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)

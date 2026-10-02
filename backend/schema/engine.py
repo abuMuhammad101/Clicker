@@ -10,6 +10,8 @@ per-module hook this engine has; if a screen needs something the `Schema`
 class can't say, that's a gap in this file, not a reason to special-case a
 model in the frontend.
 """
+import re
+
 from django.db import models as djm
 
 
@@ -130,6 +132,15 @@ def _sentence_case(text):
     return text[:1].upper() + text[1:]
 
 
+_ICON_NAME = re.compile(r'^[a-z0-9]+(-[a-z0-9]+)*$')
+
+
+def _icon_name(model):
+    """`Schema.icon`, if declared and shaped like a lucide icon name (kebab-case)."""
+    icon = getattr(getattr(model, 'Schema', None), 'icon', None)
+    return icon if isinstance(icon, str) and _ICON_NAME.match(icon) else None
+
+
 def build_registry():
     """
     What exists: every installed app with at least one exposed model, and
@@ -137,6 +148,8 @@ def build_registry():
     opt-in rule (a `Schema` class) that exposes a model to the API exposes
     it to navigation. Installing a module makes it appear; there is no
     second, hand-maintained list of what the nav contains.
+
+    Each model carries an optional `icon` (a lucide icon name) from its Schema.
 
     Apps keep INSTALLED_APPS order. Models within an app are alphabetical
     by label: predictable, and needs no extra metadata. (If a module ever
@@ -152,6 +165,10 @@ def build_registry():
                 'label': _sentence_case(model._meta.verbose_name_plural),
                 'label_singular': _sentence_case(model._meta.verbose_name),
                 'route': f'/{app_config.label}/{model._meta.model_name}',
+                # Optional: a lucide icon name from the model's Schema. Absent
+                # means the frontend uses its generic icon — icon design is
+                # deferred without blocking a module from appearing.
+                'icon': _icon_name(model),
             }
             for model in app_config.get_models()
             if is_exposed(model)

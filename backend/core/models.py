@@ -11,6 +11,7 @@ class Country(models.Model):
         verbose_name_plural = 'countries'
 
     class Schema:
+        icon = 'globe'
         display_field = 'name'
         list_display = ['name', 'code']
         list_sort = [{'field': 'name', 'direction': 'asc'}]
@@ -94,6 +95,7 @@ class Contact(models.Model):
         ordering = ['name']
 
     class Schema:
+        icon = 'users'
         display_field = 'display_name'
 
         # Order here is form layout, not Django's declaration order — group

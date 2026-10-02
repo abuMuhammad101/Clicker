@@ -38,6 +38,7 @@ class Product(models.Model):
         ordering = ['name']
 
     class Schema:
+        icon = 'package'
         display_field = 'name'
 
         groups = [
