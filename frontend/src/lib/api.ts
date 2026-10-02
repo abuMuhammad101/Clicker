@@ -89,7 +89,7 @@ export function apiGet<T>(path: string, options?: { probe?: boolean }): Promise<
   return request<T>(path, options)
 }
 
-export function apiSend<T>(method: 'POST' | 'PATCH', path: string, body?: unknown): Promise<T> {
+export function apiSend<T>(method: 'POST' | 'PATCH' | 'PUT', path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
     method,
     headers: { 'Content-Type': 'application/json' },

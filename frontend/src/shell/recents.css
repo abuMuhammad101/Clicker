@@ -1,0 +1,99 @@
+/* Home. Same density as a list: hairline rows, the list's row height, no
+   striping, a muted header. It is a list of pointers, not a dashboard. */
+.recents {
+  max-width: 960px;
+  padding: var(--space-8) var(--space-6);
+}
+
+.recents__title {
+  margin: 0 0 var(--space-6);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.recents__table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.recents__row {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 120px;
+  align-items: center;
+  gap: var(--space-6);
+  height: var(--row-height);
+  padding: 0 var(--cell-padding-x);
+  border-bottom: 1px solid var(--row-border);
+  font-size: var(--text-sm);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.recents__table .recents__row:last-child {
+  border-bottom: 0;
+}
+
+.recents__row--static {
+  display: flex;
+}
+
+.recents__head {
+  height: var(--table-header-height);
+  background: var(--surface-sunken);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.recents__link:hover {
+  background: var(--row-hover);
+}
+
+.recents__link:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.recents__name,
+.recents__muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recents__name {
+  font-size: var(--text-base);
+}
+
+.recents__muted {
+  color: var(--text-secondary);
+}
+
+.recents__when {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.recents__state {
+  padding: var(--space-8) 0;
+}
+
+.recents__state-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.recents__state-text {
+  margin: var(--space-2) 0 var(--space-6);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}

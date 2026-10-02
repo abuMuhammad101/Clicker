@@ -7,6 +7,8 @@ export interface RegistryModel {
   label: string
   label_singular: string
   route: string
+  /** A lucide icon name from the model's Schema; absent means the generic icon. */
+  icon?: string | null
 }
 
 export interface RegistryApp {

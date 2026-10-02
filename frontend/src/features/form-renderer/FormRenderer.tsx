@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,19 @@ import './FormRenderer.css'
  * behaviour, that behaviour belongs in the model's `Schema` class and the
  * schema engine, and this file only learns the new generic capability.
  */
+/**
+ * What a form tells whatever contains it, so the container can draw a save bar
+ * in its own header. `save` and `discard` are commands back: `discard` asks the
+ * form to discard, and the form still confirms with the user first. They are
+ * the form's own save and discard, not copies.
+ */
+export interface FormState {
+  dirty: boolean
+  saving: boolean
+  save: () => void
+  discard: () => void
+}
+
 interface FormRendererProps {
   appLabel: string
   model: string
@@ -45,6 +58,14 @@ interface FormRendererProps {
    * a label goes, if anywhere.
    */
   onLabelChange?: (label: string | null) => void
+  /** The form's dirty/saving state and its commands; null once it's gone. */
+  onStateChange?: (state: FormState | null) => void
+  /**
+   * `inline` (default): Save and Discard sit in the form's own header.
+   * `external`: the container draws them (see onStateChange), and the form
+   * shows only its "Saved" confirmation.
+   */
+  actions?: 'inline' | 'external'
 }
 
 export function FormRenderer(props: FormRendererProps) {
@@ -66,6 +87,8 @@ function FormSheet({
   mode,
   onSaved,
   onLabelChange,
+  onStateChange,
+  actions,
   onRetry,
 }: FormRendererProps & { onRetry: () => void }) {
   const schemaState = useModelSchema(appLabel, model)
@@ -128,6 +151,8 @@ function FormSheet({
       mode={mode}
       onSaved={onSaved}
       onLabelChange={onLabelChange}
+      onStateChange={onStateChange}
+      actions={actions}
     />
   )
 }
@@ -171,6 +196,8 @@ function EditableForm({
   mode = 'edit',
   onSaved,
   onLabelChange,
+  onStateChange,
+  actions = 'inline',
 }: {
   schema: ModelSchema
   record: RecordEnvelope | null
@@ -179,6 +206,8 @@ function EditableForm({
   mode?: 'edit' | 'view'
   onSaved?: (record: RecordEnvelope) => void
   onLabelChange?: (label: string | null) => void
+  onStateChange?: (state: FormState | null) => void
+  actions?: 'inline' | 'external'
 }) {
   const viewing = mode === 'view'
   const [record, setRecord] = useState(initialRecord)
@@ -290,6 +319,25 @@ function EditableForm({
     setConfirmDiscard(false)
   }
 
+  // The commands never change identity (they call the latest save/discard
+  // through a ref), so a container holding this state isn't re-rendered into
+  // a loop by it.
+  const latest = useRef({ save, askToDiscard: () => setConfirmDiscard(true) })
+  useEffect(() => {
+    latest.current = { save, askToDiscard: () => setConfirmDiscard(true) }
+  })
+  const commands = useMemo(
+    () => ({
+      save: () => void latest.current.save(),
+      discard: () => latest.current.askToDiscard(),
+    }),
+    [],
+  )
+  useEffect(() => {
+    onStateChange?.({ dirty: isDirty, saving, ...commands })
+    return () => onStateChange?.(null)
+  }, [isDirty, saving, commands, onStateChange])
+
   // Any in-app navigation while dirty — this header's link, the sidebar,
   // a breadcrumb, browser back/forward — is held back and routed through
   // the leave dialog below, with wherever it was headed.
@@ -332,18 +380,22 @@ function EditableForm({
         {!viewing && (
         <div className="form-header__actions">
           {justSaved && <span className="form-header__status">Saved</span>}
-          <Button
-            type="button"
-            variant="outline"
-            disabled={saving || !isDirty}
-            onClick={() => setConfirmDiscard(true)}
-            className="h-[var(--control-height)]"
-          >
-            Discard
-          </Button>
-          <Button type="submit" disabled={saving || !isDirty} className="h-[var(--control-height)]">
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
+          {actions === 'inline' && (
+            <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || !isDirty}
+              onClick={() => setConfirmDiscard(true)}
+              className="h-[var(--control-height)]"
+            >
+              Discard
+            </Button>
+            <Button type="submit" disabled={saving || !isDirty} className="h-[var(--control-height)]">
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+            </>
+          )}
         </div>
         )}
       </header>

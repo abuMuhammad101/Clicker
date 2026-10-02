@@ -3,7 +3,9 @@ import { flushSync } from 'react-dom'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import { ArrowLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { FormRenderer } from '@/features/form-renderer/FormRenderer'
+import { cn } from '@/lib/utils'
+import { SaveBar } from '@/components/SaveBar'
+import { FormRenderer, type FormState } from '@/features/form-renderer/FormRenderer'
 import {
   currentLocation,
   navigate,
@@ -50,6 +52,10 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
   const [aliases, setAliases] = useState<Record<string, string>>({})
   const [editing, setEditing] = useState<ReadonlySet<string>>(new Set())
   const [labels, setLabels] = useState<Record<string, string | null>>({})
+  // Each layer's form reports its own state. Only the top layer's drives the
+  // drawer's header; a dirty layer underneath is still dirty, and still holds
+  // its own leave-guard.
+  const [forms, setForms] = useState<Record<string, FormState | null>>({})
 
   const keyFor = (target: RecordTarget, index: number) => {
     const encoded = encodeTarget(target)
@@ -83,6 +89,10 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
     setLabels((current) => (current[key] === label ? current : { ...current, [key]: label }))
   }, [])
 
+  const setForm = useCallback((key: string, state: FormState | null) => {
+    setForms((current) => ({ ...current, [key]: state }))
+  }, [])
+
   if (stack.length === 0) return null
 
   const depth = stack.length
@@ -91,6 +101,8 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
   const below = depth > 1 ? keyFor(stack[depth - 2], depth - 2) : null
   const topIsNew = top.id === 'new'
   const topEditing = topIsNew || editing.has(topKey)
+  const topForm = forms[topKey]
+  const unsaved = topForm?.dirty ? topForm : null
   const found = apps ? findInRegistry(apps, top.app_label, top.model) : null
 
   const popTo = (next: RecordTarget[]) =>
@@ -116,51 +128,57 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
             }
           }}
         >
-          <header className="peek__bar">
-            {below ? (
-              <button
-                type="button"
-                className="peek__back"
-                onClick={() => popTo(stack.slice(0, -1))}
-                title="Back"
-              >
-                <ArrowLeft className="size-4" aria-hidden />
-                <span className="peek__back-label">{labels[below] ?? 'Back'}</span>
-              </button>
+          <header className={cn('peek__bar', unsaved && 'header--unsaved')}>
+            {unsaved ? (
+              <SaveBar state={unsaved} />
             ) : (
-              <span className="peek__kind">{found?.model.label_singular ?? top.model}</span>
+              <>
+              {below ? (
+                <button
+                  type="button"
+                  className="peek__back"
+                  onClick={() => popTo(stack.slice(0, -1))}
+                  title="Back"
+                >
+                  <ArrowLeft className="size-4" aria-hidden />
+                  <span className="peek__back-label">{labels[below] ?? 'Back'}</span>
+                </button>
+              ) : (
+                <span className="peek__kind">{found?.model.label_singular ?? top.model}</span>
+              )}
+              <DialogPrimitive.Title className="sr-only">
+                {labels[topKey] ?? found?.model.label_singular ?? 'Record'}
+              </DialogPrimitive.Title>
+              {depth > 1 && (
+                <span className="peek__depth" title={`Peek ${depth} of ${MAX_PEEK_DEPTH}`}>
+                  {depth}/{MAX_PEEK_DEPTH}
+                </span>
+              )}
+              <span className="peek__spacer" />
+              {!topEditing && (
+                <Button
+                  variant="outline"
+                  onClick={() => setEditing((current) => new Set(current).add(topKey))}
+                  className="h-[var(--control-height-sm)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
+                >
+                  Edit
+                </Button>
+              )}
+              {!topIsNew && (
+                <Button
+                  variant="ghost"
+                  onClick={openAsPage}
+                  className="h-[var(--control-height-sm)] gap-[var(--space-3)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
+                >
+                  Open as page
+                  <kbd className="peek__kbd">{shortcutHint()}</kbd>
+                </Button>
+              )}
+              <button type="button" className="peek__close" onClick={close} aria-label="Close" title="Close (Esc)">
+                <X className="size-4" aria-hidden />
+              </button>
+              </>
             )}
-            <DialogPrimitive.Title className="sr-only">
-              {labels[topKey] ?? found?.model.label_singular ?? 'Record'}
-            </DialogPrimitive.Title>
-            {depth > 1 && (
-              <span className="peek__depth" title={`Peek ${depth} of ${MAX_PEEK_DEPTH}`}>
-                {depth}/{MAX_PEEK_DEPTH}
-              </span>
-            )}
-            <span className="peek__spacer" />
-            {!topEditing && (
-              <Button
-                variant="outline"
-                onClick={() => setEditing((current) => new Set(current).add(topKey))}
-                className="h-[var(--control-height-sm)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
-              >
-                Edit
-              </Button>
-            )}
-            {!topIsNew && (
-              <Button
-                variant="ghost"
-                onClick={openAsPage}
-                className="h-[var(--control-height-sm)] gap-[var(--space-3)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
-              >
-                Open as page
-                <kbd className="peek__kbd">{shortcutHint()}</kbd>
-              </Button>
-            )}
-            <button type="button" className="peek__close" onClick={close} aria-label="Close" title="Close (Esc)">
-              <X className="size-4" aria-hidden />
-            </button>
           </header>
 
           <div className="peek__body">
@@ -175,6 +193,7 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                     visible={isTop}
                     mode={target.id === 'new' || editing.has(key) ? 'edit' : 'view'}
                     onLabel={setLabel}
+                    onForm={setForm}
                     onCreated={(saved) => {
                       // The new record keeps its form (and its "Saved" state):
                       // alias its new URL entry to the key it started with,
@@ -203,6 +222,7 @@ function PeekLayer({
   visible,
   mode,
   onLabel,
+  onForm,
   onCreated,
 }: {
   layerKey: string
@@ -210,10 +230,12 @@ function PeekLayer({
   visible: boolean
   mode: 'edit' | 'view'
   onLabel: (key: string, label: string | null) => void
+  onForm: (key: string, state: FormState | null) => void
   onCreated: (saved: { id: number }) => void
 }) {
   // The form's label effect depends on this staying the same function.
   const onLabelChange = useCallback((label: string | null) => onLabel(layerKey, label), [onLabel, layerKey])
+  const onStateChange = useCallback((state: FormState | null) => onForm(layerKey, state), [onForm, layerKey])
   return (
     <div className="peek__layer" hidden={!visible}>
       <FormRenderer
@@ -222,6 +244,8 @@ function PeekLayer({
         recordId={target.id === 'new' ? undefined : target.id}
         mode={mode}
         onLabelChange={onLabelChange}
+        onStateChange={onStateChange}
+        actions="external"
         onSaved={(saved) => {
           if (target.id === 'new') onCreated(saved)
         }}

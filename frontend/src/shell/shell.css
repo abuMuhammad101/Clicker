@@ -106,9 +106,34 @@
   margin-top: var(--space-3);
 }
 
-.sidebar__group-label {
+/* A section header is a button: it folds the section. */
+.sidebar__group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
   margin: 0 0 var(--space-2);
-  padding: 0 var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+
+.sidebar__group-toggle:hover {
+  background: var(--surface-hover);
+}
+
+.sidebar__group-toggle:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.sidebar__chevron {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.sidebar__group-label {
   overflow: hidden;
   font-size: var(--text-micro);
   font-weight: var(--weight-semibold);
@@ -116,7 +141,6 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
-  color: var(--text-muted);
 }
 
 .sidebar__divider {
@@ -153,7 +177,6 @@
 
 .sidebar__link:hover {
   background: var(--surface-hover);
-  color: var(--text);
 }
 
 .sidebar__link--active,
@@ -168,27 +191,12 @@
   padding: 0;
 }
 
-/* The collapsed state's stand-in for an icon: the model's initial on a
-   small tile. Shown in both states so the expanded list keeps the same
-   left edge and the collapse doesn't make things jump sideways. */
-.sidebar__initial {
-  display: flex;
+/* A model's icon. It takes the link's colour, so the active state's accent
+   text is the icon's accent too, with no rule of its own. */
+.sidebar__icon {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  color: var(--text-muted);
-}
-
-.sidebar__link--active .sidebar__initial {
-  border-color: var(--accent-border);
-  color: var(--accent);
+  width: 16px;
+  height: 16px;
 }
 
 .sidebar__label {
@@ -230,21 +238,90 @@
   background: var(--surface);
 }
 
-.top-bar__account {
+/* The account menu. The trigger is the person's name, truncated rather than
+   allowed to push anything off screen; the menu holds who they are and the
+   way out. Nothing sits between the breadcrumbs and this: the middle of the
+   bar is reserved. */
+.user-menu__trigger {
   display: flex;
   flex: none;
   align-items: center;
-  gap: var(--space-4);
-}
-
-/* A long name truncates; it never pushes Sign out off screen. */
-.top-bar__user {
-  max-width: 200px;
-  overflow: hidden;
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
   font-size: var(--text-sm);
   color: var(--text-secondary);
+}
+
+.user-menu__trigger:hover,
+.user-menu__trigger[aria-expanded='true'] {
+  background: var(--surface-hover);
+}
+
+.user-menu__trigger:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.user-menu__name {
+  max-width: 200px;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-menu__chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+}
+
+.user-menu {
+  width: 220px;
+  padding: var(--space-3);
+}
+
+.user-menu__who {
+  padding: var(--space-3) var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-3);
+}
+
+.user-menu__who-name,
+.user-menu__who-detail {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu__who-name {
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.user-menu__who-detail {
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.user-menu__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  height: var(--row-height-compact);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.user-menu__item:hover {
+  background: var(--surface-hover);
 }
 
 /* ---------- Breadcrumbs ----------

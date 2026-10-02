@@ -1,7 +1,11 @@
-import { ChevronRight } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState } from 'react'
+import { ChevronDown, ChevronRight, LogOut } from 'lucide-react'
+import { SaveBar } from '@/components/SaveBar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useAuth, type User } from '@/features/auth/authContext'
+import type { FormState } from '@/features/form-renderer/FormRenderer'
 import { Link } from '@/lib/Link'
+import { cn } from '@/lib/utils'
 
 export interface Crumb {
   label: string
@@ -9,9 +13,26 @@ export interface Crumb {
   to?: string
 }
 
-/** Where you are, who you are, and the way out. */
-export function TopBar({ crumbs, user }: { crumbs: Crumb[]; user: User }) {
-  const { logout } = useAuth()
+interface TopBarProps {
+  crumbs: Crumb[]
+  user: User
+  /** The page's form, while it has unsaved changes: the bar becomes a save bar. */
+  unsaved?: FormState | null
+}
+
+/**
+ * Where you are (left), who you are (right), and nothing in the middle: that
+ * space is reserved, not filled. While the page's form is dirty, the whole bar
+ * transforms into the save bar and returns to this when the form is clean.
+ */
+export function TopBar({ crumbs, user, unsaved }: TopBarProps) {
+  if (unsaved) {
+    return (
+      <header className={cn('top-bar', 'header--unsaved')}>
+        <SaveBar state={unsaved} />
+      </header>
+    )
+  }
 
   return (
     <header className="top-bar">
@@ -40,18 +61,35 @@ export function TopBar({ crumbs, user }: { crumbs: Crumb[]; user: User }) {
           })}
         </ol>
       </nav>
-      <div className="top-bar__account">
-        <span className="top-bar__user" title={user.email || user.username}>
-          {user.display_name}
-        </span>
-        <Button
-          variant="ghost"
-          onClick={() => void logout('/login')}
-          className="h-[var(--control-height-sm)] px-[var(--control-padding-x-sm)] text-[length:var(--text-sm)]"
-        >
-          Sign out
-        </Button>
-      </div>
+      <UserMenu user={user} />
     </header>
+  )
+}
+
+function UserMenu({ user }: { user: User }) {
+  const { logout } = useAuth()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className="user-menu__trigger" aria-label="Account menu">
+          <span className="user-menu__name">{user.display_name}</span>
+          <ChevronDown className="user-menu__chevron" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="user-menu">
+        <div className="user-menu__who">
+          <p className="user-menu__who-name">{user.display_name}</p>
+          {(user.email || user.username) && (
+            <p className="user-menu__who-detail">{user.email || user.username}</p>
+          )}
+        </div>
+        <button type="button" className="user-menu__item" onClick={() => void logout('/login')}>
+          <LogOut className="size-4" aria-hidden />
+          Sign out
+        </button>
+      </PopoverContent>
+    </Popover>
   )
 }

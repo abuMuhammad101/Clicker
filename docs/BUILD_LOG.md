@@ -907,3 +907,78 @@ renderer (only the search box's own Escape and a row's own Enter).
 
 - Open items: `tokens.css` deploy path (unchanged); sidebar icons for
   collapsed state (from 2b).
+
+---
+
+## 2026-10-02 — Phase 2, step 2b: registry icons, shell, save bar, Recents
+
+### What already existed (built on the other machine, found on pull)
+
+Registry endpoint without icons, a registry-generated sidebar, a narrow rail
+showing initials, a top bar and the router. I built only the delta below
+instead of redoing it.
+
+### What this session added
+
+- **Registry `icon`.** A model declares `icon = 'users'` (a lucide name,
+  kebab-case) on its `Schema`; `build_registry()` passes it through, or null.
+  The frontend renders it with lucide's dynamic icon and falls back to a
+  generic box for absent or unknown names. Declared on Country (`globe`),
+  Contact (`users`), Product (`package`) as a judgement call, not a design.
+  A new module appears in the nav with no frontend edit.
+- **Sidebar.** Sections per app with collapsible headers; fold state saved
+  per user on the server; the section holding the current view auto-expands;
+  the collapsed sidebar is an icon rail (tokens `--sidebar-width` /
+  `--sidebar-width-collapsed`). Active = selected surface + accent text +
+  medium weight; hover = hover surface only.
+- **Top bar.** Breadcrumbs left, user menu with Sign out right, centre empty.
+- **Contextual save bar.** When a form is dirty the *surface's* header turns
+  into "Unsaved changes | Discard | Save". The page uses the top bar, a peek
+  drawer uses its own header, independently (both can be dirty at once).
+  Renderer capability added, deliberately: `FormRenderer` gained
+  `onStateChange` (emits `{dirty, saving, save, discard}`) and
+  `actions='inline'|'external'`; the container draws the bar. Discard still
+  confirms inside the form.
+- **Recents is home (`/`).** Model, display name, module, when; rows are
+  `RecordRef`s. Backend: new `userstate` app with `RecordView` (user,
+  content type, object id, timestamp; upserted on every record-detail GET,
+  so no surface can forget to record a view) and `UserPreference` (keyed
+  JSON per user, 8 KB cap) behind `/api/recents/` and
+  `/api/preferences/<key>/`. 14 backend tests.
+
+### Decisions
+
+- `RecordView` is keyed by content type + object id with one row per
+  (user, record) and a timestamp. That shape is meant to serve the
+  open-records strip later (what is open / recently open) without a
+  migration. **Not yet written to the Notion Decision Log**; needs doing.
+- Preferences are one generic keyed-JSON table, not a column per setting.
+
+### Findings and gaps — read these
+
+- **No real sign-in was possible.** Creating a test account in the shared
+  Neon database was declined, so nothing was verified against a live login.
+  Instead the real app (`main.tsx`, real components) was booted against a
+  stubbed `fetch` serving real schema/record fixtures (harness deleted, it
+  held real data). Verified there: Recents landing and row click → record;
+  moving between Contacts, Countries, Products inside the shell; nav
+  generated from the registry (icons, groups); section collapse, auto-expand
+  and preference writes; rail width; page save bar (dirty → bar, Discard
+  confirm, Save PATCH, restoring the value clears it); peek save bar (own
+  header, independent of a dirty page behind it, Save PATCHes only the peek's
+  record); user menu shows Sign out. Backend: 14 tests pass; `tsc -b`, lint
+  (same 6 old warnings) and build clean.
+- **Not verified:** the real session/CSRF round trip, the real server
+  persisting preferences, any visual check (the browser pane was hidden, so
+  no screenshots, no transitions). Sign-out was not clicked.
+- Bundle grew: `lucide-react/dynamic` pulls in every icon as lazy chunks.
+  Fine for now; revisit if load time matters.
+- The Neon test DB (`test_neondb`) wouldn't tear down through the pooler; I
+  dropped it by hand. Expect that on every test run on this setup.
+- Sidebar icons for the collapsed rail: done here.
+
+- Half-finished: nothing in scope. Command palette, global search, pinning,
+  configurable items, dashboard untouched, as asked.
+
+- **Next single action:** Hassan signs in, lands on Recents, edits a contact
+  and a peeked country, and judges the save bar and rail density by eye.
