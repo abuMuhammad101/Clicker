@@ -13,9 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
-import { Link } from '@/lib/Link'
 import { navigate, useNavigationBlocker } from '@/lib/router'
-import { useCurrentPageLabel } from '@/shell/pageLabel'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
@@ -33,18 +31,27 @@ interface FormRendererProps {
   model: string
   /** Omit to create a new record. */
   recordId?: number
+  /**
+   * `view` renders every field read-only and hides Save/Discard; `edit` is the
+   * default. Switching between them keeps the form mounted, so nothing typed
+   * is lost. A new record has nothing to view: pass `edit`.
+   */
+  mode?: 'edit' | 'view'
   onSaved?: (record: RecordEnvelope) => void
+  /**
+   * What this form is showing, as a short label ("Emma Whitfield", "New
+   * contact"), or null once there's nothing to show. The form never sets the
+   * window title or a breadcrumb itself: whatever contains it decides where
+   * a label goes, if anywhere.
+   */
+  onLabelChange?: (label: string | null) => void
 }
 
 export function FormRenderer(props: FormRendererProps) {
   // Retry = remount. Schema and record fetches both restart from scratch,
   // with no stale partial state carried over from the failed attempt.
   const [attempt, setAttempt] = useState(0)
-  return (
-    <div className="form-page">
-      <FormSheet key={attempt} {...props} onRetry={() => setAttempt((n) => n + 1)} />
-    </div>
-  )
+  return <FormSheet key={attempt} {...props} onRetry={() => setAttempt((n) => n + 1)} />
 }
 
 type RecordState =
@@ -56,7 +63,9 @@ function FormSheet({
   appLabel,
   model,
   recordId,
+  mode,
   onSaved,
+  onLabelChange,
   onRetry,
 }: FormRendererProps & { onRetry: () => void }) {
   const schemaState = useModelSchema(appLabel, model)
@@ -116,7 +125,9 @@ function FormSheet({
       record={recordState.record}
       appLabel={appLabel}
       model={model}
+      mode={mode}
       onSaved={onSaved}
+      onLabelChange={onLabelChange}
     />
   )
 }
@@ -157,14 +168,19 @@ function EditableForm({
   record: initialRecord,
   appLabel,
   model,
+  mode = 'edit',
   onSaved,
+  onLabelChange,
 }: {
   schema: ModelSchema
   record: RecordEnvelope | null
   appLabel: string
   model: string
+  mode?: 'edit' | 'view'
   onSaved?: (record: RecordEnvelope) => void
+  onLabelChange?: (label: string | null) => void
 }) {
+  const viewing = mode === 'view'
   const [record, setRecord] = useState(initialRecord)
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, initialRecord),
@@ -196,10 +212,9 @@ function EditableForm({
 
   const pageLabel = record ? record.display : `New ${schema.verbose_name}`
   useEffect(() => {
-    document.title = `${pageLabel} · Clicker`
-  }, [pageLabel])
-  // The shell's breadcrumb ends with what this form is showing.
-  useCurrentPageLabel(pageLabel)
+    onLabelChange?.(pageLabel)
+    return () => onLabelChange?.(null)
+  }, [pageLabel, onLabelChange])
 
   // Browser-level unload (close tab, reload, typed URL) gets the browser's
   // own blunt prompt — no modern browser allows replacing that text, so
@@ -275,8 +290,6 @@ function EditableForm({
     setConfirmDiscard(false)
   }
 
-  const modelHref = `/${appLabel}/${model}`
-
   // Any in-app navigation while dirty — this header's link, the sidebar,
   // a breadcrumb, browser back/forward — is held back and routed through
   // the leave dialog below, with wherever it was headed.
@@ -302,7 +315,7 @@ function EditableForm({
       className="form-sheet"
       onSubmit={(event) => {
         event.preventDefault()
-        void save()
+        if (!viewing) void save()
       }}
       noValidate
     >
@@ -312,12 +325,11 @@ function EditableForm({
             {record ? record.display : `New ${schema.verbose_name}`}
           </h1>
           <p className="form-header__meta">
-            <Link className="form-header__model" to={modelHref}>
-              {schema.verbose_name_plural}
-            </Link>
+            <span className="form-header__model">{schema.verbose_name_plural}</span>
             {record && <span className="form-header__id">#{record.id}</span>}
           </p>
         </div>
+        {!viewing && (
         <div className="form-header__actions">
           {justSaved && <span className="form-header__status">Saved</span>}
           <Button
@@ -333,6 +345,7 @@ function EditableForm({
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
+        )}
       </header>
 
       {formErrors.length > 0 && (
@@ -349,6 +362,7 @@ function EditableForm({
         labels={labels}
         errors={fieldErrors}
         dirtyFields={dirtyFields}
+        readOnly={viewing}
         onChange={setValue}
       />
 
@@ -441,6 +455,7 @@ function FormBody({
   labels,
   errors,
   dirtyFields,
+  readOnly,
   onChange,
   loading,
 }: {
@@ -449,6 +464,7 @@ function FormBody({
   labels: Record<string, string | null>
   errors: Record<string, string>
   dirtyFields?: Set<string>
+  readOnly?: boolean
   onChange?: (name: string, value: unknown) => void
   loading?: boolean
 }) {
@@ -476,6 +492,7 @@ function FormBody({
                     error: errors[name],
                     loading,
                     dirty: dirtyFields?.has(name),
+                    readOnly,
                   })}
                 </div>
               ))}

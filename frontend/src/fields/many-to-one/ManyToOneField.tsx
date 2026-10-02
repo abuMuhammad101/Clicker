@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -12,6 +12,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { RecordRef } from '@/records'
 import { FieldShell } from '../shared/FieldShell'
 import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
 import { useManyToOneSearch } from './useManyToOneSearch'
@@ -73,8 +74,15 @@ export function ManyToOneField({
       helpText={helpText}
       readOnly={readOnly}
       dirty={dirty}
-      readOnlyValue={shownLabel || undefined}
+      readOnlyValue={
+        shownLabel && value != null ? (
+          <RecordRef model={target} id={value} surface="peek" className="truncate hover:underline">
+            {shownLabel}
+          </RecordRef>
+        ) : undefined
+      }
     >
+      <div className="flex items-center gap-[var(--space-2)]">
       <Popover open={open} onOpenChange={setOpenState}>
         <PopoverTrigger asChild>
           <Button
@@ -150,6 +158,21 @@ export function ManyToOneField({
           </Command>
         </PopoverContent>
       </Popover>
+      {value != null && (
+        // The way into the related record. A RecordRef like every other one:
+        // it asks for a peek, it doesn't navigate.
+        <RecordRef
+          model={target}
+          id={value}
+          surface="peek"
+          aria-label={`Open ${shownLabel ?? 'record'}`}
+          title={`Open ${shownLabel ?? 'record'}`}
+          className="flex size-[var(--control-height)] flex-none items-center justify-center rounded-[var(--radius)] text-[color:var(--text-muted)] hover:bg-[color:var(--surface-hover)] hover:text-[color:var(--text)]"
+        >
+          <ArrowUpRight className="size-4" aria-hidden />
+        </RecordRef>
+      )}
+      </div>
     </FieldShell>
   )
 }

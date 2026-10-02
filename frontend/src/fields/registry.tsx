@@ -28,6 +28,8 @@ export interface FormFieldArgs {
   disabled?: boolean
   /** True once this field's value differs from what the form loaded with. */
   dirty?: boolean
+  /** Form-level view mode: read-only whatever the field's own schema says. */
+  readOnly?: boolean
 }
 
 type Renderer = (args: FormFieldArgs) => ReactNode
@@ -37,7 +39,7 @@ function common(args: FormFieldArgs) {
     name: args.name,
     label: args.schema.label,
     required: args.schema.required,
-    readOnly: args.schema.read_only,
+    readOnly: args.schema.read_only || args.readOnly,
     helpText: args.schema.help_text,
     error: args.error,
     loading: args.loading,

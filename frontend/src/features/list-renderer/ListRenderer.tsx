@@ -15,8 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { ListCell } from '@/fields/shared/ListCell'
-import { Link } from '@/lib/Link'
-import { navigate } from '@/lib/router'
+import { openRecord, RecordRef } from '@/records'
 import { tokenPx } from '@/lib/tokens'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
@@ -33,6 +32,18 @@ import './ListRenderer.css'
 interface ListRendererProps {
   appLabel: string
   model: string
+  /**
+   * The list's name ("Contacts"), or null once it's gone. The list never sets
+   * the window title itself; whatever contains it decides where a label goes.
+   *
+   * Opening a record is the other thing that leaves this component, and it
+   * leaves as an intent (`openRecord`), never as a URL or a navigation: the
+   * list doesn't know whether a record opens as a page, a drawer or a tab.
+   *
+   * Layout: the list fills its container's height and scrolls inside itself,
+   * so its container must give it a definite height.
+   */
+  onLabelChange?: (label: string | null) => void
 }
 
 const features = tableFeatures({ rowSortingFeature, columnSizingFeature, columnResizingFeature })
@@ -51,7 +62,12 @@ export function ListRenderer(props: ListRendererProps) {
   return <ListLoader key={attempt} {...props} onRetry={() => setAttempt((n) => n + 1)} />
 }
 
-function ListLoader({ appLabel, model, onRetry }: ListRendererProps & { onRetry: () => void }) {
+function ListLoader({
+  appLabel,
+  model,
+  onLabelChange,
+  onRetry,
+}: ListRendererProps & { onRetry: () => void }) {
   const schemaState = useModelSchema(appLabel, model)
 
   if (schemaState.status === 'error') {
@@ -71,7 +87,14 @@ function ListLoader({ appLabel, model, onRetry }: ListRendererProps & { onRetry:
       </div>
     )
   }
-  return <ListView schema={schemaState.schema} appLabel={appLabel} model={model} />
+  return (
+    <ListView
+      schema={schemaState.schema}
+      appLabel={appLabel}
+      model={model}
+      onLabelChange={onLabelChange}
+    />
+  )
 }
 
 function initialSorting(schema: ModelSchema): SortingState {
@@ -80,18 +103,16 @@ function initialSorting(schema: ModelSchema): SortingState {
     .map((sort) => ({ id: sort.field, desc: sort.direction === 'desc' }))
 }
 
-function recordUrl(appLabel: string, model: string, id: number) {
-  return `/${appLabel}/${model}/${id}`
-}
-
 function ListView({
   schema,
   appLabel,
   model,
+  onLabelChange,
 }: {
   schema: ModelSchema
   appLabel: string
   model: string
+  onLabelChange?: (label: string | null) => void
 }) {
   const [sorting, setSorting] = useState<SortingState>(() => initialSorting(schema))
   const [searchInput, setSearchInput] = useState('')
@@ -103,8 +124,9 @@ function ListView({
   }, [searchInput])
 
   useEffect(() => {
-    document.title = `${capitalize(schema.verbose_name_plural)} · Clicker`
-  }, [schema.verbose_name_plural])
+    onLabelChange?.(capitalize(schema.verbose_name_plural))
+    return () => onLabelChange?.(null)
+  }, [schema.verbose_name_plural, onLabelChange])
 
   const ordering = sorting.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',')
   const { state, getRow, ensureRange, retry } = useRecordWindow(appLabel, model, ordering, query)
@@ -196,9 +218,11 @@ function ListView({
     if (!record) return
     // Links inside a cell (email, url) keep doing their own thing.
     if ((event.target as HTMLElement).closest('a')) return
-    const url = recordUrl(appLabel, model, record.id)
-    if ('metaKey' in event && (event.metaKey || event.ctrlKey)) window.open(url, '_blank')
-    else navigate(url)
+    openRecord(
+      { app_label: appLabel, model },
+      record.id,
+      { newBrowserTab: 'metaKey' in event && (event.metaKey || event.ctrlKey) },
+    )
   }
 
   return (
@@ -233,10 +257,10 @@ function ListView({
             )}
           </div>
           <Button asChild className="h-[var(--control-height)]">
-            <Link to={`/${appLabel}/${model}/new`}>
+            <RecordRef model={{ app_label: appLabel, model }} id="new">
               <Plus className="size-4" aria-hidden />
               New {schema.verbose_name}
-            </Link>
+            </RecordRef>
           </Button>
         </div>
       </div>

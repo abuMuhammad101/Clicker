@@ -21,6 +21,14 @@
   overflow: auto;
 }
 
+/* A record opened as the page: a sheet on a sunken ground with room around
+   it. This is the page's choice; the form itself brings none of it. */
+.record-page {
+  min-height: 100%;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface-sunken);
+}
+
 /* ---------- Sidebar ---------- */
 .sidebar {
   display: flex;

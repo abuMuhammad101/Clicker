@@ -6,7 +6,7 @@ import { ListRenderer } from '@/features/list-renderer/ListRenderer'
 import { SchemaViewer } from '@/features/schema-viewer/SchemaViewer'
 import { FieldGallery } from '@/gallery/FieldGallery'
 import { navigate, useLocation } from '@/lib/router'
-import { PageLabelContext } from './pageLabel'
+import { parseListPath, parseRecordPath, recordPath, sameTarget, useSurface } from '@/records'
 import { Sidebar } from './Sidebar'
 import { TopBar, type Crumb } from './TopBar'
 import { findInRegistry, useRegistry, type RegistryApp } from './useRegistry'
@@ -17,8 +17,6 @@ import './shell.css'
 //   /<app>/<model>/<id>      record
 //   /<app>/<model>/new       new record
 //   /dev/gallery, /dev/schema  developer pages (not in the nav)
-const LIST_ROUTE = /^\/([a-z_]+)\/([a-z_]+)\/?$/
-const RECORD_ROUTE = /^\/([a-z_]+)\/([a-z_]+)\/(\d+|new)\/?$/
 const DEV_PAGES: Record<string, string> = {
   '/dev/gallery': 'Field gallery',
   '/dev/schema': 'Schema viewer',
@@ -48,6 +46,21 @@ export function AppShell({ user }: { user: User }) {
   const { state: registry, retry } = useRegistry()
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [pageLabel, setPageLabel] = useState<string | null>(null)
+
+  // The shell is the `page` surface: opening a record there means making it
+  // the current location. It also owns the window title, which the renderers
+  // used to set for themselves.
+  useSurface('page', {
+    open: (target) => navigate(recordPath(target)),
+    holds: (target) => {
+      const here = parseRecordPath(pathname)
+      return here != null && sameTarget(here, target)
+    },
+    reveal: () => navigate(pathname),
+  })
+  useEffect(() => {
+    document.title = pageLabel ? `${pageLabel} · Clicker` : 'Clicker'
+  }, [pageLabel])
 
   const toggle = useCallback(() => {
     setCollapsed((current) => {
@@ -81,9 +94,7 @@ export function AppShell({ user }: { user: User }) {
       <div className="app-shell__main">
         <TopBar crumbs={breadcrumbs(pathname, apps, pageLabel)} user={user} />
         <main className="app-shell__page">
-          <PageLabelContext.Provider value={setPageLabel}>
-            <Page pathname={pathname} apps={apps} />
-          </PageLabelContext.Provider>
+          <Page pathname={pathname} apps={apps} onLabelChange={setPageLabel} />
         </main>
       </div>
     </div>
@@ -93,12 +104,12 @@ export function AppShell({ user }: { user: User }) {
 function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: string | null): Crumb[] {
   if (DEV_PAGES[pathname]) return [{ label: 'Developer' }, { label: DEV_PAGES[pathname] }]
 
-  const record = RECORD_ROUTE.exec(pathname)
-  const list = record ? null : LIST_ROUTE.exec(pathname)
-  const [, appLabel, model] = record ?? list ?? []
-  if (!appLabel || !apps) return []
+  const record = parseRecordPath(pathname)
+  const list = record ? null : parseListPath(pathname)
+  const target = record ?? list
+  if (!target || !apps) return []
 
-  const found = findInRegistry(apps, appLabel, model)
+  const found = findInRegistry(apps, target.app_label, target.model)
   if (!found) return [{ label: 'Not found' }]
 
   const crumbs: Crumb[] = [
@@ -109,7 +120,15 @@ function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: st
   return crumbs
 }
 
-function Page({ pathname, apps }: { pathname: string; apps: RegistryApp[] | null }) {
+function Page({
+  pathname,
+  apps,
+  onLabelChange,
+}: {
+  pathname: string
+  apps: RegistryApp[] | null
+  onLabelChange: (label: string | null) => void
+}) {
   // A record created at /new moves to its real URL after its first save.
   // It's the same form — keep it mounted (with its "Saved" state) rather
   // than letting the key change remount it. path → the key it inherited.
@@ -118,33 +137,48 @@ function Page({ pathname, apps }: { pathname: string; apps: RegistryApp[] | null
   if (pathname === '/dev/gallery') return <FieldGallery />
   if (pathname === '/dev/schema') return <SchemaViewer />
 
-  const list = LIST_ROUTE.exec(pathname)
-  const record = RECORD_ROUTE.exec(pathname)
-  const [, appLabel, model, id] = record ?? list ?? []
-  if (!appLabel) return null
+  const record = parseRecordPath(pathname)
+  const list = record ? null : parseListPath(pathname)
+  const target = record ?? list
+  if (!target) return null
+  const { app_label: appLabel, model } = target
 
   // Only what the registry lists is a page. (Before the registry has
   // loaded, render optimistically: the renderers have their own errors.)
   if (apps && !findInRegistry(apps, appLabel, model)) return <NotFound />
 
-  if (list) return <ListRenderer key={`${appLabel}/${model}`} appLabel={appLabel} model={model} />
+  if (!record) {
+    return (
+      <ListRenderer
+        key={`${appLabel}/${model}`}
+        appLabel={appLabel}
+        model={model}
+        onLabelChange={onLabelChange}
+      />
+    )
+  }
 
+  const id = record.id
   const key = aliases[pathname] ?? pathname
   return (
-    <FormRenderer
-      key={key}
-      appLabel={appLabel}
-      model={model}
-      recordId={id === 'new' ? undefined : Number(id)}
-      onSaved={(saved) => {
-        if (id !== 'new') return
-        const realPath = `/${appLabel}/${model}/${saved.id}`
-        // Commit the alias before the URL changes, so the render the URL
-        // change triggers already sees it and keeps the same key.
-        flushSync(() => setAliases((current) => ({ ...current, [realPath]: key })))
-        navigate(realPath, { replace: true, force: true })
-      }}
-    />
+    // The page is what puts a form on a sunken sheet with room around it.
+    <div className="record-page">
+      <FormRenderer
+        key={key}
+        appLabel={appLabel}
+        model={model}
+        recordId={id === 'new' ? undefined : id}
+        onLabelChange={onLabelChange}
+        onSaved={(saved) => {
+          if (id !== 'new') return
+          const realPath = recordPath({ ...record, id: saved.id })
+          // Commit the alias before the URL changes, so the render the URL
+          // change triggers already sees it and keeps the same key.
+          flushSync(() => setAliases((current) => ({ ...current, [realPath]: key })))
+          navigate(realPath, { replace: true, force: true })
+        }}
+      />
+    </div>
   )
 }
 

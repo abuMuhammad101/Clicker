@@ -40,7 +40,13 @@ const LIST_CELLS: Partial<Record<FieldType, Renderer>> = {
     />
   ),
   selection: (a) => <SelectionListCell value={asString(a.value)} choices={a.schema.choices ?? []} />,
-  many_to_one: (a) => <ManyToOneListCell label={a.label} />,
+  many_to_one: (a) => (
+    <ManyToOneListCell
+      label={a.label}
+      target={a.schema.target}
+      id={typeof a.value === 'number' ? a.value : null}
+    />
+  ),
 }
 
 /** Types whose values are numbers: right-aligned, tabular figures. */

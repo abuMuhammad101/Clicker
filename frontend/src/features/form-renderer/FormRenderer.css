@@ -1,22 +1,24 @@
-.form-page {
-  min-height: 100%;
-  padding: var(--space-8) var(--space-6);
-  background: var(--surface-sunken);
-}
+/* The form fills whatever contains it and never sets the page around itself:
+   no page padding, no page background, no scroll of its own. Its sheet look
+   (the card border and radius, the width cap) is the default, and a container
+   that wants something else sets these custom properties rather than
+   reaching into the class: --form-sheet-border, --form-sheet-radius,
+   --form-sheet-max-width.
 
-/* Forms are one column. Width follows the field layout, not the viewport:
+   Forms are one column. Width follows the field layout, not the viewport:
    label column + gap + the widest a field grows, plus the sheet's own side
    padding. The sheet sits left-aligned and never stretches: the width to
    its right is reserved for related content (a record's children, activity)
    later, not for wider inputs or a second column of fields. */
 .form-sheet {
-  max-width: calc(
-    var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8)
+  max-width: var(
+    --form-sheet-max-width,
+    calc(var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8))
   );
   margin: 0;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border: var(--form-sheet-border, 1px solid var(--border));
+  border-radius: var(--form-sheet-radius, var(--radius-md));
 }
 
 .form-header {
@@ -52,16 +54,6 @@
   margin: var(--space-1) 0 0;
   font-size: var(--text-sm);
   color: var(--text-muted);
-}
-
-.form-header__model {
-  color: inherit;
-  text-decoration: none;
-}
-
-.form-header__model:hover {
-  color: var(--text);
-  text-decoration: underline;
 }
 
 .form-header__model::first-letter {
