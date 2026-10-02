@@ -784,3 +784,126 @@ Product per instruction.
   data-router setup, which is more to integrate than the ~120 lines this
   needed; revisit if routes grow nested layouts or data loading. Not yet
   written to Notion.
+
+## 2026-10-02 | office | surfaces contract: RecordRef, intent layer, peek
+
+Step 7 made new modules free; this makes new surfaces free. Two commits on
+purpose, so the proof can be read off the diff: `2ea931d` makes the
+renderers container-agnostic and adds the primitives; `e644810` ships peek.
+
+- **Primitives (`src/records/`).** `paths.ts` is the only place a record URL
+  is built. `openRecord(model, id, { surface })` is the one intent function;
+  containers `registerSurface()`. `RecordRef` is a real `<a href>` that emits
+  an intent instead of navigating (cmd/ctrl/shift/middle-click keep the
+  browser's own behaviour). Surfaces: `page`, `peek` implemented; `tab`,
+  `split` reserved. An unregistered surface falls back to `page`. Proven:
+  a `tab` surface registered after the fact receives the intent with no
+  caller changed.
+- **Everything that pointed at a record now goes through it:** the
+  many_to_one list cell, the picker's readonly value, a new open affordance
+  beside the picker, the list's "New" button, list row clicks. (Before this,
+  neither the m2o cell nor the picker pointed anywhere at all.)
+
+### The assumptions found, and what happened to each
+
+FormRenderer assumed, and no longer does:
+1. It owned the window title (`document.title`). Now `onLabelChange`; the
+   page container sets the title. This was also a live bug waiting for peek:
+   a drawer's form would have retitled the page behind it.
+2. It owned the breadcrumb, via a context imported from `shell/` (a feature
+   importing from the shell). Same replacement.
+3. It wrapped itself in page chrome (`.form-page`: padding, sunken ground,
+   min-height). Moved to the page container (`.record-page`).
+4. Its sheet look (border, radius, width cap) was hard-wired. Now defaults
+   that a container themes through `--form-sheet-border/-radius/-max-width`.
+5. Its header linked to the model's list page. Now plain text; the shell's
+   breadcrumb is the navigation.
+6. It assumed navigation == leaving the form. **Kept, abstracted:** the
+   form still calls `useNavigationBlocker`, and the router now asks the
+   container what "leaving" means. The renderer's call is unchanged.
+7. It was always editable. **The one capability added:** `mode: 'edit' |
+   'view'`, because a read-only-first container needs it.
+8. Kept deliberately: `beforeunload` (it's about the document, not the
+   container) and the form flowing in whatever scroll container it's given.
+
+ListRenderer assumed, and no longer does: `document.title` (→ `onLabelChange`);
+`recordUrl()` (it built URLs) and `navigate()`/`window.open()` on row click
+(→ `openRecord`, "a record is a page" is no longer its decision); the
+hard-coded `/new` link. Kept and now documented: it fills its container's
+height. Found and not an issue: no global keyboard handlers in either
+renderer (only the search box's own Escape and a row's own Enter).
+
+### The proof, stated plainly
+
+- **Peek commit: 0 files in `features/form-renderer` or `features/list-
+  renderer`** (`git show --stat e644810 -- <both>` is empty). It touches
+  `lib/router.ts`, `shell/AppShell.tsx` (mount point), `records/RecordRef.tsx`
+  (a type fix) and four new files under `src/surfaces/`.
+- **But the whole job did change the renderers**, in the first commit: part
+  3 asked for that, and the finding behind it is that they weren't
+  container-agnostic. Peek itself also *needed* one renderer capability
+  (`mode: 'view'`), which I added in that first commit rather than hide.
+  Both are real, so I'm reporting both.
+
+### Decisions (documented in code too)
+
+- **One live view per record.** `openRecord` asks every surface whether it
+  already holds the record and reveals that view instead of opening a
+  second, whatever surface was asked for: an already-stacked record pops
+  back to it; the record the page shows reveals the page. `takeover`
+  (peek's "open as full page") is the deliberate exception, a move not an
+  open. `new` is never held.
+- **Peek state lives in the URL** (`?peek=core.country.3&peek=...`): back
+  closes it, reload reopens it, and closing is a navigation, so every
+  unsaved-changes guard applies unchanged. The contract for future
+  containers: any change that can drop a mounted screen goes through
+  `navigate()`.
+- **Router guards are scoped and chained.** A layer is left when it closes,
+  the page when it changes, so opening a peek over a dirty page is not
+  blocked and a dirty page keeps its state. Blockers are asked innermost
+  first, and a confirmed blocker lets the navigation carry on to the next
+  one instead of overriding all of them, so confirming "Discard & leave" in
+  a peek no longer throws away the page behind it unasked.
+- Escape closes the whole peek; the back arrow closes one layer. Depth cap
+  3; past it a new peek replaces the top layer. Lower layers stay mounted
+  but hidden. Edit is one-way (back to view with unsaved edits would strand
+  them). Open-as-page is cmd/ctrl+Enter, scoped to the drawer.
+
+### Findings and gaps — read these
+
+- **Verification gap: I could not drive the live drawer.** The API now
+  requires a session and this machine has none; creating a test account in
+  the shared Neon database was declined, so nothing signed-in was exercised.
+  What *was* verified, in the running dev app against the real modules and
+  real React hooks: intent routing, dedupe, fallback and late registration;
+  the URL stack (cap, junk, other params preserved); the scope rule; and the
+  router chain with two dirty screens (innermost first, carries on after one
+  confirmation, only navigates when all are satisfied). `tsc -b`, lint
+  (same 6 old warnings) and a production build are clean. **Not verified:**
+  that the drawer renders, that Escape/back/open-as-page behave on screen,
+  and the form inside a layer. Hassan: please open a Contact, click a
+  Country, and try Edit / Esc / Open as page.
+- **Stale views.** `useRecordWindow` (and the form) never refetch, so a record
+  edited in a peek leaves the list or form behind it showing old data (a
+  country renamed in a peek still reads the old name in the Contacts list).
+  Fixing it means the renderers subscribing to a record-changed signal, which
+  is a renderer change, so I did not do it here. This is the surfaces
+  contract's real open problem.
+- **The earlier "TSC_OK" results were vacuous.** `npx tsc --noEmit` checks
+  nothing in this repo (the root tsconfig has `files: []` and only project
+  references); `tsc -b` is the real check, and it caught a real error in
+  this session's code. Every earlier session's type-check claim from me
+  should be read with that in mind; `tsc -b` is clean now across the whole
+  tree.
+- History: closing a peek replaces its history entry, so Back after closing
+  lands on a duplicate of the page (one dead press).
+
+- Half-finished: nothing in scope. Open-records tab bar, split view and
+  command palette untouched, as asked.
+
+- **Next single action:** Hassan exercises the peek by hand (above), and
+  decides whether the stale-view problem gets a record-changed signal before
+  more containers are added.
+
+- Open items: `tokens.css` deploy path (unchanged); sidebar icons for
+  collapsed state (from 2b).
