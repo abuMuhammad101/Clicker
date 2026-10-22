@@ -115,7 +115,22 @@ export function useRecordWindow(appLabel: string, model: string, ordering: strin
     })
   }, [])
 
+  /** A record was saved somewhere else: refresh it here if this list has it loaded. */
+  const replaceRecord = useCallback((record: RecordEnvelope) => {
+    setState((current) => {
+      if (current.status !== 'ready') return current
+      for (const [page, rows] of Object.entries(current.pages)) {
+        const at = rows.findIndex((row) => row.id === record.id)
+        if (at === -1) continue
+        const next = rows.slice()
+        next[at] = record
+        return { ...current, pages: { ...current.pages, [Number(page)]: next } }
+      }
+      return current
+    })
+  }, [])
+
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
-  return { state, getRow, ensureRange, updateRow, retry }
+  return { state, getRow, ensureRange, updateRow, replaceRecord, retry }
 }

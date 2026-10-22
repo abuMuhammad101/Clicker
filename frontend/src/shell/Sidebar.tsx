@@ -119,7 +119,11 @@ export function Sidebar({
                           <NavLink
                             to={entry.route}
                             label={entry.label}
-                            title={collapsed ? `${entry.label} · ${app.label}` : entry.label}
+                            title={
+                              collapsed && app.label.toLowerCase() !== entry.label.toLowerCase()
+                                ? `${entry.label} · ${app.label}`
+                                : entry.label
+                            }
                             active={active}
                             collapsed={collapsed}
                           >

@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { typeIcon } from '@/fields/typeIcons'
 import { ListCell } from '@/fields/shared/ListCell'
-import { isRecordHeld, openRecord, RecordRef } from '@/records'
+import { emitRecordChanged, isRecordHeld, openRecord, RecordRef, useRecordChanged } from '@/records'
 import { apiSend, ApiError } from '@/lib/api'
 import { useLocation } from '@/lib/router'
 import { toast } from '@/lib/toast'
@@ -172,7 +172,17 @@ function ListView({
   }, [schema.verbose_name_plural, onLabelChange])
 
   const ordering = sorting.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',')
-  const { state, getRow, ensureRange, updateRow, retry } = useRecordWindow(appLabel, model, ordering, query)
+  const { state, getRow, ensureRange, updateRow, replaceRecord, retry } = useRecordWindow(
+    appLabel,
+    model,
+    ordering,
+    query,
+  )
+
+  // A record of this model was saved elsewhere (a peek, say): show it as saved.
+  useRecordChanged((change) => {
+    if (change.model.app_label === appLabel && change.model.model === model) replaceRecord(change.record)
+  })
 
   // Re-render when a peek opens or closes, so the open record's row can say so.
   useLocation()
@@ -327,6 +337,7 @@ function ListView({
         [fieldName]: value,
       })
       updateRow(index, saved)
+      emitRecordChanged({ app_label: appLabel, model }, saved)
     } catch (error) {
       updateRow(index, before)
       setSavedCell(null)

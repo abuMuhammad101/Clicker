@@ -18,7 +18,11 @@
    docs/DESIGN_SYSTEM.md.
    ========================================================================== */
 
-:root {
+/* `.theme-light` / `.theme-dark` show a region in a given mode regardless of
+   the page's (the token gallery, previews). The app itself only ever sets
+   [data-theme] on <html>. */
+:root,
+.theme-light {
   color-scheme: light;
 
   /* ---------- Typeface ---------- */
@@ -227,7 +231,8 @@
 
 /* ---------- Dark ----------
    Raised surfaces get lighter, not shadowed. Borders do the separating. */
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+.theme-dark {
   color-scheme: dark;
 
   --n-0: #15161b;
@@ -287,6 +292,15 @@
   --info-border: #144d6e;
 
   --row-selected-hover: #242743;
+  /* Derived tokens re-stated, so a nested .theme-dark region resolves them
+     against ITS values, not the page's. */
+  --row-hover: var(--surface-hover);
+  --row-selected: var(--surface-selected);
+  --focus-ring: var(--accent);
+  --focus-ring-offset: var(--surface);
+  --neutral-chip: var(--n-600);
+  --neutral-chip-subtle: var(--n-50);
+  --neutral-chip-border: var(--n-200);
 
   --toast-bg: #f6f7f9;
   --toast-fg: #0e0f13;
@@ -320,7 +334,9 @@
    palette above without being individually restyled.
    ========================================================================== */
 
-:root {
+:root,
+.theme-light,
+.theme-dark {
   --background: var(--surface);
   --foreground: var(--text);
 

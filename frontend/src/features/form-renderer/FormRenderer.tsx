@@ -15,6 +15,7 @@ import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
 import { navigate, useNavigationBlocker } from '@/lib/router'
 import { toast } from '@/lib/toast'
+import { emitRecordChanged, useRecordChanged } from '@/records'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
@@ -239,6 +240,27 @@ function EditableForm({
   // unsaved-changes dialog — the href it would have gone to.
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null)
 
+  // A record this form points at was renamed somewhere else: its label here
+  // follows, so "Country: United States" never lags behind the real name.
+  useRecordChanged((change) => {
+    setLabels((current) => {
+      let next = current
+      for (const [name, field] of Object.entries(schema.fields)) {
+        const target = field.target
+        if (
+          field.type === 'many_to_one' &&
+          target?.app_label === change.model.app_label &&
+          target.model === change.model.model &&
+          values[name] === change.record.id &&
+          current[name] !== change.record.display
+        ) {
+          next = { ...next, [name]: change.record.display }
+        }
+      }
+      return next
+    })
+  })
+
   const dirtyFields = dirtyFieldNames(schema, values, baseline)
   const isDirty = dirtyFields.size > 0
   const changeCount = dirtyFields.size
@@ -294,6 +316,7 @@ function EditableForm({
       setBaseline(saved.values)
       setLabels(saved.labels)
       setJustSaved(true)
+      emitRecordChanged({ app_label: appLabel, model }, saved)
       onSaved?.(saved)
       return true
     } catch (error) {
