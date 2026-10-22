@@ -982,3 +982,51 @@ instead of redoing it.
 
 - **Next single action:** Hassan signs in, lands on Recents, edits a contact
   and a peeked country, and judges the save bar and rail density by eye.
+
+---
+
+## 2026-10-22 | office | design polish pass: audit and system proposal (checkpoint 1)
+
+Stopped at checkpoint 1 on purpose: nothing in `tokens.css` or the app's
+styling has changed. Build (step 3) has not started.
+
+- **Audit** (`docs/DESIGN_AUDIT.md`, screenshots in `docs/design/before/`):
+  32 findings, worst first. The structure and the token discipline are
+  sound. What reads unfinished: three screens leave 40–60% of the canvas empty
+  at 1440 (Recents, form, list's dead strip); the list **overflows and clips
+  its last column at 1024**; the same word appears three times in the
+  wayfinding; headers are in capitals; no dark mode; **control borders are
+  1.31:1 (fail WCAG 1.4.11)**; the peek is 652px, a split view, and the
+  page's Save/Discard are unreachable while it's open and both are dirty;
+  hardcoded `bg-black/10`, `duration-100`, `rounded-xl` live in the shadcn
+  files; fonts come from Google's CDN at runtime.
+- **System proposal** (`docs/DESIGN_SYSTEM.md`, rendered live at
+  `/dev/proposal`, tokens in `frontend/src/gallery/proposal.css`, scoped, not
+  applied): three typefaces (Plex / Inter / Geist) and three greeting serifs,
+  a light and dark OKLCH palette with contrast numbers, radius / elevation /
+  focus / motion token sets, and a per-component decision table.
+- **`docs/DESIGN_REFERENCES.md` is honest about a gap:** no Mobbin MCP was
+  available and every Mobbin link returned 403, so **I have not seen any
+  reference screens**. The table rests on the brief's descriptions, tagged
+  `(brief)`. The "find what I haven't" research is not done.
+- **Method and limits.** No sign-in exists on this machine and I did not
+  create one. The real app was run against a stubbed API with fixtures read
+  from the ORM (git-excluded, `frontend/public/__design/`, holds real
+  records). Screenshots are 800px wide, so I could not judge the fonts apart
+  by eye; I said so rather than pick on looks. Motion was not observable in
+  this pane; the motion section is from reading CSS. Fixed ports for this
+  pass: API 8200, web 5273, via new `design-backend` / `design-frontend`
+  launch configs that override env per process, so `.env` and the usual
+  8000/5173 setup are untouched.
+- **Found along the way:** my first captures ran without the font `<link>`s
+  (the harness page replaces `index.html`) and used a fallback face; discarded
+  and redone. The earlier "Street 2 label in blue" I thought I saw was that
+  artefact, not a bug.
+
+- Half-finished: nothing. Built, deliberately: the proposal page and docs
+  only.
+- **Next single action:** Hassan opens `/dev/proposal` and answers the five
+  decisions at the top of `docs/DESIGN_SYSTEM.md` (typeface, row height, ⌘K
+  in or out, dark-mode switch, accent). Build starts from tokens after that.
+- Open items: Mobbin access for the references; the Decision Log entries
+  from 2b are still not in Notion.
