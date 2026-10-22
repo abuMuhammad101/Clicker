@@ -130,7 +130,14 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
         >
           <header className={cn('peek__bar', unsaved && 'header--unsaved')}>
             {unsaved ? (
-              <SaveBar state={unsaved} />
+              <>
+                <SaveBar state={unsaved} />
+                {/* Closing is still one click away while dirty: the leave
+                    guard, not a missing button, is what stops data loss. */}
+                <button type="button" className="peek__close" onClick={close} aria-label="Close" title="Close (Esc)">
+                  <X className="size-4" aria-hidden />
+                </button>
+              </>
             ) : (
               <>
               {below ? (
@@ -171,7 +178,7 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                   className="h-[var(--control-height-sm)] gap-[var(--space-3)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
                 >
                   Open as page
-                  <kbd className="peek__kbd">{shortcutHint()}</kbd>
+                  <kbd className="kbd">{shortcutHint()}</kbd>
                 </Button>
               )}
               <button type="button" className="peek__close" onClick={close} aria-label="Close" title="Close (Esc)">

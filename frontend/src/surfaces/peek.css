@@ -4,35 +4,35 @@
 
 .peek__scrim {
   position: fixed;
-  inset: 0;
+  /* Under the top bar, not over it: the page's own bar (and its Save, if the
+     page behind is dirty) stays reachable while a peek is open. */
+  inset: var(--topbar-height) 0 0 0;
   z-index: 40;
   background: var(--scrim);
 }
 
 .peek {
-  --peek-width: calc(
-    var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8)
-  );
   position: fixed;
-  top: 0;
+  top: var(--topbar-height);
   right: 0;
   bottom: 0;
   z-index: 41;
   display: flex;
   flex-direction: column;
-  width: min(var(--peek-width), 100vw);
+  width: min(var(--drawer-width), 100vw);
   background: var(--surface);
   border-left: 1px solid var(--border);
-  box-shadow: var(--shadow-modal);
+  box-shadow: var(--shadow-drawer);
   outline: none;
   /* Motion only in response to the user: this runs when they open it, and
      tokens.css zeroes the duration under prefers-reduced-motion. */
-  animation: peek-in var(--duration) var(--ease);
+  animation: peek-in var(--duration-slow) var(--ease-out);
 }
 
+/* The drawer travels a short way and fades; it does not cross the screen. */
 @keyframes peek-in {
   from {
-    transform: translateX(var(--space-8));
+    transform: translateX(var(--travel-drawer));
     opacity: 0;
   }
 }
@@ -86,16 +86,6 @@
   flex: 1 1 auto;
 }
 
-.peek__kbd {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  font-family: var(--font-sans);
-  font-size: var(--text-micro);
-  color: var(--text-muted);
-}
-
 .peek__close {
   display: flex;
   padding: var(--space-3);
@@ -116,6 +106,10 @@
   --form-sheet-border: 0;
   --form-sheet-radius: 0;
   --form-sheet-max-width: none;
+  /* A narrow drawer stacks less: a shorter label column, and the field takes
+     the rest. The page-wide values in tokens.css are for the page. */
+  --form-label-width: 112px;
+  --form-field-max-width: none;
 }
 
 .peek__layer {
