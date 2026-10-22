@@ -1030,3 +1030,79 @@ styling has changed. Build (step 3) has not started.
   in or out, dark-mode switch, accent). Build starts from tokens after that.
 - Open items: Mobbin access for the references; the Decision Log entries
   from 2b are still not in Notion.
+
+---
+
+## 2026-10-22 | office | design polish pass: build, micro-interactions (checkpoint 2)
+
+Decisions from Hassan at checkpoint 1: Inter; keep 34px rows; ⌘K out; dark
+mode as tokens; accent unchanged. Built in the planned order, one concern per
+commit (tokens, fields, list, form, shell, peek, save bar, Recents, sign-in,
+micro-interactions, record-changed signal).
+
+- **Tokens** (`tokens.css`): Inter (self-hosted via `@fontsource-variable`),
+  Plex Mono kept for identifiers, Instrument Serif for the greeting only;
+  violet-cast neutral ramp; light and dark (`[data-theme]` on `<html>`,
+  following the system); `--border-control` (3:1); drawer and toast shadows;
+  motion set 100/160/240 plus ease-out/in and travel distances, zeroed under
+  reduced motion; `.theme-light` / `.theme-dark` scopes. shadcn's hardcoded
+  scrim, `duration-100` and `shadow-md` now route through tokens; shadcn radii
+  remapped (sm 4, md 6, lg 8, xl 12).
+- **Fields:** empty fields say "Set mobile…" (registry-wide), errors carry an
+  icon, disabled stays legible, decimals recede in list cells, the picker
+  shows key hints and a skeleton while searching instead of a spinner.
+- **List:** columns fit the viewport (the last column was clipped at 1024),
+  type-based starting widths, type icons in headers, row click opens a peek,
+  the open record's row is marked, hover shows a cell pencil and an
+  open-as-page arrow, one tab stop with arrow/Home/End/PageUp/PageDown, Enter
+  opens, F2 edits the first editable cell, inline edit for text-like and
+  number types with optimistic update and rollback, a ghosted empty state.
+- **Form:** sheet centred on the page (left-aligned before; the earlier
+  reservation of the right side for related content is superseded, and
+  nothing has used that space), sentence-case section labels, the leave guard
+  now names the fields you changed.
+- **Shell:** ground canvas, brand mark (a placeholder tile and ring for
+  Hassan to replace), styled rail tooltips, avatar initial, one crumb per
+  name ("Contacts › Contacts" is now "Contacts"), offline banner, toasts.
+- **Peek:** 480px, starts under the top bar so the page's own Save stays
+  reachable, short slide, close stays while dirty, focus returns to the row.
+- **Save bar:** shows how many fields changed, arrives with a short settle.
+- **Recents:** serif, time-aware greeting; centred column; ghosted empty state.
+- **Sign-in:** wordmark, 360px card, stacked labels, show-password.
+- **Record-changed signal** (`records/changes.ts`): saving anywhere updates
+  lists that show the record and relation labels in open forms. **This
+  retires the "stale views" open problem** logged by the surfaces contract; it
+  became necessary the moment a row click opened a peek.
+
+### Findings and gaps — read these
+
+- **Nothing that moves was watched moving**, and there was no real session.
+  See `docs/DESIGN_VERIFY.md` for the exact list. Hassan: sign in, open a
+  record from the list, edit a cell, edit in the peek, and watch it.
+- `SchemaViewer.tsx` hardcodes `core.contact` and `core.country`: a
+  pre-existing violation of the law (dev-only). Not touched. Should be fixed.
+- `ListRenderer` now names the `peek` surface for row clicks (allowed by the
+  contract, falls back to page). A one-line change if Hassan prefers otherwise.
+- Not built, from the brief: selection and bulk-action bar, prev/next in the
+  breadcrumb, date picker (no date field exists to put it on), currency
+  prefix, a manual theme switch, Undo wired to a real destructive action (none
+  exists; the toast supports it and the gallery shows it).
+- The Mobbin research is still not done (see `DESIGN_REFERENCES.md`).
+- The 2b Decision Log entries are still not in Notion.
+
+- Half-finished: nothing in scope.
+- **Next single action:** Hassan signs in at `localhost:5273` and judges, by eye
+  and by watching: Recents, a list row opened as a peek, an inline edit, the two
+  save bars, and dark mode (set the OS to dark).
+
+### What I'd do next, ranked (not done)
+
+1. Your sign-in pass, then fix whatever the eye catches. Highest value: it
+   closes every "not verified" above.
+2. Fix `SchemaViewer`'s hardcoded model list (the law).
+3. Selection and a bulk-action bar in the list (the row-selected tokens exist).
+4. Prev/next record in the breadcrumb, using the list order already loaded.
+5. Get real Mobbin access and validate the reference table.
+6. A manual light/dark switch in the user menu, stored as a preference.
+7. Currency prefix and a date picker, when the first module needs them.
+8. Replace the placeholder brand mark.

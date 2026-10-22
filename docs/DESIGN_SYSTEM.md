@@ -1,10 +1,10 @@
 # Design system proposal (checkpoint 1)
 
-**Status: proposed, not applied.** Look at it rendered, in the real components, at `/dev/proposal` (`frontend/src/gallery/DesignProposal.tsx`, tokens in `frontend/src/gallery/proposal.css`). Screenshots: `docs/design/proposal/`. On approval the values move into `tokens.css` as a value change (token names are kept wherever one exists) and the proposal files are deleted.
+**Status: approved and applied (2026-10-22).** Decisions taken: Inter; 34px rows kept; ⌘K out of this pass; dark mode as tokens following the system setting; accent unchanged. The values now live in `tokens.css`, and `/dev/tokens` renders them (`frontend/src/gallery/DesignTokens.tsx`). The proposal page and `proposal.css` are gone; the proposal-time screenshots stay in `docs/design/proposal/`, and they show three typefaces, so they are history, not the current look.
 
-## Decisions that are yours
+## Decisions that were Hassan's (answered)
 
-These are the ones I can't judge for you. Everything else below is my call and you can overrule it.
+The five below were put to Hassan at checkpoint 1 and are answered at the top of this file's status line. The text under each is the original question.
 
 1. **Typeface: A (keep Plex), B (Inter) or C (Geist).** My recommendation is **B, Inter**. See 1a.
 2. **Row height.** The brief says "generous"; CLAUDE.md says density is the thesis and 34px. My recommendation: **keep 34px as default** and win the "calm" feeling from type, contrast and quieter dividers, and expose 42px as the existing "comfortable" mode. A Mercury-like 44–48px default would show about a quarter fewer rows.
