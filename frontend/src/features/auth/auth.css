@@ -5,11 +5,26 @@
    rather than introducing a second field layout. */
 .login-page {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: var(--space-8);
   min-height: 100vh;
-  padding: 15vh var(--space-6) var(--space-8);
-  background: var(--surface-sunken);
+  padding: var(--space-8) var(--space-6) 12vh;
+  background: var(--ground);
+}
+
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.login-brand__name {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
 }
 
 .login-card,
@@ -18,18 +33,38 @@
   --form-field-max-width: 240px;
 }
 
-.login-card {
+/* Two fields don't want a label column at all: stack the label over the
+   field, full width. Same FieldShell, laid out for a narrow card. */
+.login-card .field-shell {
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.login-card .field-shell__label {
+  width: auto;
+  justify-content: flex-start;
+  padding-top: 0;
+  text-align: left;
+}
+
+.login-card .field-shell__body {
   width: 100%;
-  max-width: calc(var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8));
-  padding: var(--space-8);
+  max-width: none;
+}
+
+.login-card {
+  --form-field-max-width: none;
+  width: 100%;
+  max-width: 360px;
+  padding: var(--space-9) var(--space-8) var(--space-8);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   background: var(--surface);
 }
 
 .login-card__title {
-  margin: 0 0 var(--space-6);
-  font-size: var(--text-lg);
+  margin: 0 0 var(--space-7);
+  font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--text);
@@ -38,11 +73,14 @@
 .sign-in-form__fields {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 
 .sign-in-form__error {
-  margin: 0 0 var(--space-5);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-6);
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--danger-border);
   border-radius: var(--radius);
@@ -51,12 +89,55 @@
   color: var(--danger);
 }
 
+.sign-in-form__error-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+}
+
+.sign-in-form__password {
+  position: relative;
+}
+
+.sign-in-form__password [data-slot='input'] {
+  padding-right: calc(var(--control-height) + var(--space-1));
+}
+
+.sign-in-form__reveal {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: var(--control-height);
+  height: var(--control-height);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  transition: color var(--duration-instant) var(--ease);
+}
+
+.sign-in-form__reveal:hover {
+  color: var(--text);
+}
+
+.sign-in-form__reveal:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
 .sign-in-form__actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-4);
-  margin-top: var(--space-6);
+  margin-top: var(--space-8);
+}
+
+/* In the card, the one action is the whole width. In the session-expired
+   dialog the secondary action sits beside it and keeps its own size. */
+.login-card .sign-in-form__submit {
+  width: 100%;
 }
 
 .session-expired.session-expired {
@@ -71,7 +152,7 @@
    blank, so a signed-in user never sees a flash of the login form. */
 .boot-screen {
   min-height: 100vh;
-  background: var(--surface-sunken);
+  background: var(--ground);
 }
 
 .boot-screen--error {

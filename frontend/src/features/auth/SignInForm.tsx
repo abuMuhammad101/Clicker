@@ -1,3 +1,4 @@
+import { CircleAlert, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [reveal, setReveal] = useState(false)
   const passwordId = useId()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -32,7 +34,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
   // password when the account is already known.
   useEffect(() => {
     const target = fixedUsername
-      ? formRef.current?.querySelector<HTMLInputElement>('input[type="password"]')
+      ? formRef.current?.querySelector<HTMLInputElement>('input[name="password"]')
       : formRef.current?.querySelector<HTMLInputElement>('input')
     target?.focus()
   }, [fixedUsername])
@@ -70,6 +72,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
     >
       {error && (
         <p className="sign-in-form__error" role="alert">
+          <CircleAlert className="sign-in-form__error-icon" aria-hidden="true" />
           {error}
         </p>
       )}
@@ -82,19 +85,30 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
           readOnly={!!fixedUsername}
         />
         <FieldShell label="Password" htmlFor={passwordId}>
-          <Input
-            id={passwordId}
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <div className="sign-in-form__password">
+            <Input
+              id={passwordId}
+              name="password"
+              type={reveal ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+            />
+            <button
+              type="button"
+              className="sign-in-form__reveal"
+              onClick={() => setReveal((value) => !value)}
+              aria-label={reveal ? 'Hide password' : 'Show password'}
+              aria-pressed={reveal}
+            >
+              {reveal ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+            </button>
+          </div>
         </FieldShell>
       </div>
       <div className="sign-in-form__actions">
         {secondaryAction}
-        <Button type="submit" disabled={submitting} className="h-[var(--control-height)]">
+        <Button type="submit" disabled={submitting} className="sign-in-form__submit h-[var(--control-height)]">
           {submitting ? 'Signing in…' : 'Sign in'}
         </Button>
       </div>
