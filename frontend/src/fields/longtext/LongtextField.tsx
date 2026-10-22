@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, type FieldProps, emptyPrompt } from '../shared/types'
 
 export function LongtextField({
   name,
@@ -45,7 +45,7 @@ export function LongtextField({
         value={value ?? ''}
         onChange={(event) => onChange?.(event.target.value || null)}
         disabled={disabled}
-        placeholder={placeholder}
+        placeholder={placeholder ?? emptyPrompt(label)}
         aria-invalid={!!error}
         className={cn(forceFocused && FORCE_FOCUS_CLASSES)}
       />

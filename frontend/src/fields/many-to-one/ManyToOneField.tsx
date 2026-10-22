@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { RecordRef } from '@/records'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, type FieldProps, emptyPrompt } from '../shared/types'
 import { useManyToOneSearch } from './useManyToOneSearch'
 
 interface ManyToOneFieldProps extends FieldProps<number> {
@@ -99,7 +99,7 @@ export function ManyToOneField({
               forceFocused && FORCE_FOCUS_CLASSES,
             )}
           >
-            <span className="truncate">{shownLabel || placeholder || 'Search…'}</span>
+            <span className="truncate">{shownLabel || placeholder || emptyPrompt(label)}</span>
             <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -155,6 +155,17 @@ export function ManyToOneField({
                 </>
               )}
             </CommandList>
+            <div className="picker-hints" aria-hidden="true">
+              <span>
+                <kbd className="kbd">↑↓</kbd> navigate
+              </span>
+              <span>
+                <kbd className="kbd">↵</kbd> select
+              </span>
+              <span>
+                <kbd className="kbd">esc</kbd> close
+              </span>
+            </div>
           </Command>
         </PopoverContent>
       </Popover>

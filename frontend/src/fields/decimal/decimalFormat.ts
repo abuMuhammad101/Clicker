@@ -41,3 +41,9 @@ export function parseDecimalInput(raw: string): number | null {
 export function toRawDecimalString(value: number | null): string {
   return value == null ? '' : String(value)
 }
+
+/** "1,234.50" → ["1,234", ".50"], so a cell can let the decimals recede. */
+export function splitDecimalDisplay(display: string): [string, string] {
+  const dot = display.lastIndexOf('.')
+  return dot === -1 ? [display, ''] : [display.slice(0, dot), display.slice(dot)]
+}

@@ -37,3 +37,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The cents recede, the whole units lead: numbers are the hero. */
+.list-cell__decimals {
+  color: var(--text-muted);
+}

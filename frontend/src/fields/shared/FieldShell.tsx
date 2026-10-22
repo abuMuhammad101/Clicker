@@ -1,3 +1,4 @@
+import { CircleAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import './FieldShell.css'
@@ -51,7 +52,10 @@ export function FieldShell({
           children
         )}
         {error ? (
-          <p className="field-shell__message field-shell__message--error">{error}</p>
+          <p className="field-shell__message field-shell__message--error" role="alert">
+            <CircleAlert className="field-shell__message-icon" aria-hidden="true" />
+            {error}
+          </p>
         ) : helpText ? (
           <p className="field-shell__message field-shell__message--help">{helpText}</p>
         ) : null}

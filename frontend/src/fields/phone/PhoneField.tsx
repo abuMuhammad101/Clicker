@@ -2,7 +2,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, type FieldProps, emptyPrompt } from '../shared/types'
 
 // Full format-as-you-type masking (locale-aware digit grouping) is cut for
 // this pass — real masking is a meaningfully sized feature on its own, and
@@ -54,7 +54,7 @@ export function PhoneField({
         value={value ?? ''}
         onChange={(event) => onChange?.(event.target.value || null)}
         disabled={disabled}
-        placeholder={placeholder}
+        placeholder={placeholder ?? emptyPrompt(label)}
         aria-invalid={!!error}
         className={cn(forceFocused && FORCE_FOCUS_CLASSES)}
       />

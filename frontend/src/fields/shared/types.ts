@@ -39,3 +39,12 @@ export interface ListCellProps<T> {
  */
 export const FORCE_FOCUS_CLASSES = 'border-ring ring-3 force-focused'
 
+
+/**
+ * What an empty field says. Phrased as the action, not as a blank: a record
+ * with half its fields unset should read as "waiting for you", not broken.
+ * Registry-wide, so no field type or module decides its own wording.
+ */
+export function emptyPrompt(label: string, verb = 'Set') {
+  return `${verb} ${label.toLowerCase()}…`
+}

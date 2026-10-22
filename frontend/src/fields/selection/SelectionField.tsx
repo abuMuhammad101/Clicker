@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, type FieldProps, emptyPrompt } from '../shared/types'
 
 export interface Choice {
   value: string
@@ -62,7 +62,7 @@ export function SelectionField({
           className={cn('w-full', forceFocused && FORCE_FOCUS_CLASSES)}
           aria-invalid={!!error}
         >
-          <SelectValue placeholder={placeholder ?? 'Select…'} />
+          <SelectValue placeholder={placeholder ?? emptyPrompt(label, 'Select')} />
         </SelectTrigger>
         <SelectContent>
           {choices.map((choice) => (

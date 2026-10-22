@@ -91,3 +91,13 @@ pre {
     @apply border-border outline-ring/50;
   }
 }
+/* A key hint: shown where the action lives (peek header, picker footer). */
+.kbd {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  color: var(--text-muted);
+}

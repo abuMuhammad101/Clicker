@@ -49,8 +49,21 @@
   font-size: var(--text-micro);
 }
 
+/* Error is never colour alone: an icon and a sentence, a step larger than
+   help text because it is the thing the person has to act on. */
 .field-shell__message--error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
   color: var(--danger);
+}
+
+.field-shell__message-icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
 }
 
 .field-shell__message--help {

@@ -141,3 +141,13 @@
   opacity: 1;
   cursor: not-allowed;
 }
+
+/* Key hints live where the action lives. */
+.picker-hints {
+  display: flex;
+  gap: var(--space-6);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-micro);
+  color: var(--text-muted);
+}
