@@ -9,20 +9,25 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, Plus, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, Pencil, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { typeIcon } from '@/fields/typeIcons'
 import { ListCell } from '@/fields/shared/ListCell'
-import { openRecord, RecordRef } from '@/records'
+import { isRecordHeld, openRecord, RecordRef } from '@/records'
+import { apiSend, ApiError } from '@/lib/api'
+import { useLocation } from '@/lib/router'
+import { toast } from '@/lib/toast'
 import { tokenPx } from '@/lib/tokens'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import { cn } from '@/lib/utils'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
+import { InlineEditor } from './InlineEditor'
+import { isInlineEditable } from './inlineEditable'
 import { useRecordWindow } from './useRecordWindow'
 import './ListRenderer.css'
 
@@ -167,7 +172,22 @@ function ListView({
   }, [schema.verbose_name_plural, onLabelChange])
 
   const ordering = sorting.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',')
-  const { state, getRow, ensureRange, retry } = useRecordWindow(appLabel, model, ordering, query)
+  const { state, getRow, ensureRange, updateRow, retry } = useRecordWindow(appLabel, model, ordering, query)
+
+  // Re-render when a peek opens or closes, so the open record's row can say so.
+  useLocation()
+
+  // Keyboard: one tab stop for the whole list, arrows inside it. `activeIndex`
+  // is the row that tab stop sits on.
+  const [activeIndex, setActiveIndex] = useState(0)
+  // One cell at a time can be in the editor; one cell at a time shows "saved".
+  const [editing, setEditing] = useState<{ index: number; field: string } | null>(null)
+  const [savedCell, setSavedCell] = useState<{ index: number; field: string } | null>(null)
+  useEffect(() => {
+    if (!savedCell) return
+    const timeout = setTimeout(() => setSavedCell(null), 1400)
+    return () => clearTimeout(timeout)
+  }, [savedCell])
 
   const total = state.status === 'ready' ? state.total : 0
   const data = useMemo<Slot[]>(
@@ -284,11 +304,91 @@ function ListView({
     if (!record) return
     // Links inside a cell (email, url) keep doing their own thing.
     if ((event.target as HTMLElement).closest('a')) return
+    // A row opens a peek: you keep your place in the list. The row's own
+    // "open as page" action, and modifier-click, are the other ways in.
     openRecord(
       { app_label: appLabel, model },
       record.id,
-      { newBrowserTab: 'metaKey' in event && (event.metaKey || event.ctrlKey) },
+      { surface: 'peek', newBrowserTab: 'metaKey' in event && (event.metaKey || event.ctrlKey) },
     )
+  }
+
+  /** Save one cell. The row changes at once; if the server says no, it changes back. */
+  const commitCell = async (index: number, fieldName: string, value: string | number | null) => {
+    setEditing(null)
+    const before = getRow(index)
+    if (!before) return
+    if ((before.values[fieldName] ?? null) === value) return
+    const field = schema.fields[fieldName]
+    updateRow(index, { ...before, values: { ...before.values, [fieldName]: value } })
+    setSavedCell({ index, field: fieldName })
+    try {
+      const saved = await apiSend<RecordEnvelope>('PATCH', `/data/${appLabel}/${model}/${before.id}/`, {
+        [fieldName]: value,
+      })
+      updateRow(index, saved)
+    } catch (error) {
+      updateRow(index, before)
+      setSavedCell(null)
+      const detail =
+        error instanceof ApiError ? (error.validation?.[fieldName]?.[0] ?? error.message) : 'Something went wrong.'
+      toast({ kind: 'error', message: `Couldn’t save ${field.label.toLowerCase()}. ${detail}` })
+    }
+  }
+
+  const focusRow = (index: number) => {
+    const last = Math.max(0, total - 1)
+    const next = Math.min(last, Math.max(0, index))
+    setActiveIndex(next)
+    virtualizer.scrollToIndex(next)
+    // The row may not be mounted until the scroll lands; focus it once it is.
+    requestAnimationFrame(() => {
+      scrollRef.current?.querySelector<HTMLElement>(`[data-row-index="${next}"]`)?.focus()
+    })
+  }
+
+  const onRowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {
+    // Keys typed into an inline editor never reach here (it stops them).
+    if (event.target !== event.currentTarget) return
+    const page = Math.max(1, Math.floor((scrollRef.current?.clientHeight ?? 400) / rowHeight) - 1)
+    switch (event.key) {
+      case 'Enter':
+        openRow(index, event)
+        break
+      case 'ArrowDown':
+        event.preventDefault()
+        focusRow(index + 1)
+        break
+      case 'ArrowUp':
+        event.preventDefault()
+        focusRow(index - 1)
+        break
+      case 'PageDown':
+        event.preventDefault()
+        focusRow(index + page)
+        break
+      case 'PageUp':
+        event.preventDefault()
+        focusRow(index - page)
+        break
+      case 'Home':
+        event.preventDefault()
+        focusRow(0)
+        break
+      case 'End':
+        event.preventDefault()
+        focusRow(total - 1)
+        break
+      case 'F2': {
+        // Edit the first cell in the row that can be edited.
+        const first = schema.list.columns.find((name) => isInlineEditable(schema.fields[name]))
+        if (first) {
+          event.preventDefault()
+          setEditing({ index, field: first })
+        }
+        break
+      }
+    }
   }
 
   return (
@@ -410,7 +510,25 @@ function ListView({
                   </Button>
                 </>
               ) : (
-                <p className="list-state__title">No {plural} yet</p>
+                <>
+                  <div className="list-ghost" aria-hidden="true">
+                    {[70, 52, 62, 44].map((width, i) => (
+                      <div key={i} className="list-ghost__row">
+                        <span style={{ width: `${width}%` }} />
+                      </div>
+                    ))}
+                  </div>
+                  <p className="list-state__title">No {plural} yet</p>
+                  <p className="list-state__message">
+                    Add the first {schema.verbose_name} and it will show up here.
+                  </p>
+                  <Button asChild className="h-[var(--control-height)]">
+                    <RecordRef model={{ app_label: appLabel, model }} id="new">
+                      <Plus className="size-4" aria-hidden />
+                      New {schema.verbose_name}
+                    </RecordRef>
+                  </Button>
+                </>
               )}
             </div>
           )}
@@ -420,31 +538,98 @@ function ListView({
               {virtualRows.map((virtualRow) => {
                 const row = rows[virtualRow.index]
                 if (!row) return null
-                const loaded = row.original.record != null
+                const record = row.original.record
+                const loaded = record != null
+                const open = loaded && isRecordHeld({ app_label: appLabel, model }, record.id)
                 return (
                   <div
                     key={virtualRow.key}
                     role="row"
                     aria-rowindex={virtualRow.index + 1}
-                    tabIndex={loaded ? 0 : -1}
-                    className={cn('list-row', !loaded && 'list-row--pending')}
+                    aria-selected={open || undefined}
+                    data-row-index={virtualRow.index}
+                    tabIndex={loaded && virtualRow.index === activeIndex ? 0 : -1}
+                    className={cn('list-row', !loaded && 'list-row--pending', open && 'list-row--open')}
                     style={{ transform: `translateY(${virtualRow.start}px)` }}
                     onClick={(event) => openRow(virtualRow.index, event)}
-                    onKeyDown={(event) => event.key === 'Enter' && openRow(virtualRow.index, event)}
+                    onFocus={(event) => event.target === event.currentTarget && setActiveIndex(virtualRow.index)}
+                    onKeyDown={(event) => onRowKeyDown(event, virtualRow.index)}
                   >
-                    {row.getAllCells().map((cell) => (
-                      <div
-                        key={cell.id}
-                        role="cell"
-                        className={cn(
-                          'list-row__cell',
-                          isNumericType(schema.fields[cell.column.id].type) && 'list-row__cell--numeric',
-                        )}
-                        style={{ width: widthOf(cell.column.id) }}
-                      >
-                        <table.FlexRender cell={cell} />
+                    {row.getAllCells().map((cell) => {
+                      const name = cell.column.id
+                      const field = schema.fields[name]
+                      const editable =
+                        loaded && isInlineEditable(field) && isVisible(field, record.values)
+                      const isEditing = editing?.index === virtualRow.index && editing.field === name
+                      const justSaved = savedCell?.index === virtualRow.index && savedCell.field === name
+                      return (
+                        <div
+                          key={cell.id}
+                          role="cell"
+                          className={cn(
+                            'list-row__cell',
+                            isNumericType(field.type) && 'list-row__cell--numeric',
+                            isEditing && 'list-row__cell--editing',
+                            justSaved && 'list-row__cell--saved',
+                          )}
+                          style={{ width: widthOf(name) }}
+                        >
+                          {isEditing && loaded ? (
+                            <InlineEditor
+                              field={field}
+                              value={record.values[name]}
+                              onCommit={(value) => void commitCell(virtualRow.index, name, value)}
+                              onCancel={() => {
+                                setEditing(null)
+                                scrollRef.current
+                                  ?.querySelector<HTMLElement>(`[data-row-index="${virtualRow.index}"]`)
+                                  ?.focus()
+                              }}
+                            />
+                          ) : (
+                            <>
+                              {/* Keyed by value, so a changed value cross-fades in. */}
+                              <div
+                                key={JSON.stringify(record?.values[name] ?? null)}
+                                className="list-row__value"
+                              >
+                                <table.FlexRender cell={cell} />
+                              </div>
+                              {justSaved && <Check className="list-row__saved" aria-label="Saved" />}
+                              {editable && !justSaved && (
+                                <button
+                                  type="button"
+                                  className="list-row__edit"
+                                  aria-label={`Edit ${field.label}`}
+                                  title={`Edit ${field.label.toLowerCase()} (F2 edits the first)`}
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    setEditing({ index: virtualRow.index, field: name })
+                                  }}
+                                >
+                                  <Pencil aria-hidden />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {loaded && (
+                      <div className="list-row__actions">
+                        <RecordRef
+                          model={{ app_label: appLabel, model }}
+                          id={record.id}
+                          surface="page"
+                          className="list-row__action"
+                          aria-label={`Open ${record.display} as a page`}
+                          title="Open as page"
+                          tabIndex={-1}
+                        >
+                          <ArrowUpRight aria-hidden />
+                        </RecordRef>
                       </div>
-                    ))}
+                    )}
                   </div>
                 )
               })}

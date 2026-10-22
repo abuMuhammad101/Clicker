@@ -444,3 +444,13 @@
     opacity: 0;
   }
 }
+
+/* ---------- Offline ---------- */
+.offline-banner {
+  flex: none;
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--warning-border);
+  background: var(--warning-subtle);
+  font-size: var(--text-sm);
+  color: var(--warning);
+}

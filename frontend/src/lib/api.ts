@@ -49,6 +49,7 @@ export function onUnauthorized(listener: UnauthorizedListener) {
   }
 }
 
+const NO_CONNECTION = 'Can’t reach the server. Check your connection and try again.'
 const SESSION_ENDED = 'Your session has ended. Sign in again, then try once more.'
 
 interface RequestOptions extends RequestInit {
@@ -61,12 +62,18 @@ async function request<T>(path: string, { probe, ...init }: RequestOptions = {})
   const headers = new Headers(init.headers)
   if (method !== 'GET' && csrfToken) headers.set('X-CSRFToken', csrfToken)
 
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-    // The session cookie belongs to the API's origin; send it cross-origin.
-    credentials: 'include',
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+      // The session cookie belongs to the API's origin; send it cross-origin.
+      credentials: 'include',
+    })
+  } catch {
+    // The browser gave no response at all: offline, or the server is down.
+    throw new ApiError(0, NO_CONNECTION)
+  }
 
   if (!response.ok) {
     const body = await response.json().catch(() => null)

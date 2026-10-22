@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
 import { navigate, useNavigationBlocker } from '@/lib/router'
+import { toast } from '@/lib/toast'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
@@ -311,6 +312,7 @@ function EditableForm({
   }
 
   const discard = () => {
+    toast({ kind: 'info', message: 'Changes discarded' })
     setValues(baseline)
     setLabels(record?.labels ?? {})
     setFieldErrors({})
@@ -442,8 +444,8 @@ function EditableForm({
           <AlertDialogHeader>
             <AlertDialogTitle>Leave without saving?</AlertDialogTitle>
             <AlertDialogDescription>
-              You have unsaved changes to this {schema.verbose_name}. Save them, discard them, or stay
-              on this page.
+              You changed {[...dirtyFields].map((name) => schema.fields[name]?.label ?? name).join(', ')}.
+              Save, discard, or stay on this {schema.verbose_name}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -58,6 +58,10 @@ pre {
  * session actually builds one, not before.
  */
 @theme inline {
+  /* Every Tailwind `transition` utility answers at the instant duration. */
+  --default-transition-duration: var(--duration-instant);
+  --default-transition-timing-function: var(--ease);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -100,4 +104,44 @@ pre {
   font-family: var(--font-sans);
   font-size: var(--text-micro);
   color: var(--text-muted);
+}
+
+/* ---------- Interactive feedback ----------
+   Everything clickable answers a hover in --duration-instant and a press one
+   step deeper. Colour only: no movement, so nothing shifts under the pointer. */
+.sidebar__link,
+.sidebar__toggle,
+.sidebar__group-toggle,
+.user-menu__trigger,
+.user-menu__item,
+.breadcrumbs__link,
+.peek__back,
+.peek__close,
+.list-header__sort,
+.list-search__clear,
+.recents__link {
+  transition:
+    background-color var(--duration-instant) var(--ease),
+    color var(--duration-instant) var(--ease);
+}
+
+.sidebar__link:active,
+.sidebar__toggle:active,
+.sidebar__group-toggle:active,
+.user-menu__trigger:active,
+.user-menu__item:active,
+.peek__back:active,
+.peek__close:active,
+.list-search__clear:active,
+.recents__link:active {
+  background: var(--border-subtle);
+}
+
+/* Loading shimmer is motion nobody asked for: reduced-motion people get a
+   still placeholder. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  [data-slot='skeleton'] {
+    animation: none;
+  }
 }

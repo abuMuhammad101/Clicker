@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ArrowUpRight, Check, ChevronsUpDown, Loader2, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronsUpDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -108,9 +108,11 @@ export function ManyToOneField({
             <CommandInput placeholder="Search…" value={query} onValueChange={setQuery} />
             <CommandList>
               {searching ? (
-                <div className="flex items-center justify-center gap-2 p-4 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Searching…
+                // The shape of the results to come, not a spinner over them.
+                <div className="picker-skeleton" aria-busy="true" aria-label="Searching">
+                  {[68, 52, 60].map((width) => (
+                    <Skeleton key={width} className="h-3" style={{ width: `${width}%` }} />
+                  ))}
                 </div>
               ) : (
                 <>

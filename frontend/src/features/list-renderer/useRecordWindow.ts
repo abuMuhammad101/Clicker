@@ -102,7 +102,20 @@ export function useRecordWindow(appLabel: string, model: string, ordering: strin
     [state],
   )
 
+  /** Swap one loaded row for a new version of the same record (an edit, or its rollback). */
+  const updateRow = useCallback((index: number, record: RecordEnvelope) => {
+    setState((current) => {
+      if (current.status !== 'ready') return current
+      const page = Math.floor(index / PAGE_SIZE)
+      const rows = current.pages[page]
+      if (!rows) return current
+      const next = rows.slice()
+      next[index % PAGE_SIZE] = record
+      return { ...current, pages: { ...current.pages, [page]: next } }
+    })
+  }, [])
+
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
-  return { state, getRow, ensureRange, retry }
+  return { state, getRow, ensureRange, updateRow, retry }
 }

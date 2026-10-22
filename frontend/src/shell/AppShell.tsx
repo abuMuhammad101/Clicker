@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import type { User } from '@/features/auth/authContext'
 import { FormRenderer } from '@/features/form-renderer/FormRenderer'
@@ -10,6 +10,9 @@ import type { FormState } from '@/features/form-renderer/FormRenderer'
 import { PeekHost } from '@/surfaces/PeekHost'
 import { navigate, useLocation } from '@/lib/router'
 import { parseListPath, parseRecordPath, recordPath, sameTarget, useSurface } from '@/records'
+import { Toaster } from '@/components/Toaster'
+import { toast } from '@/lib/toast'
+import { useOnline } from '@/lib/useOnline'
 import { RecentsPage } from './RecentsPage'
 import { Sidebar } from './Sidebar'
 import { TopBar, type Crumb } from './TopBar'
@@ -130,11 +133,13 @@ export function AppShell({ user }: { user: User }) {
           user={user}
           unsaved={pageForm?.dirty ? pageForm : null}
         />
+        <OfflineBanner />
         <main className="app-shell__page">
           <Page pathname={pathname} apps={apps} user={user} onLabelChange={setPageLabel} onFormState={setPageForm} />
         </main>
       </div>
       <PeekHost apps={apps} />
+      <Toaster />
     </div>
   )
 }
@@ -219,6 +224,7 @@ function Page({
         onStateChange={onFormState}
         actions="external"
         onSaved={(saved) => {
+          toast({ message: `Saved ${saved.display}` })
           if (id !== 'new') return
           const realPath = recordPath({ ...record, id: saved.id })
           // Commit the alias before the URL changes, so the render the URL
@@ -227,6 +233,27 @@ function Page({
           navigate(realPath, { replace: true, force: true })
         }}
       />
+    </div>
+  )
+}
+
+/** System state that stays visible for as long as it's true. */
+function OfflineBanner() {
+  const online = useOnline()
+  const wasOffline = useRef(false)
+
+  useEffect(() => {
+    if (!online) wasOffline.current = true
+    else if (wasOffline.current) {
+      wasOffline.current = false
+      toast({ message: 'Back online' })
+    }
+  }, [online])
+
+  if (online) return null
+  return (
+    <div className="offline-banner" role="status">
+      You’re offline. Changes can’t be saved until your connection is back.
     </div>
   )
 }

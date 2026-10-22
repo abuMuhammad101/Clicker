@@ -212,8 +212,18 @@
   cursor: pointer;
 }
 
+.list-row {
+  transition: background-color var(--duration-instant) var(--ease);
+}
+
 .list-row:hover {
   background: var(--row-hover);
+}
+
+/* The record whose peek is open: the list keeps your place. */
+.list-row--open,
+.list-row--open:hover {
+  background: var(--row-selected);
 }
 
 .list-row:focus-visible {
@@ -281,4 +291,176 @@
   margin: 0 0 var(--space-4);
   font-size: var(--text-base);
   color: var(--text-muted);
+}
+
+/* ---------- Inline editing, row actions, saved confirmation ---------- */
+.list-row__cell {
+  position: relative;
+}
+
+.list-row__value {
+  min-width: 0;
+  width: 100%;
+}
+
+/* A changed value fades in rather than snapping. Only a cell that was just
+   edited does it, so scrolling never flickers rows. */
+.list-row__cell--saved .list-row__value {
+  animation: cell-in var(--duration-base) var(--ease);
+}
+
+@keyframes cell-in {
+  from {
+    opacity: 0.35;
+  }
+}
+
+.list-row__edit {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  display: none;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  transform: translateY(-50%);
+}
+
+.list-row__edit svg {
+  width: 12px;
+  height: 12px;
+}
+
+.list-row__edit:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.list-row__edit:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.list-row__cell:hover .list-row__edit,
+.list-row__edit:focus-visible {
+  display: grid;
+}
+
+.list-row__cell--editing {
+  padding: 0 var(--space-2);
+  overflow: visible;
+  z-index: 1;
+}
+
+.list-inline-input {
+  width: 100%;
+  height: calc(var(--row-height) - var(--space-3));
+  padding: 0 var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: 0 0 0 var(--focus-ring-width) var(--focus-halo);
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--text);
+  outline: none;
+}
+
+.list-inline-input[data-numeric='true'] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Saved: the cell warms for a moment, and a check settles beside the value. */
+.list-row__cell--saved {
+  animation: cell-saved calc(var(--duration-slow) * 5) var(--ease-out);
+}
+
+@keyframes cell-saved {
+  from {
+    background: var(--accent-subtle);
+  }
+}
+
+.list-row__saved {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  width: 12px;
+  height: 12px;
+  color: var(--positive);
+  transform: translateY(-50%);
+  animation: cell-in var(--duration-base) var(--ease);
+}
+
+/* Row actions appear on hover or keyboard focus, never permanently. */
+.list-row__actions {
+  position: absolute;
+  top: 50%;
+  right: var(--space-4);
+  display: none;
+  transform: translateY(-50%);
+}
+
+.list-row:hover .list-row__actions,
+.list-row:focus-within .list-row__actions,
+.list-row:focus-visible .list-row__actions {
+  display: flex;
+}
+
+.list-row__action {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  transition:
+    background-color var(--duration-instant) var(--ease),
+    color var(--duration-instant) var(--ease);
+}
+
+.list-row__action svg {
+  width: 13px;
+  height: 13px;
+}
+
+.list-row__action:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* ---------- Empty: a ghost of the real rows, one sentence, one action ---------- */
+.list-ghost {
+  align-self: stretch;
+  width: min(520px, 100%);
+  margin-bottom: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  opacity: 0.7;
+  overflow: hidden;
+}
+
+.list-ghost__row {
+  display: flex;
+  align-items: center;
+  height: var(--row-height);
+  padding: 0 var(--cell-padding-x);
+  border-bottom: 1px solid var(--row-border);
+}
+
+.list-ghost__row:last-child {
+  border-bottom: 0;
+}
+
+.list-ghost__row span {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
 }

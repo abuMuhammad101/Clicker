@@ -89,6 +89,15 @@ export function openRecord(model: ModelRef, id: RecordId, options: OpenOptions =
   handler.open(target)
 }
 
+/** Is this record showing in any surface right now (page, peek, ...)? */
+export function isRecordHeld(model: ModelRef, id: RecordId): boolean {
+  const target: RecordTarget = { app_label: model.app_label, model: model.model, id }
+  for (const handler of handlers.values()) {
+    if (handler.holds?.(target)) return true
+  }
+  return false
+}
+
 /** Register a surface for as long as the calling container is mounted. */
 export function useSurface(surface: Surface, handler: SurfaceHandler) {
   // The registered object never changes; it delegates to the latest handler,

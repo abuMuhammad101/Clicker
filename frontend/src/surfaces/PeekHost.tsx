@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Dialog as DialogPrimitive } from 'radix-ui'
 import { ArrowLeft, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SaveBar } from '@/components/SaveBar'
+import { toast } from '@/lib/toast'
 import { FormRenderer, type FormState } from '@/features/form-renderer/FormRenderer'
 import {
   currentLocation,
@@ -44,6 +45,7 @@ import './peek.css'
  *    record the page is showing reveals the page. See records/surfaces.ts.
  */
 export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
+  const returnFocus = useRef<HTMLElement | null>(null)
   const { pathname, search } = useLocation()
   const stack = readPeekStack(search)
 
@@ -119,6 +121,16 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
         <DialogPrimitive.Content
           className="peek"
           aria-describedby={undefined}
+          // Closing hands focus back to what had it when the peek opened (a
+          // list row, say), so keyboard use picks up where it left off.
+          onOpenAutoFocus={() => {
+            returnFocus.current = document.activeElement as HTMLElement | null
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            returnFocus.current?.focus?.()
+            returnFocus.current = null
+          }}
           onKeyDown={(event) => {
             // Scoped to the drawer, not the window: it only exists while a
             // peek has focus.
@@ -254,6 +266,7 @@ function PeekLayer({
         onStateChange={onStateChange}
         actions="external"
         onSaved={(saved) => {
+          toast({ message: `Saved ${saved.display}` })
           if (target.id === 'new') onCreated(saved)
         }}
       />

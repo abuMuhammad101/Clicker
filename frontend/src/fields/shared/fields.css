@@ -151,3 +151,10 @@
   font-size: var(--text-micro);
   color: var(--text-muted);
 }
+
+.picker-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-6);
+}

@@ -80,6 +80,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
         <TextField
           name="username"
           label="Username"
+          placeholder=""
           value={username || null}
           onChange={(value) => setUsername(value ?? '')}
           readOnly={!!fixedUsername}
