@@ -16,6 +16,9 @@ export function SaveBar({ state }: { state: FormState }) {
       <span className="save-bar__label">
         <span className="save-bar__dot" aria-hidden />
         Unsaved changes
+        <span className="save-bar__count">
+          · {state.changes} {state.changes === 1 ? 'field' : 'fields'}
+        </span>
       </span>
       <div className="save-bar__actions">
         <Button

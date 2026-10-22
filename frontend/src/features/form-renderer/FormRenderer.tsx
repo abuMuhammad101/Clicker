@@ -34,6 +34,8 @@ import './FormRenderer.css'
  */
 export interface FormState {
   dirty: boolean
+  /** How many fields differ from what was loaded. */
+  changes: number
   saving: boolean
   save: () => void
   discard: () => void
@@ -238,6 +240,7 @@ function EditableForm({
 
   const dirtyFields = dirtyFieldNames(schema, values, baseline)
   const isDirty = dirtyFields.size > 0
+  const changeCount = dirtyFields.size
 
   const pageLabel = record ? record.display : `New ${schema.verbose_name}`
   useEffect(() => {
@@ -334,9 +337,9 @@ function EditableForm({
     [],
   )
   useEffect(() => {
-    onStateChange?.({ dirty: isDirty, saving, ...commands })
+    onStateChange?.({ dirty: isDirty, changes: changeCount, saving, ...commands })
     return () => onStateChange?.(null)
-  }, [isDirty, saving, commands, onStateChange])
+  }, [isDirty, changeCount, saving, commands, onStateChange])
 
   // Any in-app navigation while dirty — this header's link, the sidebar,
   // a breadcrumb, browser back/forward — is held back and routed through

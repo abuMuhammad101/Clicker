@@ -5,6 +5,15 @@
   justify-content: space-between;
   gap: var(--space-6);
   min-width: 0;
+  /* It arrives when the first field goes dirty: a short settle, then still. */
+  animation: save-bar-in var(--duration-slow) var(--ease-out);
+}
+
+@keyframes save-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--travel-sm)));
+  }
 }
 
 .save-bar__label {
@@ -13,7 +22,13 @@
   gap: var(--space-3);
   font-size: var(--text-base);
   font-weight: var(--weight-medium);
-  color: var(--accent);
+  color: var(--text);
+}
+
+.save-bar__count {
+  font-weight: var(--weight-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
 }
 
 /* The same ink-violet dot a changed field carries beside its label: one
@@ -32,8 +47,10 @@
 }
 
 /* A container's header, transformed. Any container opts in by adding this
-   class to its header; the bar itself stays container-agnostic. */
-.header--unsaved {
+   class to its <header>; the bar itself stays container-agnostic. The element
+   selector keeps it above the container's own `.top-bar` / `.peek__bar`
+   background regardless of stylesheet order. */
+header.header--unsaved {
   background: var(--accent-subtle);
   border-bottom-color: var(--accent-border);
 }
