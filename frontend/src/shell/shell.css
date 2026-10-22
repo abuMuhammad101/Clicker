@@ -5,7 +5,7 @@
 .app-shell {
   display: flex;
   height: 100vh;
-  background: var(--surface);
+  background: var(--ground);
 }
 
 .app-shell__main {
@@ -19,14 +19,18 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+  background: var(--ground);
 }
 
-/* A record opened as the page: a sheet on a sunken ground with room around
-   it. This is the page's choice; the form itself brings none of it. */
+/* A record opened as the page: a sheet centred on the ground with room
+   around it. This is the page's choice; the form itself brings none of it. */
 .record-page {
   min-height: 100%;
-  padding: var(--space-8) var(--space-6);
-  background: var(--surface-sunken);
+  padding: var(--space-8) var(--page-gutter);
+}
+
+.record-page .form-sheet {
+  margin-inline: auto;
 }
 
 /* ---------- Sidebar ---------- */
@@ -36,8 +40,8 @@
   flex-direction: column;
   width: var(--sidebar-width);
   border-right: 1px solid var(--border);
-  background: var(--surface-sunken);
-  transition: width var(--duration) var(--ease);
+  background: var(--ground);
+  transition: width var(--duration-slow) var(--ease-out);
 }
 
 .sidebar--collapsed {
@@ -52,7 +56,7 @@
   gap: var(--space-4);
   height: var(--topbar-height);
   padding: 0 var(--space-3) 0 var(--space-6);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .sidebar--collapsed .sidebar__head {
@@ -61,6 +65,9 @@
 }
 
 .sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
@@ -136,10 +143,8 @@
 .sidebar__group-label {
   overflow: hidden;
   font-size: var(--text-micro);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wide);
+  font-weight: var(--weight-medium);
   text-overflow: ellipsis;
-  text-transform: uppercase;
   white-space: nowrap;
 }
 
@@ -234,8 +239,8 @@
   gap: var(--space-6);
   height: var(--topbar-height);
   padding: 0 var(--space-6);
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--ground);
 }
 
 /* The account menu. The trigger is the person's name, truncated rather than
@@ -403,4 +408,39 @@
   margin: 0;
   font-size: var(--text-base);
   color: var(--text-muted);
+}
+
+.user-menu__avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  color: var(--accent);
+}
+
+.user-menu__trigger {
+  gap: var(--space-3);
+}
+
+/* ---------- Tooltip (rail labels) ---------- */
+.tooltip {
+  z-index: 60;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  font-size: var(--text-sm);
+  animation: tooltip-in var(--duration-instant) var(--ease);
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
 }

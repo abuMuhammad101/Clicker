@@ -131,7 +131,7 @@ export function AppShell({ user }: { user: User }) {
           unsaved={pageForm?.dirty ? pageForm : null}
         />
         <main className="app-shell__page">
-          <Page pathname={pathname} apps={apps} onLabelChange={setPageLabel} onFormState={setPageForm} />
+          <Page pathname={pathname} apps={apps} user={user} onLabelChange={setPageLabel} onFormState={setPageForm} />
         </main>
       </div>
       <PeekHost apps={apps} />
@@ -151,10 +151,12 @@ function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: st
   const found = findInRegistry(apps, target.app_label, target.model)
   if (!found) return [{ label: 'Not found' }]
 
-  const crumbs: Crumb[] = [
-    { label: found.app.label },
-    { label: found.model.label, to: found.model.route },
-  ]
+  // A module that is named for its one model ("Contacts > Contacts") says it
+  // once. The model crumb stays: it's the way back up to the list.
+  const crumbs: Crumb[] =
+    found.app.label.toLowerCase() === found.model.label.toLowerCase()
+      ? [{ label: found.model.label, to: found.model.route }]
+      : [{ label: found.app.label }, { label: found.model.label, to: found.model.route }]
   if (record) crumbs.push({ label: pageLabel ?? '…' })
   return crumbs
 }
@@ -162,11 +164,13 @@ function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: st
 function Page({
   pathname,
   apps,
+  user,
   onLabelChange,
   onFormState,
 }: {
   pathname: string
   apps: RegistryApp[] | null
+  user: User
   onLabelChange: (label: string | null) => void
   onFormState: (state: FormState | null) => void
 }) {
@@ -175,7 +179,7 @@ function Page({
   // than letting the key change remount it. path → the key it inherited.
   const [aliases, setAliases] = useState<Record<string, string>>({})
 
-  if (pathname === '/') return <RecentsPage onLabelChange={onLabelChange} />
+  if (pathname === '/') return <RecentsPage user={user} apps={apps} onLabelChange={onLabelChange} />
   if (pathname === '/dev/gallery') return <FieldGallery />
   if (pathname === '/dev/proposal') return <DesignProposal />
   if (pathname === '/dev/schema') return <SchemaViewer />

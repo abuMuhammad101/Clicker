@@ -74,6 +74,9 @@ function UserMenu({ user }: { user: User }) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="user-menu__trigger" aria-label="Account menu">
+          <span className="user-menu__avatar" aria-hidden="true">
+            {user.display_name.trim().charAt(0).toUpperCase()}
+          </span>
           <span className="user-menu__name">{user.display_name}</span>
           <ChevronDown className="user-menu__chevron" aria-hidden />
         </button>

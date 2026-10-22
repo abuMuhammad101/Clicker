@@ -1,0 +1,11 @@
+.brand-mark {
+  flex: none;
+}
+
+.brand-mark__tile {
+  fill: var(--accent);
+}
+
+.brand-mark__ring {
+  stroke: var(--text-on-accent);
+}

@@ -1,5 +1,7 @@
 import { ChevronDown, ChevronRight, Clock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { BrandMark } from '@/components/BrandMark'
+import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { Link } from '@/lib/Link'
 import { cn } from '@/lib/utils'
 import { ModelIcon } from './ModelIcon'
@@ -38,10 +40,12 @@ export function Sidebar({
   onToggleSection,
 }: SidebarProps) {
   return (
+    <TooltipProvider>
     <nav className={cn('sidebar', collapsed && 'sidebar--collapsed')} aria-label="Modules">
       <div className="sidebar__head">
         {!collapsed && (
           <Link to="/" className="sidebar__brand">
+            <BrandMark />
             Clicker
           </Link>
         )}
@@ -51,7 +55,6 @@ export function Sidebar({
           onClick={onToggle}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-expanded={!collapsed}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </button>
@@ -132,6 +135,7 @@ export function Sidebar({
           })}
       </div>
     </nav>
+    </TooltipProvider>
   )
 }
 
@@ -150,16 +154,17 @@ function NavLink({
   collapsed: boolean
   children: React.ReactNode
 }) {
-  return (
+  const link = (
     <Link
       to={to}
       className={cn('sidebar__link', active && 'sidebar__link--active')}
       aria-current={active ? 'page' : undefined}
       aria-label={collapsed ? label : undefined}
-      title={title ?? (collapsed ? label : undefined)}
     >
       {children}
       {!collapsed && <span className="sidebar__label">{label}</span>}
     </Link>
   )
+  // On the rail there is no label, so the tooltip supplies it (and the module).
+  return collapsed ? <Tooltip label={title ?? label}>{link}</Tooltip> : link
 }
