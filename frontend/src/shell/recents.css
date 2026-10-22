@@ -1,16 +1,26 @@
 /* Home. Same density as a list: hairline rows, the list's row height, no
    striping, a muted header. It is a list of pointers, not a dashboard. */
 .recents {
-  max-width: 960px;
-  padding: var(--space-8) var(--space-6);
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: var(--space-11) var(--page-gutter) var(--space-9);
 }
 
-.recents__title {
-  margin: 0 0 var(--space-6);
-  font-size: var(--text-xl);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-tight);
+/* The one place the product speaks in a different voice. */
+.recents__greeting {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: var(--weight-normal);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   color: var(--text);
+}
+
+.recents__sub {
+  margin: var(--space-3) 0 var(--space-9);
+  font-size: var(--text-md);
+  color: var(--text-muted);
 }
 
 .recents__table {
@@ -44,10 +54,8 @@
 .recents__head {
   height: var(--table-header-height);
   background: var(--surface-sunken);
-  font-size: var(--text-micro);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
   color: var(--text-muted);
 }
 
@@ -96,4 +104,38 @@
   margin: var(--space-2) 0 var(--space-6);
   font-size: var(--text-base);
   color: var(--text-secondary);
+}
+
+/* An empty state teaches and offers exactly one next step: a ghost of the
+   real rows, one sentence, one button. */
+.recents__empty {
+  max-width: 520px;
+  padding: var(--space-4) 0;
+}
+
+.recents__ghost {
+  margin-bottom: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+  opacity: 0.7;
+}
+
+.recents__ghost-row {
+  display: flex;
+  align-items: center;
+  height: var(--row-height);
+  padding: 0 var(--cell-padding-x);
+  border-bottom: 1px solid var(--row-border);
+}
+
+.recents__ghost-row:last-child {
+  border-bottom: 0;
+}
+
+.recents__ghost-row span {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
 }

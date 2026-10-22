@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiGet, ApiError } from '@/lib/api'
+import type { User } from '@/features/auth/authContext'
+import { Link } from '@/lib/Link'
 import { RecordRef } from '@/records'
+import type { RegistryApp } from './useRegistry'
 import './recents.css'
 
 /** Mirrors backend/userstate/views.py's RecentsView. */
@@ -26,7 +29,16 @@ type State =
  * name, module and when, each a RecordRef like any other pointer at a record.
  * Nothing here names a module or a model; the backend describes each row.
  */
-export function RecentsPage({ onLabelChange }: { onLabelChange: (label: string | null) => void }) {
+export function RecentsPage({
+  user,
+  apps,
+  onLabelChange,
+}: {
+  user: User
+  /** From the registry, so the empty state can point at a real first step. */
+  apps: RegistryApp[] | null
+  onLabelChange: (label: string | null) => void
+}) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
 
@@ -48,6 +60,8 @@ export function RecentsPage({ onLabelChange }: { onLabelChange: (label: string |
     }
   }, [attempt])
 
+  const firstModel = apps?.[0]?.models[0]
+
   const retry = useCallback(() => {
     setState({ status: 'loading' })
     setAttempt((n) => n + 1)
@@ -55,7 +69,10 @@ export function RecentsPage({ onLabelChange }: { onLabelChange: (label: string |
 
   return (
     <div className="recents">
-      <h1 className="recents__title">Recent</h1>
+      <h1 className="recents__greeting">
+        {greeting()}, {firstName(user.display_name)}
+      </h1>
+      <p className="recents__sub">Pick up where you left off.</p>
 
       {state.status === 'loading' && (
         <div aria-busy="true">
@@ -78,20 +95,32 @@ export function RecentsPage({ onLabelChange }: { onLabelChange: (label: string |
       )}
 
       {state.status === 'ready' && state.items.length === 0 && (
-        <div className="recents__state">
-          <p className="recents__state-title">Nothing yet</p>
-          <p className="recents__state-text">Records you open will appear here.</p>
+        <div className="recents__empty">
+          <div className="recents__ghost" aria-hidden="true">
+            {[72, 56, 64, 48].map((width, i) => (
+              <div key={i} className="recents__ghost-row">
+                <span style={{ width: `${width}%` }} />
+              </div>
+            ))}
+          </div>
+          <p className="recents__state-title">Nothing here yet</p>
+          <p className="recents__state-text">The records you open will show up here, newest first.</p>
+          {firstModel && (
+            <Button asChild variant="outline" className="h-[var(--control-height)]">
+              <Link to={firstModel.route}>Browse {firstModel.label.toLowerCase()}</Link>
+            </Button>
+          )}
         </div>
       )}
 
       {state.status === 'ready' && state.items.length > 0 && (
         <div className="recents__table" role="table" aria-label="Recently viewed records">
           <div className="recents__row recents__head" role="row">
-            <span role="columnheader">Record</span>
+            <span role="columnheader">Recently viewed</span>
             <span role="columnheader">Type</span>
             <span role="columnheader">Module</span>
             <span role="columnheader" className="recents__when">
-              Viewed
+              When
             </span>
           </div>
           {state.items.map((item) => (
@@ -120,6 +149,15 @@ export function RecentsPage({ onLabelChange }: { onLabelChange: (label: string |
       )}
     </div>
   )
+}
+
+function greeting() {
+  const hour = new Date().getHours()
+  return hour < 5 ? 'Still up' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+}
+
+function firstName(displayName: string) {
+  return displayName.trim().split(/\s+/)[0] || displayName
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
