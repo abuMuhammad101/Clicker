@@ -4,14 +4,41 @@
     {
       "name": "django-backend",
       "runtimeExecutable": "backend\\.venv\\Scripts\\python.exe",
-      "runtimeArgs": ["backend\\manage.py", "runserver", "0.0.0.0:8000"],
+      "runtimeArgs": [
+        "backend\\manage.py",
+        "runserver",
+        "0.0.0.0:8000"
+      ],
       "port": 8000
     },
     {
       "name": "react-frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "frontend", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "frontend",
+        "run",
+        "dev"
+      ],
       "port": 5173
+    },
+    {
+      "name": "design-backend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set CORS_ALLOWED_ORIGINS=http://localhost:5273,http://127.0.0.1:5273&& backend\\.venv\\Scripts\\python.exe backend\\manage.py runserver 0.0.0.0:8200"
+      ],
+      "port": 8200
+    },
+    {
+      "name": "design-frontend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set VITE_API_URL=http://localhost:8200/api&& npm --prefix frontend run dev -- --port 5273 --strictPort"
+      ],
+      "port": 5273
     }
   ]
 }
