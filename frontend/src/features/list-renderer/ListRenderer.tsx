@@ -341,10 +341,14 @@ function ListView({
     const next = Math.min(last, Math.max(0, index))
     setActiveIndex(next)
     virtualizer.scrollToIndex(next)
-    // The row may not be mounted until the scroll lands; focus it once it is.
-    requestAnimationFrame(() => {
-      scrollRef.current?.querySelector<HTMLElement>(`[data-row-index="${next}"]`)?.focus()
-    })
+    // The row may not be mounted until the scroll lands; focus it once it is,
+    // trying a second time if the first look found nothing.
+    const focusWhenMounted = (attemptsLeft: number) => {
+      const row = scrollRef.current?.querySelector<HTMLElement>(`[data-row-index="${next}"]`)
+      if (row) row.focus()
+      else if (attemptsLeft > 0) setTimeout(() => focusWhenMounted(attemptsLeft - 1), 50)
+    }
+    setTimeout(() => focusWhenMounted(2), 0)
   }
 
   const onRowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {

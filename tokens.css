@@ -131,6 +131,8 @@
      Inverted, so it reads as the system speaking, not a page element. */
   --toast-bg: var(--n-900);
   --toast-fg: var(--n-0);
+  --toast-positive: #68d7a1;
+  --toast-danger: #ff9b93;
 
   /* ---------- Spacing ----------
      4px base. The small end is used far more than the large end, which is
@@ -288,6 +290,8 @@
 
   --toast-bg: #f6f7f9;
   --toast-fg: #0e0f13;
+  --toast-positive: #007145;
+  --toast-danger: #963e37;
 
   --shadow-popover: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px -6px rgb(0 0 0 / 0.6);
   --shadow-drawer: -12px 0 32px -12px rgb(0 0 0 / 0.6);
