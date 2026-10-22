@@ -4,6 +4,7 @@ import type { User } from '@/features/auth/authContext'
 import { FormRenderer } from '@/features/form-renderer/FormRenderer'
 import { ListRenderer } from '@/features/list-renderer/ListRenderer'
 import { SchemaViewer } from '@/features/schema-viewer/SchemaViewer'
+import { DesignProposal } from '@/gallery/DesignProposal'
 import { FieldGallery } from '@/gallery/FieldGallery'
 import type { FormState } from '@/features/form-renderer/FormRenderer'
 import { PeekHost } from '@/surfaces/PeekHost'
@@ -23,6 +24,7 @@ import './shell.css'
 //   /dev/gallery, /dev/schema  developer pages (not in the nav)
 const DEV_PAGES: Record<string, string> = {
   '/dev/gallery': 'Field gallery',
+  '/dev/proposal': 'Design proposal',
   '/dev/schema': 'Schema viewer',
 }
 
@@ -175,6 +177,7 @@ function Page({
 
   if (pathname === '/') return <RecentsPage onLabelChange={onLabelChange} />
   if (pathname === '/dev/gallery') return <FieldGallery />
+  if (pathname === '/dev/proposal') return <DesignProposal />
   if (pathname === '/dev/schema') return <SchemaViewer />
 
   const record = parseRecordPath(pathname)
