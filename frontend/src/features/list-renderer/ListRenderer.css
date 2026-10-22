@@ -119,10 +119,9 @@
   gap: var(--space-2);
   min-width: 0;
   padding: 0 var(--cell-padding-x);
-  font-size: var(--text-micro);
+  font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  letter-spacing: var(--tracking-wide);
-  color: var(--text-secondary);
+  color: var(--text-muted);
   text-align: left;
   cursor: pointer;
   user-select: none;
@@ -148,6 +147,14 @@
   white-space: nowrap;
 }
 
+.list-header__icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
 .list-header__arrow {
   flex: none;
   width: 12px;
@@ -167,6 +174,10 @@
   cursor: col-resize;
   touch-action: none;
   user-select: none;
+}
+
+.list-header__cell:last-child .list-header__resizer {
+  right: 0;
 }
 
 .list-header__resizer::after {

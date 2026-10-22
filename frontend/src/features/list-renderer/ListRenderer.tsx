@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
+import { typeIcon } from '@/fields/typeIcons'
 import { ListCell } from '@/fields/shared/ListCell'
 import { openRecord, RecordRef } from '@/records'
 import { tokenPx } from '@/lib/tokens'
@@ -54,6 +55,43 @@ interface Slot {
 }
 
 const SEARCH_DEBOUNCE_MS = 250
+
+/**
+ * How wide a column starts, as a share of the default, by field type. A
+ * checkbox column doesn't need what an email column does. By type, never by
+ * model; the first column (the record's name, by convention) gets extra.
+ */
+const TYPE_WIDTH: Record<string, number> = {
+  boolean: 0.5,
+  selection: 0.7,
+  integer: 0.65,
+  decimal: 0.7,
+  currency: 0.7,
+  date: 0.7,
+  datetime: 0.9,
+  phone: 0.85,
+  email: 1.2,
+  url: 1.2,
+  longtext: 1.4,
+}
+
+/**
+ * Column widths that use the room they're given. Wider viewport: every column
+ * grows in proportion, so there's no dead strip after the last one. Narrower:
+ * every column gives up its slack above its minimum, in proportion, so the
+ * last column isn't clipped. Only when even the minimums don't fit does the
+ * table scroll sideways.
+ */
+function fitSizes(sizes: number[], mins: number[], available: number): number[] {
+  const total = sizes.reduce((a, b) => a + b, 0)
+  if (!available || total === 0 || Math.abs(total - available) < 1) return sizes
+  if (available > total) return sizes.map((size) => size * (available / total))
+  const slack = sizes.map((size, i) => Math.max(0, size - mins[i]))
+  const slackTotal = slack.reduce((a, b) => a + b, 0)
+  const need = total - available
+  if (slackTotal <= need) return sizes.map((size, i) => Math.min(size, mins[i]))
+  return sizes.map((size, i) => size - slack[i] * (need / slackTotal))
+}
 const OVERSCAN_ROWS = 12
 
 export function ListRenderer(props: ListRendererProps) {
@@ -141,13 +179,14 @@ function ListView({
   const columns = useMemo<ColumnDef<typeof features, Slot>[]>(() => {
     const defaultWidth = tokenPx('--column-default-width', 180)
     const minWidth = tokenPx('--column-min-width', 80)
-    return schema.list.columns.map((name) => {
+    return schema.list.columns.map((name, columnIndex) => {
       const field = schema.fields[name]
+      const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.35 : 1)
       return {
         id: name,
         header: field.label,
         accessorFn: (slot: Slot) => slot.record?.values[name],
-        size: defaultWidth,
+        size: Math.max(minWidth, Math.round(defaultWidth * share)),
         minSize: minWidth,
         // TanStack guesses the first direction from the first row's value,
         // which here may be an unloaded slot or an empty field. A first
@@ -196,6 +235,17 @@ function ListView({
     overscan: OVERSCAN_ROWS,
   })
 
+  // The room the table has, and whether the person has taken over sizing.
+  const [viewportWidth, setViewportWidth] = useState(0)
+  const [userSized, setUserSized] = useState(false)
+  useEffect(() => {
+    const element = scrollRef.current
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => setViewportWidth(entry.contentRect.width))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
+
   const virtualRows = virtualizer.getVirtualItems()
   const firstIndex = virtualRows[0]?.index ?? 0
   const lastIndex = virtualRows[virtualRows.length - 1]?.index ?? 0
@@ -210,7 +260,23 @@ function ListView({
 
   const rows = table.getRowModel().rows
   const headers = table.getHeaderGroups()[0]?.headers ?? []
-  const totalWidth = table.getTotalSize()
+  const minColumnWidth = useMemo(() => tokenPx('--column-min-width', 80), [])
+  const widths = userSized
+    ? headers.map((header) => header.getSize())
+    : fitSizes(
+        headers.map((header) => header.getSize()),
+        headers.map(() => minColumnWidth),
+        viewportWidth,
+      )
+  const totalWidth = widths.reduce((a, b) => a + b, 0)
+  const widthOf = (columnId: string) => widths[headers.findIndex((h) => h.column.id === columnId)]
+  // Taking over the sizing freezes what the person is looking at first, so the
+  // first drag starts from the width on screen, not from the unfitted default.
+  const freezeSizing = () => {
+    if (userSized) return
+    table.setColumnSizing(Object.fromEntries(headers.map((h, i) => [h.column.id, widths[i]])))
+    setUserSized(true)
+  }
   const plural = schema.verbose_name_plural
 
   const openRow = (index: number, event: React.MouseEvent | React.KeyboardEvent) => {
@@ -280,7 +346,7 @@ function ListView({
                     'list-header__cell',
                     isNumericType(field.type) && 'list-header__cell--numeric',
                   )}
-                  style={{ width: header.getSize() }}
+                  style={{ width: widths[headers.indexOf(header)] }}
                 >
                   <button
                     type="button"
@@ -288,6 +354,10 @@ function ListView({
                     onClick={header.column.getToggleSortingHandler()}
                     title={field.label}
                   >
+                    {(() => {
+                      const Icon = typeIcon(field.type)
+                      return <Icon className="list-header__icon" aria-hidden />
+                    })()}
                     <span className="list-header__label">{field.label}</span>
                     {sorted === 'asc' && <ArrowUp className="list-header__arrow" aria-hidden />}
                     {sorted === 'desc' && <ArrowDown className="list-header__arrow" aria-hidden />}
@@ -297,6 +367,7 @@ function ListView({
                       'list-header__resizer',
                       header.column.getIsResizing() && 'list-header__resizer--active',
                     )}
+                    onPointerEnter={freezeSizing}
                     onMouseDown={header.getResizeHandler()}
                     onTouchStart={header.getResizeHandler()}
                     onDoubleClick={() => header.column.resetSize()}
@@ -309,7 +380,7 @@ function ListView({
             })}
           </div>
 
-          {state.status === 'loading' && <SkeletonRows columns={headers.map((h) => h.getSize())} />}
+          {state.status === 'loading' && <SkeletonRows columns={widths} />}
 
           {state.status === 'error' && (
             <div className="list-state">
@@ -369,7 +440,7 @@ function ListView({
                           'list-row__cell',
                           isNumericType(schema.fields[cell.column.id].type) && 'list-row__cell--numeric',
                         )}
-                        style={{ width: cell.column.getSize() }}
+                        style={{ width: widthOf(cell.column.id) }}
                       >
                         <table.FlexRender cell={cell} />
                       </div>
