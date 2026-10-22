@@ -29,6 +29,20 @@ A module author touches only the first box. Everything else is derived.
 
 If you find yourself writing `if (model === 'contact')` anywhere in the frontend, stop and fix the schema instead. This rule is the entire product. Violating it once is how this becomes forty hand-built apps.
 
+## The second law: surfaces
+
+**Renderers must stay container-agnostic.** `FormRenderer` and `ListRenderer` do not know whether they are inside a page, a peek drawer, or a container that does not exist yet. If adding a new container (tab bar, split pane, modal) requires editing a renderer, the contract is wrong. Same stakes as the first law: the first keeps the renderer from knowing about *modules*, this one keeps it from knowing about *places*.
+
+The contract lives in `frontend/src/records/` (and `docs/BUILD_LOG.md`, "surfaces contract"):
+
+- **`RecordRef`** — the only way to point at a record. A real `<a href>` that emits an intent instead of navigating; cmd/ctrl/middle-click keep the browser's behaviour. Never build a record URL or call `navigate()` for a record by hand; `records/paths.ts` is the one place a record path is built.
+- **`openRecord(model, id, { surface })`** — the one intent function. Callers name a *surface* (`page`, `peek`; `tab` and `split` reserved), never a mechanism.
+- **Registered surfaces** — containers call `registerSurface()` for the surface they implement. Adding a surface is one registration and no caller changes. An unregistered surface falls back to `page`.
+- **One live view per record** — `openRecord` asks every surface whether it already holds the record and reveals that view instead of opening a second. `takeover` is the one deliberate exception (a move, not an open).
+- **Renderers are props in, events out** — `onLabelChange`, `onSaved`, `onStateChange`, `mode`, `actions`. A renderer never touches `document.title`, the breadcrumb, page chrome, or window navigation. Containers draw the chrome around it, including the contextual save bar. Leaving a screen goes through `navigate()` and the scoped router blockers, so unsaved-changes guards apply in every container.
+
+If a renderer genuinely needs a new capability for a container, add it as a prop or event, and say so plainly in the log.
+
 ---
 
 ## Stack
@@ -63,23 +77,20 @@ Hassan is a product designer, new to backend work. He is the design authority an
 
 ## Current state
 
-**Phase 1 — The Machine.** Nothing is built yet. The repo starts here.
+**Phase 1 (The Machine) is complete. Phase 2 is in progress: 2a (authentication) and 2b (module registry, app shell) are done, and the surfaces contract has landed.** `docs/BUILD_LOG.md` is the history and its newest entry ends with the next single action; read that before starting work.
 
-### Phase 1 exit criteria
-- [ ] Adding a Django model produces working form and list views with **no React edits**
-- [ ] At least 8 field types render correctly in all their states
-- [ ] One `many_to_one` relationship works end to end
+### What exists
+- **Backend:** Django + DRF on Neon. `core` (Contact, Country), `catalog` (Product), `accounts` (session auth), `userstate` (per-user preferences, record views). The schema endpoint, generic record API (runs `Model.clean()`), search endpoint and registry endpoint are all derived from models that opt in with a `Schema` class.
+- **Frontend:** the 8 registry field components plus decimal, form and list renderers, and an app shell (sidebar and breadcrumbs generated from the registry, Recents as home, contextual save bar, peek drawer). Product's screens appeared with zero frontend changes, which passed Phase 1's exit test.
+- **Auth:** every API endpoint requires a Django session. Anonymous requests get 401.
 
-### Build order
-1. Django project scaffold, `Country` and `Contact` models
-2. Django Admin running locally, as a reference for the pattern (never shipped as Clicker's UI)
-3. Schema endpoint returning model structure as JSON
-4. React app fetching schema
-5. Field components for the registry types Contacts needs
-6. Form renderer, then list renderer
-7. Add a `Product` model — its screens must appear with zero frontend changes
+### Known open problems
+- **Stale views:** renderers never refetch, so a record edited in a peek leaves the list or form behind it showing old data. The fix is a record-changed signal, which is a deliberate renderer change; decide before adding more containers.
+- **Deploy blockers:** a custom same-site domain (the session cookie won't cross `*.pages.dev` to `*.onrender.com`), login rate limiting, and deactivating `dev-verify` on any shared database.
+- **Never visually reviewed:** the shell, peek and save bar were verified by DOM and tests, not screenshots. Density and craft are Hassan's call, by eye.
 
-Step 7 is the investor demo.
+### Verification note
+`npx tsc --noEmit` checks nothing in this repo. Use `npx tsc -b`.
 
 ---
 
