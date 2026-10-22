@@ -138,6 +138,12 @@
   --toast-positive: #68d7a1;
   --toast-danger: #ff9b93;
 
+  /* ---------- Skeleton ----------
+     Loading placeholders: a base you can see on both the ground and a panel,
+     and a highlight that sweeps across it. */
+  --skeleton-base: var(--n-100);
+  --skeleton-highlight: var(--n-25);
+
   /* ---------- Spacing ----------
      4px base. The small end is used far more than the large end, which is
      the opposite of a marketing site and the whole point. */
@@ -226,6 +232,7 @@
   --topbar-height: 44px;
   --form-label-width: 168px;
   --form-field-max-width: 420px;
+  --form-sheet-width: 760px;
   --drawer-width: 480px;
 }
 
@@ -306,6 +313,8 @@
   --toast-fg: #0e0f13;
   --toast-positive: #007145;
   --toast-danger: #963e37;
+  --skeleton-base: #25262c;
+  --skeleton-highlight: #33353d;
 
   --shadow-popover: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px -6px rgb(0 0 0 / 0.6);
   --shadow-drawer: -12px 0 32px -12px rgb(0 0 0 / 0.6);

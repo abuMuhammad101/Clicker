@@ -3,22 +3,46 @@
    (the card border and radius, the width cap) is the default, and a container
    that wants something else sets these custom properties rather than
    reaching into the class: --form-sheet-border, --form-sheet-radius,
-   --form-sheet-max-width.
+   --form-sheet-max-width, --form-pad-x.
 
-   Forms are one column. Width follows the field layout, not the viewport:
-   label column + gap + the widest a field grows, plus the sheet's own side
-   padding. The sheet sits left-aligned and never stretches: the width to
-   its right is reserved for related content (a record's children, activity)
-   later, not for wider inputs or a second column of fields. */
+   Editing lays fields out stacked (label over field) in a grid that goes to
+   two columns once the sheet itself is wide enough (a container query on the
+   sheet, so it answers to the sheet, not the viewport). Long text spans both
+   columns. Viewing lays them out as a quiet label/value list. The form owns
+   this; a container only chooses how wide and how padded the sheet is. */
 .form-sheet {
-  max-width: var(
-    --form-sheet-max-width,
-    calc(var(--form-label-width) + var(--space-6) + var(--form-field-max-width) + 2 * var(--space-8))
-  );
+  container-type: inline-size;
+  max-width: var(--form-sheet-max-width, var(--form-sheet-width));
   margin: 0;
   background: var(--surface);
   border: var(--form-sheet-border, 1px solid var(--border));
   border-radius: var(--form-sheet-radius, var(--radius-md));
+
+  --field-direction: column;
+  --field-items: stretch;
+  --field-gap: var(--space-2);
+  --form-label-width: auto;
+  --form-field-max-width: none;
+  --field-label-justify: flex-start;
+  --field-label-align: left;
+  --field-label-padding-top: 0;
+  --field-label-size: var(--text-sm);
+  --field-label-weight: var(--weight-medium);
+}
+
+/* Read-only: a label/value list, not a disabled form. */
+.form-sheet--view {
+  --field-direction: row;
+  --field-items: flex-start;
+  --field-gap: var(--space-5);
+  --form-label-width: 112px;
+  --field-label-padding-top: 3px;
+  --field-label-weight: var(--weight-normal);
+  --field-label-color: var(--text-muted);
+}
+
+.form-sheet--view .field-shell__readonly-value {
+  min-height: 24px;
 }
 
 .form-header {
@@ -26,7 +50,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
-  padding: var(--space-5) var(--space-8);
+  padding: var(--space-6) var(--form-pad-x, var(--space-8));
   border-bottom: 1px solid var(--border-subtle);
 }
 
@@ -79,7 +103,7 @@
 }
 
 .form-banner {
-  margin: var(--space-6) var(--space-8) 0;
+  margin: var(--space-6) var(--form-pad-x, var(--space-8)) 0;
   padding: var(--space-4) var(--space-5);
   border: 1px solid var(--danger-border);
   border-radius: var(--radius);
@@ -97,7 +121,7 @@
 }
 
 .form-body {
-  padding: var(--space-6) var(--space-8) var(--space-8);
+  padding: var(--space-6) var(--form-pad-x, var(--space-8)) var(--space-8);
 }
 
 .form-section + .form-section {
@@ -114,9 +138,38 @@
 }
 
 .form-section__fields {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(var(--form-columns, 1), minmax(0, 1fr));
+  gap: var(--space-6) var(--space-8);
+}
+
+.form-sheet--view .form-section__fields {
+  --form-columns: 1;
   gap: var(--space-4);
+}
+
+@container (min-width: 600px) {
+  .form-sheet:not(.form-sheet--view) .form-section__fields {
+    --form-columns: 2;
+  }
+}
+
+/* Long text takes the whole row. */
+.form-field[data-type='longtext'] {
+  grid-column: 1 / -1;
+}
+
+/* A checkbox reads as "[ ] Active", not as a label over a box. */
+.form-sheet:not(.form-sheet--view) .form-field[data-type='boolean'] .field-shell {
+  --field-direction: row;
+  --field-items: center;
+  --field-gap: var(--space-4);
+  min-height: var(--control-height);
+}
+
+.form-sheet:not(.form-sheet--view) .form-field[data-type='boolean'] .field-shell__body {
+  order: -1;
+  flex: none;
 }
 
 .form-sheet--error {

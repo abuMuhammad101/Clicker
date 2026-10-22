@@ -34,18 +34,41 @@
 }
 
 /* ---------- Sidebar ---------- */
-.sidebar {
-  display: flex;
+/* The slot holds the sidebar's place in the layout (full width, or the rail).
+   The sidebar itself is positioned inside it, so a rail that opens on hover
+   floats over the page instead of pushing it. */
+.sidebar-slot {
+  position: relative;
+  z-index: 30;
   flex: none;
+  width: var(--sidebar-width);
+  transition: width var(--duration-slow) var(--ease-out);
+}
+
+.sidebar-slot--collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+.sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
   flex-direction: column;
   width: var(--sidebar-width);
   border-right: 1px solid var(--border);
   background: var(--ground);
-  transition: width var(--duration-slow) var(--ease-out);
+  transition:
+    width var(--duration-slow) var(--ease-out),
+    box-shadow var(--duration-slow) var(--ease-out);
 }
 
 .sidebar--collapsed {
   width: var(--sidebar-width-collapsed);
+}
+
+/* Open by hover, not by choice: lifted off the page. */
+.sidebar--floating {
+  box-shadow: var(--shadow-popover);
 }
 
 .sidebar__head {
@@ -105,6 +128,7 @@
   overflow-y: auto;
 }
 
+.sidebar__body > .sidebar__list + .sidebar__group,
 .sidebar__group + .sidebar__group {
   margin-top: var(--space-6);
 }

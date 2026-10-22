@@ -75,10 +75,19 @@ export function RecentsPage({
       <p className="recents__sub">Pick up where you left off.</p>
 
       {state.status === 'loading' && (
-        <div aria-busy="true">
+        <div className="recents__table" aria-busy="true" aria-label="Loading recent records">
+          <div className="recents__row recents__head">
+            <Skeleton className="h-3 w-28" />
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="ml-auto h-3 w-10" />
+          </div>
           {Array.from({ length: 6 }, (_, i) => (
-            <div key={i} className="recents__row recents__row--static">
-              <Skeleton className="h-3 w-2/5" />
+            <div key={i} className="recents__row">
+              <Skeleton className="h-3" style={{ width: `${70 - (i % 3) * 14}%` }} />
+              <Skeleton className="h-3 w-14" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="ml-auto h-3 w-14" />
             </div>
           ))}
         </div>

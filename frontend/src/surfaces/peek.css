@@ -20,6 +20,8 @@
   display: flex;
   flex-direction: column;
   width: min(var(--drawer-width), 100vw);
+  /* One gutter for the bar, the title and the fields: they share a left edge. */
+  --form-pad-x: var(--space-6);
   background: var(--surface);
   border-left: 1px solid var(--border);
   box-shadow: var(--shadow-drawer);
@@ -43,11 +45,14 @@
   align-items: center;
   gap: var(--space-4);
   height: var(--topbar-height);
-  padding: 0 var(--space-5) 0 var(--space-6);
+  padding: 0 calc(var(--form-pad-x) - var(--space-3)) 0 var(--form-pad-x);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .peek__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
@@ -106,13 +111,14 @@
   --form-sheet-border: 0;
   --form-sheet-radius: 0;
   --form-sheet-max-width: none;
-  /* A narrow drawer stacks less: a shorter label column, and the field takes
-     the rest. The page-wide values in tokens.css are for the page. */
-  --form-label-width: 112px;
-  --form-field-max-width: none;
 }
 
 .peek__layer {
   height: 100%;
   overflow: auto;
+}
+
+.peek__kind-icon {
+  width: 14px;
+  height: 14px;
 }

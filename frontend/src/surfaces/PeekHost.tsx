@@ -14,6 +14,7 @@ import {
   useLocation,
 } from '@/lib/router'
 import { openRecord, sameTarget, useSurface, type RecordTarget } from '@/records'
+import { ModelIcon } from '@/shell/ModelIcon'
 import { findInRegistry, type RegistryApp } from '@/shell/useRegistry'
 import { encodeTarget, MAX_PEEK_DEPTH, peekUrl, readPeekStack } from './peekUrl'
 import { peekScope } from './peekScope'
@@ -163,7 +164,10 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                   <span className="peek__back-label">{labels[below] ?? 'Back'}</span>
                 </button>
               ) : (
-                <span className="peek__kind">{found?.model.label_singular ?? top.model}</span>
+                <span className="peek__kind">
+                  <ModelIcon name={found?.model.icon} className="peek__kind-icon" />
+                  {found?.model.label_singular ?? top.model}
+                </span>
               )}
               <DialogPrimitive.Title className="sr-only">
                 {labels[topKey] ?? found?.model.label_singular ?? 'Record'}
@@ -213,6 +217,14 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                     mode={target.id === 'new' || editing.has(key) ? 'edit' : 'view'}
                     onLabel={setLabel}
                     onForm={setForm}
+                    onUpdated={() =>
+                      // Saved: back to looking at it, not editing it.
+                      setEditing((current) => {
+                        const next = new Set(current)
+                        next.delete(key)
+                        return next
+                      })
+                    }
                     onCreated={(saved) => {
                       // The new record keeps its form (and its "Saved" state):
                       // alias its new URL entry to the key it started with,
@@ -243,6 +255,7 @@ function PeekLayer({
   onLabel,
   onForm,
   onCreated,
+  onUpdated,
 }: {
   layerKey: string
   target: RecordTarget
@@ -251,6 +264,7 @@ function PeekLayer({
   onLabel: (key: string, label: string | null) => void
   onForm: (key: string, state: FormState | null) => void
   onCreated: (saved: { id: number }) => void
+  onUpdated: () => void
 }) {
   // The form's label effect depends on this staying the same function.
   const onLabelChange = useCallback((label: string | null) => onLabel(layerKey, label), [onLabel, layerKey])
@@ -268,6 +282,7 @@ function PeekLayer({
         onSaved={(saved) => {
           toast({ message: `Saved ${saved.display}` })
           if (target.id === 'new') onCreated(saved)
+          else onUpdated()
         }}
       />
     </div>

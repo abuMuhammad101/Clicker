@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { BrandMark } from '@/components/BrandMark'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { Link } from '@/lib/Link'
+import { useHoverIntent } from './useHoverIntent'
 import { cn } from '@/lib/utils'
 import { ModelIcon } from './ModelIcon'
 import type { RegistryApp } from './useRegistry'
@@ -34,14 +35,23 @@ export function Sidebar({
   registry,
   onRetry,
   pathname,
-  collapsed,
+  collapsed: collapsedChoice,
   onToggle,
   foldedSections,
   onToggleSection,
 }: SidebarProps) {
+  // The rail floats open over the page when the pointer rests on it (or focus
+  // moves into it); the persisted choice (`collapsedChoice`) never changes.
+  const { open: floating, handlers } = useHoverIntent(collapsedChoice)
+  const collapsed = collapsedChoice && !floating
   return (
     <TooltipProvider>
-    <nav className={cn('sidebar', collapsed && 'sidebar--collapsed')} aria-label="Modules">
+    <div className={cn('sidebar-slot', collapsedChoice && 'sidebar-slot--collapsed')}>
+    <nav
+      className={cn('sidebar', collapsed && 'sidebar--collapsed', floating && 'sidebar--floating')}
+      aria-label="Modules"
+      {...handlers}
+    >
       <div className="sidebar__head">
         {!collapsed && (
           <Link to="/" className="sidebar__brand">
@@ -53,10 +63,10 @@ export function Sidebar({
           type="button"
           className="sidebar__toggle"
           onClick={onToggle}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          aria-expanded={!collapsed}
+          aria-label={collapsedChoice ? 'Pin sidebar open' : 'Collapse sidebar'}
+          aria-expanded={!collapsedChoice}
         >
-          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+          {collapsedChoice ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
         </button>
       </div>
 
@@ -139,6 +149,7 @@ export function Sidebar({
           })}
       </div>
     </nav>
+    </div>
     </TooltipProvider>
   )
 }

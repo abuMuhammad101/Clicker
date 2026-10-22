@@ -46,5 +46,9 @@ export const FORCE_FOCUS_CLASSES = 'border-ring ring-3 force-focused'
  * Registry-wide, so no field type or module decides its own wording.
  */
 export function emptyPrompt(label: string, verb = 'Set') {
-  return `${verb} ${label.toLowerCase()}…`
+  // "Tax ID" stays "tax ID", not "tax id": an all-caps word is an acronym.
+  const words = label
+    .split(' ')
+    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase()))
+  return `${verb} ${words.join(' ')}…`
 }

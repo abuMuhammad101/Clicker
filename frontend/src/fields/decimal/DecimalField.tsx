@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps, emptyPrompt } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
 import {
   formatDecimalDisplay,
   isValidDecimalInput,
@@ -94,7 +94,7 @@ export function DecimalField({
         }}
         onBlur={() => setFocused(false)}
         disabled={disabled}
-        placeholder={placeholder ?? emptyPrompt(label)}
+        placeholder={placeholder ?? (0).toFixed(decimalPlaces)}
         aria-invalid={!!error}
         className={cn(
           'text-right tabular-nums',

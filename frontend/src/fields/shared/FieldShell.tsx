@@ -36,7 +36,7 @@ export function FieldShell({
       >
         {dirty && <span className="field-shell__dirty-dot" aria-hidden="true" />}
         {label}
-        {required && <span className="field-shell__required">*</span>}
+        {required && !readOnly && <span className="field-shell__required">*</span>}
       </label>
       <div className="field-shell__body">
         {readOnly ? (
@@ -56,7 +56,7 @@ export function FieldShell({
             <CircleAlert className="field-shell__message-icon" aria-hidden="true" />
             {error}
           </p>
-        ) : helpText ? (
+        ) : helpText && !readOnly ? (
           <p className="field-shell__message field-shell__message--help">{helpText}</p>
         ) : null}
       </div>

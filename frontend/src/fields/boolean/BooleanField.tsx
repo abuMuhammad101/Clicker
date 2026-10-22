@@ -1,3 +1,4 @@
+import { Check, Minus } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
@@ -36,7 +37,17 @@ export function BooleanField({
       helpText={helpText}
       readOnly={readOnly}
       dirty={dirty}
-      readOnlyValue={value ? 'Yes' : 'No'}
+      readOnlyValue={
+        value ? (
+          <span className="yes-no yes-no--yes">
+            <Check aria-hidden /> Yes
+          </span>
+        ) : (
+          <span className="yes-no yes-no--no">
+            <Minus aria-hidden /> No
+          </span>
+        )
+      }
     >
       <div className="flex h-[var(--control-height)] items-center">
         <Checkbox

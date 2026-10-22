@@ -9,9 +9,8 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, ArrowUpRight, Check, Pencil, Plus, Search, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpRight, Check, Pencil, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { typeIcon } from '@/fields/typeIcons'
@@ -19,6 +18,7 @@ import { ListCell } from '@/fields/shared/ListCell'
 import { emitRecordChanged, isRecordHeld, openRecord, RecordRef, useRecordChanged } from '@/records'
 import { apiSend, ApiError } from '@/lib/api'
 import { useLocation } from '@/lib/router'
+import { usePreference } from '@/lib/usePreference'
 import { toast } from '@/lib/toast'
 import { tokenPx } from '@/lib/tokens'
 import { useModelSchema } from '@/lib/useModelSchema'
@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
 import { InlineEditor } from './InlineEditor'
+import { ListControls, SearchBox } from './ListControls'
+import { DEFAULT_LIST_PREFS, DENSITY_TOKEN, type ListPrefs } from './listPrefs'
 import { isInlineEditable } from './inlineEditable'
 import { useRecordWindow } from './useRecordWindow'
 import './ListRenderer.css'
@@ -158,6 +160,16 @@ function ListView({
   onLabelChange?: (label: string | null) => void
 }) {
   const [sorting, setSorting] = useState<SortingState>(() => initialSorting(schema))
+
+  // This person's choices for this list (row density, hidden columns), kept
+  // on the server so they follow them between machines.
+  const prefs = usePreference<ListPrefs>(`list.${appLabel}.${model}`, DEFAULT_LIST_PREFS)
+  const { density, hidden } = { ...DEFAULT_LIST_PREFS, ...prefs.value }
+  const visibleColumns = useMemo(() => {
+    const shown = schema.list.columns.filter((name) => !hidden.includes(name))
+    return shown.length > 0 ? shown : schema.list.columns
+  }, [schema.list.columns, hidden])
+  const searchRef = useRef<HTMLInputElement>(null)
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
 
@@ -205,11 +217,11 @@ function ListView({
     [total, getRow],
   )
 
-  const rowHeight = useMemo(() => tokenPx('--row-height', 34), [])
+  const rowHeight = useMemo(() => tokenPx(DENSITY_TOKEN[density], 34), [density])
   const columns = useMemo<ColumnDef<typeof features, Slot>[]>(() => {
     const defaultWidth = tokenPx('--column-default-width', 180)
     const minWidth = tokenPx('--column-min-width', 80)
-    return schema.list.columns.map((name, columnIndex) => {
+    return visibleColumns.map((name, columnIndex) => {
       const field = schema.fields[name]
       const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.35 : 1)
       return {
@@ -236,7 +248,7 @@ function ListView({
         },
       }
     })
-  }, [schema])
+  }, [schema, visibleColumns])
 
   const table = useTable({
     features,
@@ -275,6 +287,11 @@ function ListView({
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
+
+  // A new density is a new row height: re-measure.
+  useEffect(() => {
+    virtualizer.measure()
+  }, [rowHeight, virtualizer])
 
   const virtualRows = virtualizer.getVirtualItems()
   const firstIndex = virtualRows[0]?.index ?? 0
@@ -338,6 +355,23 @@ function ListView({
       })
       updateRow(index, saved)
       emitRecordChanged({ app_label: appLabel, model }, saved)
+      toast({
+        message: `${field.label} updated`,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            // Put the old value back by the record's id: the row may have moved.
+            apiSend<RecordEnvelope>('PATCH', `/data/${appLabel}/${model}/${before.id}/`, {
+              [fieldName]: before.values[fieldName] ?? null,
+            })
+              .then((restored) => {
+                replaceRecord(restored)
+                emitRecordChanged({ app_label: appLabel, model }, restored)
+              })
+              .catch(() => toast({ kind: 'error', message: `Couldn’t undo that. Reload and try again.` }))
+          },
+        },
+      })
     } catch (error) {
       updateRow(index, before)
       setSavedCell(null)
@@ -396,7 +430,7 @@ function ListView({
         break
       case 'F2': {
         // Edit the first cell in the row that can be edited.
-        const first = schema.list.columns.find((name) => isInlineEditable(schema.fields[name]))
+        const first = visibleColumns.find((name) => isInlineEditable(schema.fields[name]))
         if (first) {
           event.preventDefault()
           setEditing({ index, field: first })
@@ -407,7 +441,11 @@ function ListView({
   }
 
   return (
-    <div className="list-page">
+    <div className="list-page" style={
+        // The default row height is --row-height itself; the others replace it.
+        density === 'default' ? undefined : { ['--row-height' as string]: `var(${DENSITY_TOKEN[density]})` }
+      }
+    >
       <div className="list-toolbar">
         <h1 className="list-toolbar__title">
           {capitalize(plural)}
@@ -416,27 +454,27 @@ function ListView({
           )}
         </h1>
         <div className="list-toolbar__actions">
-          <div className="list-search">
-            <Search className="list-search__icon" aria-hidden />
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              onKeyDown={(event) => event.key === 'Escape' && setSearchInput('')}
-              placeholder={`Search ${plural}…`}
-              aria-label={`Search ${plural}`}
-              className="list-search__input"
-            />
-            {searchInput && (
-              <button
-                type="button"
-                className="list-search__clear"
-                onClick={() => setSearchInput('')}
-                aria-label="Clear search"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchBox
+            value={searchInput}
+            onChange={setSearchInput}
+            placeholder={`Search ${plural}…`}
+            inputRef={searchRef}
+          />
+          <ListControls
+            density={density}
+            onDensity={(next) => prefs.set({ density: next, hidden })}
+            columns={schema.list.columns.map((id) => ({ id, label: schema.fields[id].label }))}
+            hidden={hidden}
+            onToggleColumn={(id) =>
+              prefs.set({
+                density,
+                hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id],
+              })
+            }
+            onResetColumns={() => prefs.set({ density, hidden: [] })}
+            onRefresh={retry}
+            refreshing={state.status === 'loading'}
+          />
           <Button asChild className="h-[var(--control-height)]">
             <RecordRef model={{ app_label: appLabel, model }} id="new">
               <Plus className="size-4" aria-hidden />
@@ -564,7 +602,12 @@ function ListView({
                     aria-selected={open || undefined}
                     data-row-index={virtualRow.index}
                     tabIndex={loaded && virtualRow.index === activeIndex ? 0 : -1}
-                    className={cn('list-row', !loaded && 'list-row--pending', open && 'list-row--open')}
+                    className={cn(
+                      'list-row',
+                      !loaded && 'list-row--pending',
+                      open && 'list-row--open',
+                      editing?.index === virtualRow.index && 'list-row--editing',
+                    )}
                     style={{ transform: `translateY(${virtualRow.start}px)` }}
                     onClick={(event) => openRow(virtualRow.index, event)}
                     onFocus={(event) => event.target === event.currentTarget && setActiveIndex(virtualRow.index)}
@@ -588,6 +631,8 @@ function ListView({
                             justSaved && 'list-row__cell--saved',
                           )}
                           style={{ width: widthOf(name) }}
+                          // Anything pressed inside the editor belongs to the editor, not the row.
+                          onClick={isEditing ? (event) => event.stopPropagation() : undefined}
                         >
                           {isEditing && loaded ? (
                             <InlineEditor

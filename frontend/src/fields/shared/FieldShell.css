@@ -1,20 +1,26 @@
+/* The layout is decided by whatever contains the field, through these custom
+   properties: a form lays fields out stacked, a read-only peek lays them out
+   as a label/value list, and a bare field (the gallery, sign-in) keeps the
+   classic label column. */
 .field-shell {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
+  flex-direction: var(--field-direction, row);
+  align-items: var(--field-items, flex-start);
+  gap: var(--field-gap, var(--space-6));
 }
 
 .field-shell__label {
   display: flex;
   align-items: baseline;
-  justify-content: flex-end;
+  justify-content: var(--field-label-justify, flex-end);
   gap: var(--space-2);
   flex: none;
   width: var(--form-label-width);
-  padding-top: 6px;
-  text-align: right;
-  font-size: var(--text-base);
-  color: var(--text-secondary);
+  padding-top: var(--field-label-padding-top, 6px);
+  text-align: var(--field-label-align, right);
+  font-size: var(--field-label-size, var(--text-base));
+  font-weight: var(--field-label-weight, var(--weight-normal));
+  color: var(--field-label-color, var(--text-secondary));
   line-height: var(--leading-tight);
 }
 
@@ -30,7 +36,7 @@
 }
 
 .field-shell__label--readonly {
-  color: var(--text-muted);
+  color: var(--field-label-color, var(--text-muted));
 }
 
 .field-shell__required {
@@ -84,5 +90,25 @@
 }
 
 .field-shell__readonly-value--empty {
+  color: var(--text-muted);
+}
+
+/* A read-only boolean: a mark and a word, never colour alone. */
+.yes-no {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.yes-no svg {
+  width: 13px;
+  height: 13px;
+}
+
+.yes-no--yes svg {
+  color: var(--positive);
+}
+
+.yes-no--no {
   color: var(--text-muted);
 }

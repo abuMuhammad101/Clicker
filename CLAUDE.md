@@ -176,7 +176,7 @@ Tokens live in `tokens.css` and are the source of truth. Never hardcode a colour
 - **No shadows on cards.** Borders only — shadows cost vertical space and read as consumer software. Only popovers, the peek drawer and toasts float.
 - **Light and dark** are both in `tokens.css`; the app follows the system setting via `[data-theme]` on `<html>`. Any component must read tokens only, so it works in both. Control edges use `--border-control` (3:1), hairlines use `--border`.
 - **Motion tokens:** `--duration-instant` 100ms (hover, press, focus), `--duration-base` 160ms (fades), `--duration-slow` 240ms (drawer, save bar, toast). The shadcn files must use them, not literals.
-- **Motion only in response to user action.** Nothing animates on its own. Respect `prefers-reduced-motion`.
+- **Motion only in response to user action.** Nothing animates on its own, with one exception: a loading skeleton sweeps while the thing the person asked for is on its way. Respect `prefers-reduced-motion` (skeletons go still).
 
 `tokens.css` contains a shadcn bridge at the bottom mapping Clicker tokens onto shadcn's variable names, so copied-in components inherit density and palette automatically.
 

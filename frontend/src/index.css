@@ -137,11 +137,33 @@ pre {
   background: var(--border-subtle);
 }
 
-/* Loading shimmer is motion nobody asked for: reduced-motion people get a
-   still placeholder. */
+/* ---------- Skeleton ----------
+   Loading is the one thing allowed to move unprompted: it is the visible half
+   of something the person just asked for. A highlight sweeps across a base
+   that is visible on the ground and on a panel. Still under reduced motion. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-base) 0%,
+    var(--skeleton-highlight) 50%,
+    var(--skeleton-base) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.5s var(--ease) infinite;
+}
+
+@keyframes skeleton-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse,
-  [data-slot='skeleton'] {
+  .skeleton {
     animation: none;
+    background: var(--skeleton-base);
   }
 }

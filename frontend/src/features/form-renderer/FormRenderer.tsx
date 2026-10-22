@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
 import { navigate, useNavigationBlocker } from '@/lib/router'
@@ -388,7 +389,7 @@ function EditableForm({
 
   return (
     <form
-      className="form-sheet"
+      className={cn('form-sheet', viewing && 'form-sheet--view')}
       onSubmit={(event) => {
         event.preventDefault()
         if (!viewing) void save()
@@ -562,7 +563,7 @@ function FormBody({
             {group.label && <h2 className="form-section__label">{group.label}</h2>}
             <div className="form-section__fields">
               {visible.map((name) => (
-                <div key={name}>
+                <div key={name} className="form-field" data-type={schema.fields[name].type}>
                   {renderFormField({
                     name,
                     schema: schema.fields[name],

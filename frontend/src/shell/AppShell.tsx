@@ -16,7 +16,7 @@ import { useOnline } from '@/lib/useOnline'
 import { RecentsPage } from './RecentsPage'
 import { Sidebar } from './Sidebar'
 import { TopBar, type Crumb } from './TopBar'
-import { usePreference } from './usePreference'
+import { usePreference } from '@/lib/usePreference'
 import { findInRegistry, useRegistry, type RegistryApp } from './useRegistry'
 import './shell.css'
 

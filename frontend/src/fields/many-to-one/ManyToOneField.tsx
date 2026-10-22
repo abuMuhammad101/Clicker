@@ -94,7 +94,7 @@ export function ManyToOneField({
             aria-invalid={!!error}
             disabled={disabled}
             className={cn(
-              'h-[var(--control-height)] w-full justify-between font-normal text-[length:var(--text-base)]',
+              'h-[var(--control-height)] min-w-0 flex-1 justify-between font-normal text-[length:var(--text-base)]',
               !shownLabel && 'text-muted-foreground',
               forceFocused && FORCE_FOCUS_CLASSES,
             )}
