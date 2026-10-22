@@ -1106,3 +1106,25 @@ micro-interactions, record-changed signal).
 6. A manual light/dark switch in the user menu, stored as a preference.
 7. Currency prefix and a date picker, when the first module needs them.
 8. Replace the placeholder brand mark.
+
+---
+
+## 2026-10-22 | office | design pass: Hassan's first review (8 notes)
+
+Hassan signed in and reviewed the real app. Each note, and what changed:
+
+1. **Save in a peek returns to view.** `PeekHost` drops the layer from edit mode when an existing record saves (a new record still moves to its real URL as before).
+2. **Inconsistent spacing.** The drawer's bar, title, section labels and fields now share one left edge (`--form-pad-x`, set by the container; the form reads it). The sidebar gets space between Recent and the first section.
+3. **Collapsed rail opens on hover, with resistance.** `useHoverIntent`: the pointer must rest 320ms (mouse only, no button held) to open, and be away 260ms to close; keyboard focus opens it at once. It floats over the page (a slot holds the rail's 48px in the layout) so nothing reflows. The toggle now means "pin open".
+4. **Drawer content.** Read-only forms are a quiet label/value list (help text and the required mark hidden when viewing, Yes/No as a mark and a word, model icon in the header). Editing in the drawer is stacked.
+5. **Main screens.** The table is a card on the ground. Search is a tinted well that takes the accent outline and more width on focus, with a "/" hint and a "/" shortcut. New table controls: row density (compact / default / comfortable, the existing tokens), a column chooser, reload. Density and hidden columns are per-user server preferences (`list.<app>.<model>`).
+6. **Inline edit had no visible save.** The editor now states its two ways out under the cell, Cancel (Esc) and Save (Enter), and a saved edit raises "City updated · Undo". Clicks inside the editor no longer open the row's peek.
+7. **Skeletons.** The shadcn skeleton was invisible on the ground and only pulsed. It is now a visible base with a sweeping highlight (`--skeleton-*` tokens), still under reduced motion; Recents' loading state is a table-shaped skeleton. CLAUDE.md records the one exception to "nothing animates on its own".
+8. **Form.** Fields are stacked, in two columns once the sheet is wide enough (a container query on the sheet), long text spans both, a checkbox reads as "[ ] Active". The layout is owned by the form through custom properties; containers only choose width and padding. Also from Hassan's screenshots: "Set SKU…" keeps acronyms, decimals show `0.00` instead of a right-aligned sentence, the picker no longer pushes its open arrow outside its column.
+
+### Findings and gaps
+
+- **"Explore Mobbin" was not possible.** The links still return 403 and there is no Mobbin tool in this session. The drawer, form and table controls are designed from the principles in `DESIGN_REFERENCES.md` and the screens as Hassan described them; they have not been checked against real examples. Pasting Mobbin screenshots would let me do that.
+- **Table filters were not built.** The list API has no filter parameter, so a filter control would need a backend change first. Hassan should decide whether that is wanted.
+- **Not verified:** the hover-intent delay felt with a real mouse, any transition or the skeleton sweep (the pane does not run them), the Columns popover's look beyond one frame, the form at 1024, and the drawer's edit mode at the new gutter.
+- The vite dev server reloads the whole page on most edits, which resets the stub; every check re-booted it.
