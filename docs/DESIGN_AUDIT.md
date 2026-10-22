@@ -46,7 +46,7 @@ Run 2026-10-22. This is the "before". Screenshots are in `docs/design/before/`.
 ### List
 
 15. **Columns have fixed widths that don't respond.** At 1440 they leave ~170px of dead space after the last column; at 1024 with the rail they **overflow: the Country column is clipped and a horizontal scrollbar appears** (`1024-list-contacts.jpg`). The same renderer is wrong at both ends.
-16. **Same uppercase-header habit, and the only header affordance is a sort arrow.** No type icons in headers (Cofounder's table), no resize hint.
+16. **The only header affordance is a sort arrow.** No type icons in headers (Cofounder's table), no resize hint. (Correction: I first wrote that list headers were uppercase. They are sentence case already; the capitals are on Recents' headers and the form's section labels only.)
 17. **Numbers are not yet the hero.** Sales price right-aligns, but there is no muted-decimal treatment (the gallery shows `1,234.50` and `-42.50` in one weight and one grey). In the stub every price is empty, so the column is a column of em dashes; I couldn't judge real money. Flagging that this is unverified, not fine.
 18. **Every row is a tab stop.** `tabIndex={0}` on each virtual row means a 300-row list is 300 Tab presses. Arrow-key row navigation (one tab stop, arrows inside) is the right model and is absent.
 19. **Row affordance is only a hover tint.** Nothing says a row opens a record or that there is anything else to do with it.

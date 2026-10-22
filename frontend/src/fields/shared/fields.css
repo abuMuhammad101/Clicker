@@ -33,6 +33,7 @@
 [data-slot='textarea'] {
   height: var(--control-height);
   font-size: var(--text-base);
+  border-radius: var(--radius);
 }
 
 [data-slot='textarea'] {
@@ -41,7 +42,7 @@
 }
 
 /*
- * Hover. The stroke steps from --border to --border-strong; nothing else
+ * Hover. The stroke steps from --border-control to --border-control-hover; nothing else
  * moves. Skipped for states where the border already means something
  * (focused, error, checked) or where the control can't be used (disabled,
  * readonly). The transition covers the focus halo too, so hover → focus is
@@ -73,7 +74,7 @@
     [data-state='checked'],
     [aria-expanded='true']
   ) {
-  border-color: var(--border-strong);
+  border-color: var(--border-control-hover);
 }
 
 /*
@@ -119,4 +120,24 @@
 [data-slot='popover-trigger'][aria-invalid='true'],
 [data-slot='input-group']:has([aria-invalid='true']) {
   --tw-ring-shadow: 0 0 0 var(--focus-ring-width) var(--tw-ring-color);
+}
+
+/*
+ * Disabled. shadcn tints the disabled fill from --input at 50%, and --input
+ * is now the control edge (a mid grey), so the tint went heavy. State it
+ * directly instead: a sunken fill, a hairline edge, text that stays readable
+ * (muted, not faded) — "why can't I edit this?" is the question a disabled
+ * field has to answer, so the value must still be legible. Readonly differs:
+ * it has no control at all.
+ */
+[data-slot='input']:disabled,
+[data-slot='textarea']:disabled,
+[data-slot='select-trigger'][data-disabled],
+[data-slot='select-trigger']:disabled,
+[data-slot='popover-trigger'][role='combobox']:disabled {
+  background-color: var(--surface-sunken);
+  border-color: var(--border);
+  color: var(--text-muted);
+  opacity: 1;
+  cursor: not-allowed;
 }

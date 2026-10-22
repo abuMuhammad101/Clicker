@@ -5,107 +5,132 @@
    on screen. Every value here is inherited by every generated screen, so
    changes are cheap now and expensive later.
 
-   Typeface: IBM Plex Sans (UI), IBM Plex Mono (identifiers and codes only)
-   Neutrals: cool-cast greys, drawn from IBM Carbon, pairs with Plex by design
+   Typeface: Inter (UI), IBM Plex Mono (identifiers and codes only),
+             Instrument Serif (the home greeting, once)
+   Neutrals: OKLCH hue 275, chroma 0.004–0.016. A faint violet cast so the
+             accent sits inside the greys instead of on top of them.
    Accent:   ink violet — chosen because green/amber/red carry data meaning
              in status chips and the accent must not compete with them
+   Modes:    light (:root) and dark (:root[data-theme='dark']). Dark raises
+             surfaces instead of shadowing them.
+
+   Every text pairing was contrast-checked (WCAG 2.x); the numbers are in
+   docs/DESIGN_SYSTEM.md.
    ========================================================================== */
 
 :root {
+  color-scheme: light;
+
   /* ---------- Typeface ---------- */
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-display: 'Instrument Serif', Georgia, serif;
 
   /* ---------- Type scale ----------
      13px body is the ERP sweet spot. Small enough for density, large enough
-     for an eight-hour day. Everything else is derived from it. */
-  --text-micro: 11px;    /* column headers, chip labels, helper text */
-  --text-sm: 12px;       /* list cells, secondary text */
-  --text-base: 13px;     /* body, form inputs, default */
-  --text-md: 14px;       /* emphasised body */
-  --text-lg: 16px;       /* section headings */
-  --text-xl: 19px;       /* page titles */
-  --text-2xl: 24px;      /* rare — empty states, onboarding */
+     for an eight-hour day. Everything else is derived from it. Headers are
+     sentence case, 12px / 500 / muted — not capitals. */
+  --text-micro: 11px; /* helper text, chip labels */
+  --text-sm: 12px; /* list cells, column headers, secondary text */
+  --text-base: 13px; /* body, form inputs, default */
+  --text-md: 14px; /* emphasised body */
+  --text-lg: 16px; /* section headings */
+  --text-xl: 20px; /* page titles */
+  --text-2xl: 28px; /* empty states, onboarding */
+  --text-display: 34px; /* the home greeting. Serif. Once. */
 
   --leading-tight: 1.25;
   --leading-normal: 1.45;
   --leading-relaxed: 1.6;
 
-  --tracking-tight: -0.011em;   /* applied at 16px and above */
+  --tracking-tight: -0.011em; /* applied at 16px and above */
   --tracking-normal: 0;
-  --tracking-wide: 0.01em;      /* micro text only, aids legibility at 11px */
+  --tracking-wide: 0.01em;
 
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
 
-  /* ---------- Neutrals ---------- */
-  --white: #ffffff;
-  --grey-05: #f7f8f9;
-  --grey-10: #f2f4f6;
-  --grey-15: #eaecef;
-  --grey-20: #dde1e6;
-  --grey-30: #c1c7cd;
-  --grey-40: #a2a9b0;
-  --grey-50: #878d96;
-  --grey-60: #697077;
-  --grey-70: #4d5358;
-  --grey-80: #343a3f;
-  --grey-90: #21272a;
-  --grey-100: #121619;
+  /* ---------- Neutral ramp ---------- */
+  --n-0: #ffffff;
+  --n-25: #f9fafd;
+  --n-50: #f4f5fa;
+  --n-100: #edeef3;
+  --n-150: #e4e6ec;
+  --n-200: #dcdee4;
+  --n-300: #c8cad1;
+  --n-400: #a2a4ac;
+  --n-500: #7d8089;
+  --n-600: #60636d;
+  --n-700: #454751;
+  --n-800: #2b2d36;
+  --n-900: #1b1c24;
+  --n-950: #0e0f15;
 
   /* ---------- Semantic surface & text ---------- */
-  --surface: var(--white);
-  --surface-sunken: var(--grey-05);
-  --surface-hover: var(--grey-10);
-  --surface-selected: #eeedfb;
-  --surface-overlay: var(--white);
+  --ground: var(--n-25); /* the canvas behind panels */
+  --surface: var(--n-0);
+  --surface-sunken: var(--n-50);
+  --surface-hover: var(--n-50);
+  --surface-selected: #ecefff;
+  --surface-overlay: var(--n-0);
+  --scrim: rgb(14 15 21 / 0.32);
 
-  --border-subtle: var(--grey-15);
-  --border: var(--grey-20);
-  --border-strong: var(--grey-30);
+  /* Hairlines are decorative and stay quiet. The control edge is not: it is
+     what identifies an input, so it clears 3:1 (WCAG 1.4.11). */
+  --border-subtle: var(--n-100);
+  --border: var(--n-200);
+  --border-strong: var(--n-300);
+  --border-control: #8a8c94;
+  --border-control-hover: #60636d;
 
-  --text: var(--grey-90);
-  --text-secondary: var(--grey-70);
-  --text-muted: var(--grey-60);
-  --text-disabled: var(--grey-40);
-  --text-on-accent: var(--white);
+  --text: var(--n-900);
+  --text-secondary: var(--n-700);
+  --text-muted: var(--n-600);
+  --text-disabled: var(--n-400);
+  --text-on-accent: #ffffff;
 
   /* ---------- Accent ---------- */
   --accent: #4a3fcf;
   --accent-hover: #3d33b5;
   --accent-active: #332a99;
   --accent-subtle: #eeedfb;
-  --accent-border: #c9c5f2;
-  --focus-ring: #4a3fcf;
-  --focus-ring-offset: var(--white);
+  --accent-border: #c4cbf5;
+  --focus-ring: var(--accent);
+  --focus-ring-offset: var(--surface);
   /* Soft halo outside the focused control's border. The border itself turns
      --focus-ring; the halo only supports it, so it stays thin and faint. */
   --focus-ring-width: 2px;
-  --focus-halo: rgb(74 63 207 / 0.16);
+  --focus-halo: rgb(74 63 207 / 0.18);
 
   /* ---------- Status ----------
      These carry meaning. They are data, not decoration. Each has a text
      colour that passes contrast on its own subtle background. */
-  --positive: #0e7c5a;
-  --positive-subtle: #e3f5ee;
-  --positive-border: #a7ddc9;
+  --positive: #007145;
+  --positive-subtle: #e3faed;
+  --positive-border: #b6e4ca;
 
-  --warning: #a45c07;
-  --warning-subtle: #fdf1e0;
-  --warning-border: #f0cfa0;
+  --warning: #874e00;
+  --warning-subtle: #fff1de;
+  --warning-border: #f2d1ad;
 
-  --danger: #b8322d;
-  --danger-subtle: #fceceb;
-  --danger-border: #eeb8b5;
+  --danger: #963e37;
+  --danger-subtle: #ffece9;
+  --danger-border: #fdc9c2;
+  --danger-solid: #be2323; /* destructive buttons */
 
-  --info: #0f6fa8;
-  --info-subtle: #e5f1f9;
-  --info-border: #a9d0e8;
+  --info: #00649a;
+  --info-subtle: #e2f7ff;
+  --info-border: #b4defc;
 
-  --neutral-chip: var(--grey-60);
-  --neutral-chip-subtle: var(--grey-10);
-  --neutral-chip-border: var(--grey-20);
+  --neutral-chip: var(--n-600);
+  --neutral-chip-subtle: var(--n-50);
+  --neutral-chip-border: var(--n-200);
+
+  /* ---------- Toast ----------
+     Inverted, so it reads as the system speaking, not a page element. */
+  --toast-bg: var(--n-900);
+  --toast-fg: var(--n-0);
 
   /* ---------- Spacing ----------
      4px base. The small end is used far more than the large end, which is
@@ -123,18 +148,20 @@
   --space-10: 40px;
   --space-11: 48px;
 
+  --page-gutter: var(--space-8);
+  --content-max: 1120px;
+
   /* ---------- Radii ----------
      Small. Large radii read as consumer software and waste vertical space
-     at row scale. */
-  --radius-sm: 3px;
-  --radius: 5px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
+     at row scale. Nothing above 12px except pills. */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
   --radius-full: 9999px;
 
   /* ---------- Control heights ----------
-     The single most consequential density decision. 32px default gives a
-     comfortable target without wasting a row. */
+     The single most consequential density decision. */
   --control-height-sm: 24px;
   --control-height: 30px;
   --control-height-lg: 36px;
@@ -156,26 +183,36 @@
   --column-default-width: 180px;
 
   --row-border: var(--border-subtle);
-  --row-hover: var(--grey-05);
+  --row-hover: var(--surface-hover);
   --row-selected: var(--surface-selected);
-  --row-selected-hover: #e5e3f8;
+  --row-selected-hover: #e3e8ff;
 
   /* No zebra striping. Hairline row borders read cleaner at density and
      don't fight with status chips for attention. */
 
   /* ---------- Elevation ----------
-     One shadow, used sparingly, for things that genuinely float. Cards do
-     not get shadows — borders are enough and cost no vertical space. */
-  --shadow-popover: 0 4px 12px -2px rgba(18, 22, 25, 0.12),
-                    0 0 0 1px rgba(18, 22, 25, 0.06);
-  --shadow-modal: 0 16px 48px -8px rgba(18, 22, 25, 0.2),
-                  0 0 0 1px rgba(18, 22, 25, 0.06);
+     Cards do not get shadows — borders are enough and cost no vertical
+     space. Three things genuinely float. */
+  --shadow-popover: 0 6px 16px -4px rgb(14 15 21 / 0.14), 0 0 0 1px rgb(14 15 21 / 0.06);
+  --shadow-drawer: -12px 0 32px -12px rgb(14 15 21 / 0.18);
+  --shadow-toast: 0 8px 24px -6px rgb(14 15 21 / 0.28);
+  --shadow-modal: 0 16px 48px -8px rgb(14 15 21 / 0.2), 0 0 0 1px rgb(14 15 21 / 0.06);
 
   /* ---------- Motion ----------
-     Only in response to user action. Nothing animates on its own. */
-  --duration-fast: 90ms;
-  --duration: 140ms;
+     Only in response to user action. Nothing animates on its own.
+       instant  hover, press, focus: must feel immediate
+       base     fades, state changes, value cross-fades
+       slow     things that travel: drawer, save bar, toast */
+  --duration-instant: 100ms;
+  --duration-base: 160ms;
+  --duration-slow: 240ms;
+  --duration-fast: var(--duration-instant);
+  --duration: var(--duration-base);
   --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1); /* arriving: fast start, soft landing */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1); /* leaving: gentle start, quick exit */
+  --travel-sm: 8px; /* save bar, toast */
+  --travel-drawer: 24px; /* the peek slides this far and fades, not its width */
 
   /* ---------- Layout ---------- */
   --sidebar-width: 232px;
@@ -185,10 +222,88 @@
   --form-field-max-width: 420px;
 }
 
+/* ---------- Dark ----------
+   Raised surfaces get lighter, not shadowed. Borders do the separating. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --n-0: #15161b;
+  --n-25: #0e0f13;
+  --n-50: #1c1e23;
+  --n-100: #25262c;
+  --n-150: #2e3037;
+  --n-200: #45474f;
+  --n-300: #61636b;
+  --n-400: #83868f;
+  --n-500: #a2a4ac;
+  --n-600: #bcbdc4;
+  --n-700: #d6d7dd;
+  --n-800: #eaebef;
+  --n-900: #f6f7f9;
+  --n-950: #ffffff;
+
+  --ground: #0e0f13;
+  --surface: #15161b;
+  --surface-sunken: #1c1e23;
+  --surface-hover: #1c1e23;
+  --surface-selected: #1d2035;
+  --surface-overlay: #1c1e23;
+  --scrim: rgb(0 0 0 / 0.55);
+
+  --border-subtle: #25262c;
+  --border: #2e3037;
+  --border-strong: #45474f;
+  --border-control: #6f7179;
+  --border-control-hover: #9a9ca4;
+
+  --text: #f6f7f9;
+  --text-secondary: #d6d7dd;
+  --text-muted: #a2a4ac;
+  --text-disabled: #61636b;
+  --text-on-accent: #0e0f13;
+
+  --accent: #8991ff;
+  --accent-hover: #9ea5ff;
+  --accent-active: #b3b9ff;
+  --accent-subtle: #202343;
+  --accent-border: #373b76;
+  --focus-halo: rgb(137 145 255 / 0.28);
+
+  --positive: #68d7a1;
+  --positive-subtle: #0e3020;
+  --positive-border: #145538;
+  --warning: #eeb154;
+  --warning-subtle: #372508;
+  --warning-border: #604008;
+  --danger: #ff9b93;
+  --danger-subtle: #3e1e1c;
+  --danger-border: #6c3531;
+  --danger-solid: #e5534b;
+  --info: #66c8ff;
+  --info-subtle: #0e2c3f;
+  --info-border: #144d6e;
+
+  --row-selected-hover: #242743;
+
+  --toast-bg: #f6f7f9;
+  --toast-fg: #0e0f13;
+
+  --shadow-popover: 0 0 0 1px rgb(255 255 255 / 0.08), 0 8px 24px -6px rgb(0 0 0 / 0.6);
+  --shadow-drawer: -12px 0 32px -12px rgb(0 0 0 / 0.6);
+  --shadow-toast: 0 8px 24px -6px rgb(0 0 0 / 0.6);
+  --shadow-modal: 0 0 0 1px rgb(255 255 255 / 0.08), 0 16px 48px -8px rgb(0 0 0 / 0.7);
+}
+
+/* Movement goes; a short fade stays, so a state change still reads. */
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration-fast: 0ms;
-    --duration: 0ms;
+    --duration-instant: 0ms;
+    --duration: 60ms;
+    --duration-base: 60ms;
+    --duration-slow: 60ms;
+    --travel-sm: 0px;
+    --travel-drawer: 0px;
   }
 }
 
@@ -213,19 +328,19 @@
   --primary: var(--accent);
   --primary-foreground: var(--text-on-accent);
 
-  --secondary: var(--grey-10);
+  --secondary: var(--n-50);
   --secondary-foreground: var(--text);
 
-  --muted: var(--grey-05);
+  --muted: var(--n-25);
   --muted-foreground: var(--text-muted);
 
   --accent-bg: var(--surface-hover);
   --accent-foreground: var(--text);
 
   --destructive: var(--danger);
-  --destructive-foreground: var(--white);
+  --destructive-foreground: var(--n-0);
 
-  --input: var(--border);
+  --input: var(--border-control);
   --ring: var(--focus-ring);
 
   /* Tailwind v4's radius theme keys are unprefixed — --radius-sm,
@@ -236,6 +351,7 @@
      above. These give the Tailwind theme layer a same-value, differently
      named source to point at instead. */
   --shadcn-radius-sm: var(--radius-sm);
-  --shadcn-radius-md: var(--radius-md);
-  --shadcn-radius-lg: var(--radius-lg);
+  --shadcn-radius-md: var(--radius);
+  --shadcn-radius-lg: var(--radius-md);
+  --shadcn-radius-xl: var(--radius-lg);
 }

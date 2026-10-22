@@ -2,7 +2,14 @@
 @import '../../tokens.css';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+@import '@fontsource/instrument-serif/400.css';
 @import './fields/shared/fields.css';
+
+/* shadcn's `dark:` utilities follow the same switch as tokens.css. */
+@custom-variant dark (&:is([data-theme='dark'] *));
 
 *,
 *::before,
@@ -22,7 +29,9 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--text);
-  background: var(--surface-sunken);
+  background: var(--ground);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 code,
@@ -74,7 +83,7 @@ pre {
   --radius-sm: var(--shadcn-radius-sm);
   --radius-md: var(--shadcn-radius-md);
   --radius-lg: var(--shadcn-radius-lg);
-  --radius-xl: var(--shadcn-radius-lg);
+  --radius-xl: var(--shadcn-radius-xl);
 }
 
 @layer base {
