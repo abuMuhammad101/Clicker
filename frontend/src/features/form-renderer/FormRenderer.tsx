@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +65,8 @@ interface FormRendererProps {
   onLabelChange?: (label: string | null) => void
   /** The form's dirty/saving state and its commands; null once it's gone. */
   onStateChange?: (state: FormState | null) => void
+  /** Shown before the title (an icon or avatar). The container's, not the form's. */
+  leading?: ReactNode
   /**
    * `inline` (default): Save and Discard sit in the form's own header.
    * `external`: the container draws them (see onStateChange), and the form
@@ -93,6 +95,7 @@ function FormSheet({
   onSaved,
   onLabelChange,
   onStateChange,
+  leading,
   actions,
   onRetry,
 }: FormRendererProps & { onRetry: () => void }) {
@@ -157,6 +160,7 @@ function FormSheet({
       onSaved={onSaved}
       onLabelChange={onLabelChange}
       onStateChange={onStateChange}
+      leading={leading}
       actions={actions}
     />
   )
@@ -202,6 +206,7 @@ function EditableForm({
   onSaved,
   onLabelChange,
   onStateChange,
+  leading,
   actions = 'inline',
 }: {
   schema: ModelSchema
@@ -212,6 +217,8 @@ function EditableForm({
   onSaved?: (record: RecordEnvelope) => void
   onLabelChange?: (label: string | null) => void
   onStateChange?: (state: FormState | null) => void
+  /** Shown before the title (an icon or avatar). The container's, not the form's. */
+  leading?: ReactNode
   actions?: 'inline' | 'external'
 }) {
   const viewing = mode === 'view'
@@ -397,6 +404,7 @@ function EditableForm({
       noValidate
     >
       <header className="form-header">
+        {leading && <div className="form-header__lead">{leading}</div>}
         <div className="form-header__text">
           <h1 className="form-header__title" title={record?.display}>
             {record ? record.display : `New ${schema.verbose_name}`}

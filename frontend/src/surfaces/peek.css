@@ -111,6 +111,7 @@
   --form-sheet-border: 0;
   --form-sheet-radius: 0;
   --form-sheet-max-width: none;
+  --form-header-position: sticky;
 }
 
 .peek__layer {
@@ -121,4 +122,32 @@
 .peek__kind-icon {
   width: 14px;
   height: 14px;
+}
+
+/* ---------- Identity and footer: what makes the drawer feel anchored ---------- */
+.peek__avatar {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.peek__avatar-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Pinned to the bottom edge, outside the scrolling body. */
+.peek__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--form-pad-x);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }

@@ -178,25 +178,6 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                 </span>
               )}
               <span className="peek__spacer" />
-              {!topEditing && (
-                <Button
-                  variant="outline"
-                  onClick={() => setEditing((current) => new Set(current).add(topKey))}
-                  className="h-[var(--control-height-sm)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
-                >
-                  Edit
-                </Button>
-              )}
-              {!topIsNew && (
-                <Button
-                  variant="ghost"
-                  onClick={openAsPage}
-                  className="h-[var(--control-height-sm)] gap-[var(--space-3)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
-                >
-                  Open as page
-                  <kbd className="kbd">{shortcutHint()}</kbd>
-                </Button>
-              )}
               <button type="button" className="peek__close" onClick={close} aria-label="Close" title="Close (Esc)">
                 <X className="size-4" aria-hidden />
               </button>
@@ -213,6 +194,7 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                   <PeekLayer
                     layerKey={key}
                     target={target}
+                    icon={apps ? findInRegistry(apps, target.app_label, target.model)?.model.icon : undefined}
                     visible={isTop}
                     mode={target.id === 'new' || editing.has(key) ? 'edit' : 'view'}
                     onLabel={setLabel}
@@ -241,6 +223,44 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
               )
             })}
           </div>
+
+          {/* Anchored: the way out of this view, always in the same place. While
+              the form is dirty the header carries Save and Discard instead. */}
+          {!unsaved && !topIsNew && (
+            <footer className="peek__footer">
+              <Button
+                variant="ghost"
+                onClick={openAsPage}
+                className="h-[var(--control-height)] gap-[var(--space-3)] px-[var(--control-padding-x)]"
+              >
+                Open as page
+                <kbd className="kbd">{shortcutHint()}</kbd>
+              </Button>
+              <span className="peek__spacer" />
+              {topEditing ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setEditing((current) => {
+                      const next = new Set(current)
+                      next.delete(topKey)
+                      return next
+                    })
+                  }
+                  className="h-[var(--control-height)]"
+                >
+                  Done
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => setEditing((current) => new Set(current).add(topKey))}
+                  className="h-[var(--control-height)]"
+                >
+                  Edit
+                </Button>
+              )}
+            </footer>
+          )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>
@@ -250,6 +270,7 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
 function PeekLayer({
   layerKey,
   target,
+  icon,
   visible,
   mode,
   onLabel,
@@ -259,6 +280,7 @@ function PeekLayer({
 }: {
   layerKey: string
   target: RecordTarget
+  icon?: string | null
   visible: boolean
   mode: 'edit' | 'view'
   onLabel: (key: string, label: string | null) => void
@@ -276,6 +298,11 @@ function PeekLayer({
         model={target.model}
         recordId={target.id === 'new' ? undefined : target.id}
         mode={mode}
+        leading={
+          <span className="peek__avatar">
+            <ModelIcon name={icon} className="peek__avatar-icon" />
+          </span>
+        }
         onLabelChange={onLabelChange}
         onStateChange={onStateChange}
         actions="external"

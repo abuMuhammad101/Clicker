@@ -45,7 +45,54 @@
   min-height: 24px;
 }
 
+/* Reading a record: each section is a card on the ground, a row per field,
+   a hairline between rows. Structure you can scan, not a form with its
+   inputs taken away. */
+.form-sheet--view {
+  background: var(--ground);
+}
+
+.form-sheet--view .form-header {
+  border-bottom: 1px solid var(--border);
+}
+
+.form-sheet--view .form-body {
+  padding-top: var(--space-5);
+}
+
+.form-sheet--view .form-section + .form-section {
+  margin-top: var(--space-6);
+}
+
+.form-sheet--view .form-section__label {
+  margin: 0 0 var(--space-3);
+  padding: 0 var(--space-1);
+  border-bottom: 0;
+}
+
+.form-sheet--view .form-section__fields {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.form-sheet--view .form-field {
+  padding: var(--space-3) var(--space-5);
+}
+
+.form-sheet--view .form-field + .form-field {
+  border-top: 1px solid var(--border-subtle);
+}
+
 .form-header {
+  /* A container may pin the header (the drawer does) so the record's name
+     stays in view while its fields scroll. */
+  position: var(--form-header-position, static);
+  top: 0;
+  z-index: 2;
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -55,7 +102,14 @@
 }
 
 .form-header__text {
+  flex: 1 1 auto;
   min-width: 0;
+}
+
+.form-header__lead {
+  display: flex;
+  flex: none;
+  margin-right: var(--space-5);
 }
 
 /* A record name can be any length; it truncates here rather than pushing

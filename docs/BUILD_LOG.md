@@ -1128,3 +1128,10 @@ Hassan signed in and reviewed the real app. Each note, and what changed:
 - **Table filters were not built.** The list API has no filter parameter, so a filter control would need a backend change first. Hassan should decide whether that is wanted.
 - **Not verified:** the hover-intent delay felt with a real mouse, any transition or the skeleton sweep (the pane does not run them), the Columns popover's look beyond one frame, the form at 1024, and the drawer's edit mode at the new gutter.
 - The vite dev server reloads the whole page on most edits, which resets the stub; every check re-booted it.
+
+### Drawer, second pass (Hassan: "still not well designed, make it look anchored")
+
+- Structure: a fixed bar (what this is, close), a **pinned identity header** (a 36px accent tile with the module icon, the record's name, `Contacts #1`), a scrolling body, and a **pinned footer** (Open as page on the left; Edit, or Done while editing, on the right). While a form is dirty the bar carries Save/Discard instead and the footer steps out of the way.
+- Reading a record: each section is a card on the ground with a row per field and hairlines between. Edit mode stays stacked on white.
+- Renderer capability added, as a prop: `FormRenderer` takes `leading` (a node shown before the title) and honours `--form-header-position` so a container can pin the header. The icon comes from the registry in the container; the form knows nothing about it.
+- Verified in the pane: header stays pinned after scrolling 300px, footer shows Edit then Done, dirty state swaps the bar and removes the footer. Not verified: edit mode's look at the new structure (the screenshot glitched), any motion, the drawer at 1024.
