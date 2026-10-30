@@ -297,6 +297,7 @@ function PeekLayer({
         appLabel={target.app_label}
         model={target.model}
         recordId={target.id === 'new' ? undefined : target.id}
+        prefill={target.prefill}
         mode={mode}
         leading={
           <span className="peek__avatar">

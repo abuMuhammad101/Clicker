@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
+import { formatDateTime, relativeTime } from '@/lib/dates'
 import { navigate, useNavigationBlocker } from '@/lib/router'
 import { toast } from '@/lib/toast'
 import { emitRecordChanged, useRecordChanged } from '@/records'
@@ -21,6 +22,7 @@ import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
+import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
 
 /**
@@ -70,6 +72,12 @@ interface FormRendererProps {
   /** Shown before the title (an icon or avatar). The container's, not the form's. */
   leading?: ReactNode
   /**
+   * A new record's starting values, shown locked (e.g. `{parent: '5'}` for a
+   * person added under a company). Raw strings, as they arrive in a URL; the
+   * form converts each by its field's type. Ignored for an existing record.
+   */
+  prefill?: Record<string, string>
+  /**
    * `inline` (default): Save and Discard sit in the form's own header.
    * `external`: the container draws them (see onStateChange), and the form
    * shows only its "Saved" confirmation.
@@ -98,6 +106,7 @@ function FormSheet({
   onLabelChange,
   onStateChange,
   leading,
+  prefill,
   actions,
   onRetry,
 }: FormRendererProps & { onRetry: () => void }) {
@@ -172,9 +181,24 @@ function FormSheet({
       onLabelChange={onLabelChange}
       onStateChange={onStateChange}
       leading={leading}
+      prefill={recordState.record ? undefined : prefill}
       actions={actions}
     />
   )
+}
+
+/** A prefill's raw strings as values of each field's own type. */
+function coercePrefill(schema: ModelSchema, prefill: Record<string, string> | undefined) {
+  if (!prefill) return {}
+  const values: Record<string, unknown> = {}
+  for (const [name, raw] of Object.entries(prefill)) {
+    const field = schema.fields[name]
+    if (!field) continue
+    if (field.type === 'many_to_one' || field.type === 'integer') values[name] = Number(raw)
+    else if (field.type === 'boolean') values[name] = raw === 'true'
+    else values[name] = raw
+  }
+  return values
 }
 
 function forCreate(schema: ModelSchema): ModelSchema {
@@ -189,14 +213,14 @@ function forCreate(schema: ModelSchema): ModelSchema {
   }
 }
 
-function initialValues(schema: ModelSchema, record: RecordEnvelope | null) {
+function initialValues(schema: ModelSchema, record: RecordEnvelope | null, prefill: Record<string, unknown> = {}) {
   if (record) return record.values
-  // A new record starts from the schema's defaults. A boolean with no
-  // default is false — a checkbox has no "empty".
+  // A new record starts from the schema's defaults, then any prefill. A
+  // boolean with no default is false — a checkbox has no "empty".
   return Object.fromEntries(
     Object.entries(schema.fields).map(([name, field]) => [
       name,
-      field.default ?? (field.type === 'boolean' ? false : null),
+      name in prefill ? prefill[name] : (field.default ?? (field.type === 'boolean' ? false : null)),
     ]),
   )
 }
@@ -230,6 +254,7 @@ function EditableForm({
   onLabelChange,
   onStateChange,
   leading,
+  prefill,
   actions = 'inline',
 }: {
   schema: ModelSchema
@@ -242,21 +267,26 @@ function EditableForm({
   onStateChange?: (state: FormState | null) => void
   /** Shown before the title (an icon or avatar). The container's, not the form's. */
   leading?: ReactNode
+  prefill?: Record<string, string>
   actions?: 'inline' | 'external'
 }) {
+  // A new record's prefilled values start it and stay locked: the form was
+  // opened *for* that parent, so changing it here would be a different act.
+  const [prefillValues] = useState(() => coercePrefill(schema, prefill))
+  const [locked] = useState(() => new Set(initialRecord ? [] : Object.keys(prefillValues)))
   // Read-only when the container asks for it, and always when this user may
   // not edit the record: the schema's `update` action is the API's own answer.
   const canUpdate = schema.actions.update
   const viewing = mode === 'view' || (initialRecord != null && !canUpdate)
   const [record, setRecord] = useState(initialRecord)
   const [values, setValues] = useState<Record<string, unknown>>(() =>
-    initialValues(schema, initialRecord),
+    initialValues(schema, initialRecord, prefillValues),
   )
   // What the form would revert to: the loaded record's values, or a new
   // record's schema defaults. Reset to the server's response on every
   // successful save, which is what makes the form clean again afterward.
   const [baseline, setBaseline] = useState<Record<string, unknown>>(() =>
-    initialValues(schema, initialRecord),
+    initialValues(schema, initialRecord, prefillValues),
   )
   // Labels describe the values as loaded. Once a field is edited its loaded
   // label is stale (a cleared parent must not keep showing the old name),
@@ -294,6 +324,29 @@ function EditableForm({
       return next
     })
   })
+
+  // A prefilled link arrives as a bare id; ask the target's own search for
+  // its name, so a locked "Parent" reads "Acme Corporation", not a number.
+  useEffect(() => {
+    let cancelled = false
+    for (const name of locked) {
+      const field = schema.fields[name]
+      const id = values[name]
+      if (field?.type !== 'many_to_one' || !field.target || typeof id !== 'number') continue
+      apiGet<{ value: number; label: string }[]>(
+        `/data/${field.target.app_label}/${field.target.model}/search/?id=${id}`,
+      )
+        .then((options) => {
+          if (!cancelled && options[0]) setLabels((current) => ({ ...current, [name]: options[0].label }))
+        })
+        .catch(() => undefined)
+    }
+    return () => {
+      cancelled = true
+    }
+    // Only for the prefill the form opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const dirtyFields = dirtyFieldNames(schema, values, baseline)
   const isDirty = dirtyFields.size > 0
@@ -438,6 +491,16 @@ function EditableForm({
           <p className="form-header__meta">
             <span className="form-header__model">{schema.verbose_name_plural}</span>
             {record && <span className="form-header__id">#{record.id}</span>}
+            {record?.meta && (
+              // Relative where it's glanced at; the exact time on hover.
+              <span className="form-header__updated">
+                Updated{' '}
+                <time dateTime={record.meta.updated_at} title={formatDateTime(record.meta.updated_at)}>
+                  {relativeTime(record.meta.updated_at)}
+                </time>
+                {record.meta.updated_by && ` by ${record.meta.updated_by.display_name}`}
+              </span>
+            )}
           </p>
         </div>
         {!viewing && (
@@ -478,8 +541,17 @@ function EditableForm({
         errors={fieldErrors}
         dirtyFields={dirtyFields}
         readOnly={viewing}
+        locked={locked}
+        restricted={record?.restricted}
         onChange={setValue}
       />
+
+      {record && schema.related_lists && schema.related_lists.length > 0 && (
+        <RelatedLists
+          parent={{ app_label: appLabel, model, id: record.id }}
+          lists={schema.related_lists}
+        />
+      )}
 
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent>
@@ -571,6 +643,8 @@ function FormBody({
   errors,
   dirtyFields,
   readOnly,
+  locked,
+  restricted,
   onChange,
   loading,
 }: {
@@ -580,6 +654,10 @@ function FormBody({
   errors: Record<string, string>
   dirtyFields?: Set<string>
   readOnly?: boolean
+  /** Prefilled on a new record: shown, never editable here. */
+  locked?: Set<string>
+  /** Links whose target this user can't see. */
+  restricted?: Record<string, boolean>
   onChange?: (name: string, value: unknown) => void
   loading?: boolean
 }) {
@@ -603,11 +681,12 @@ function FormBody({
                     schema: schema.fields[name],
                     value: values[name] ?? null,
                     displayValue: labels[name] ?? null,
+                    restricted: restricted?.[name] === true,
                     onChange: (value) => onChange?.(name, value),
                     error: errors[name],
                     loading,
                     dirty: dirtyFields?.has(name),
-                    readOnly,
+                    readOnly: readOnly || locked?.has(name),
                   })}
                 </div>
               ))}

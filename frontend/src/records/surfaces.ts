@@ -48,6 +48,8 @@ export interface OpenOptions {
   takeover?: boolean
   /** Open the page surface in another browser tab (cmd/ctrl-click). */
   newBrowserTab?: boolean
+  /** For `new`: values the record starts with, shown locked. */
+  prefill?: Record<string, string>
 }
 
 export const DEFAULT_SURFACE: Surface = 'page'
@@ -63,6 +65,7 @@ export function registerSurface(surface: Surface, handler: SurfaceHandler) {
 
 export function openRecord(model: ModelRef, id: RecordId, options: OpenOptions = {}) {
   const target: RecordTarget = { app_label: model.app_label, model: model.model, id }
+  if (id === 'new' && options.prefill) target.prefill = options.prefill
 
   // A browser tab isn't a Clicker surface; it's the browser being asked to
   // load the page URL. Handled here so callers don't touch `window`.

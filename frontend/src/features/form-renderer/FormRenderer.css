@@ -243,3 +243,57 @@
   font-size: var(--text-base);
   color: var(--text-secondary);
 }
+
+.form-header__updated {
+  color: var(--text-muted);
+}
+
+.form-header__updated::before {
+  content: '·';
+  margin-right: var(--space-3);
+}
+
+/* ---------- Related lists: a record's children, under its fields ---------- */
+.related-lists {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: 0 var(--form-pad-x, var(--space-8)) var(--space-8);
+}
+
+.related-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-bottom: var(--space-4);
+}
+
+.related-list__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.related-list__count {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.related-list__all {
+  display: inline-block;
+  margin-top: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.related-list__all:hover {
+  text-decoration: underline;
+}

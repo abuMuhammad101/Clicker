@@ -12,16 +12,28 @@ import type { RecordTarget } from '@/records'
  */
 export const MAX_PEEK_DEPTH = 3
 const PARAM = 'peek'
-const ENCODED = /^([a-z_]+)\.([a-z_]+)\.(\d+|new)$/
+// `core.contact.12`, or for a new record with prefilled values
+// `core.contact.new?parent=5` (the part after `?` is itself a query string).
+const ENCODED = /^([a-z_]+)\.([a-z_]+)\.(\d+|new)(?:\?(.*))?$/
 
 export function encodeTarget(target: RecordTarget) {
-  return `${target.app_label}.${target.model}.${target.id}`
+  const base = `${target.app_label}.${target.model}.${target.id}`
+  if (target.id === 'new' && target.prefill && Object.keys(target.prefill).length > 0) {
+    return `${base}?${new URLSearchParams(target.prefill).toString()}`
+  }
+  return base
 }
 
 function decodeTarget(text: string): RecordTarget | null {
   const match = ENCODED.exec(text)
   if (!match) return null
-  return { app_label: match[1], model: match[2], id: match[3] === 'new' ? 'new' : Number(match[3]) }
+  const target: RecordTarget = {
+    app_label: match[1],
+    model: match[2],
+    id: match[3] === 'new' ? 'new' : Number(match[3]),
+  }
+  if (target.id === 'new' && match[4]) target.prefill = Object.fromEntries(new URLSearchParams(match[4]))
+  return target
 }
 
 export function readPeekStack(search: string): RecordTarget[] {

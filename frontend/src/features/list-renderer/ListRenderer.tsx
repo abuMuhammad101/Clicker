@@ -52,6 +52,25 @@ interface ListRendererProps {
    * so its container must give it a definite height.
    */
   onLabelChange?: (label: string | null) => void
+  /**
+   * Fixed exact-match filters (`{parent: 5}`): the list shows only matching
+   * records. The API applies them, on fields this user can read only. A
+   * related list under a form is this list with its parent as the filter.
+   */
+  filter?: Record<string, string | number>
+  /** Show these columns instead of the schema's (a related list's own choice). */
+  columns?: string[]
+  /**
+   * `page` (default): toolbar, search, controls, fills its container and
+   * scrolls. `embedded`: just the table, as tall as its rows, at most
+   * `maxRows` of them, for sitting inside something else (a form section).
+   */
+  variant?: 'page' | 'embedded'
+  maxRows?: number
+  /** The matching total, whenever it's known: a container can show a count. */
+  onTotal?: (total: number) => void
+  /** Offered beside the filter it clears (a page list opened filtered). */
+  onClearFilter?: () => void
 }
 
 const features = tableFeatures({ rowSortingFeature, columnSizingFeature, columnResizingFeature })
@@ -72,8 +91,10 @@ const TYPE_WIDTH: Record<string, number> = {
   boolean: 0.5,
   selection: 0.7,
   integer: 0.65,
-  decimal: 0.7,
-  currency: 0.7,
+  decimal: 0.85,
+  // Money carries a symbol and can run to crores: give it room, so a large
+  // amount is never clipped (a right-aligned cell would lose its "Rs" first).
+  currency: 1.05,
   date: 0.7,
   datetime: 0.9,
   phone: 0.85,
@@ -112,6 +133,7 @@ function ListLoader({
   model,
   onLabelChange,
   onRetry,
+  ...options
 }: ListRendererProps & { onRetry: () => void }) {
   const schemaState = useModelSchema(appLabel, model)
 
@@ -146,6 +168,7 @@ function ListLoader({
       appLabel={appLabel}
       model={model}
       onLabelChange={onLabelChange}
+      {...options}
     />
   )
 }
@@ -161,22 +184,43 @@ function ListView({
   appLabel,
   model,
   onLabelChange,
+  filter,
+  columns: columnsOverride,
+  variant = 'page',
+  maxRows,
+  onTotal,
+  onClearFilter,
 }: {
   schema: ModelSchema
   appLabel: string
   model: string
   onLabelChange?: (label: string | null) => void
-}) {
+} & Pick<ListRendererProps, 'filter' | 'columns' | 'variant' | 'maxRows' | 'onTotal' | 'onClearFilter'>) {
+  const embedded = variant === 'embedded'
   const [sorting, setSorting] = useState<SortingState>(() => initialSorting(schema))
 
   // This person's choices for this list (row density, hidden columns), kept
   // on the server so they follow them between machines.
   const prefs = usePreference<ListPrefs>(`list.${appLabel}.${model}`, DEFAULT_LIST_PREFS)
-  const { density, hidden } = { ...DEFAULT_LIST_PREFS, ...prefs.value }
+  const { density, hidden, extra = [] } = { ...DEFAULT_LIST_PREFS, ...prefs.value }
   const visibleColumns = useMemo(() => {
+    // A container's own column choice wins, narrowed to what this user can read.
+    if (columnsOverride) {
+      const chosen = columnsOverride.filter((name) => name in schema.fields)
+      if (chosen.length > 0) return chosen
+    }
     const shown = schema.list.columns.filter((name) => !hidden.includes(name))
-    return shown.length > 0 ? shown : schema.list.columns
-  }, [schema.list.columns, hidden])
+    // Fields the person added, after the declared ones, in schema order.
+    const added = Object.keys(schema.fields).filter(
+      (name) => extra.includes(name) && !schema.list.columns.includes(name),
+    )
+    const all = [...shown, ...added]
+    return all.length > 0 ? all : schema.list.columns
+  }, [schema.list.columns, schema.fields, hidden, extra, columnsOverride])
+  const filterKey = useMemo(
+    () => (filter ? JSON.stringify(Object.fromEntries(Object.entries(filter).map(([k, v]) => [k, String(v)]))) : ''),
+    [filter],
+  )
   const searchRef = useRef<HTMLInputElement>(null)
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
@@ -187,9 +231,10 @@ function ListView({
   }, [searchInput])
 
   useEffect(() => {
+    if (embedded) return
     onLabelChange?.(capitalize(schema.verbose_name_plural))
     return () => onLabelChange?.(null)
-  }, [schema.verbose_name_plural, onLabelChange])
+  }, [schema.verbose_name_plural, onLabelChange, embedded])
 
   const ordering = sorting.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',')
   const { state, getRow, ensureRange, updateRow, replaceRecord, retry } = useRecordWindow(
@@ -197,11 +242,23 @@ function ListView({
     model,
     ordering,
     query,
+    filterKey,
   )
 
+  useEffect(() => {
+    if (state.status === 'ready') onTotal?.(state.total)
+  }, [state, onTotal])
+
   // A record of this model was saved elsewhere (a peek, say): show it as saved.
+  // A record this list doesn't have yet (just created, say a person added
+  // under this company) means the list itself changed: fetch it again.
   useRecordChanged((change) => {
-    if (change.model.app_label === appLabel && change.model.model === model) replaceRecord(change.record)
+    if (change.model.app_label !== appLabel || change.model.model !== model) return
+    const known =
+      state.status === 'ready' &&
+      Object.values(state.pages).some((rows) => rows.some((row) => row.id === change.record.id))
+    if (known) replaceRecord(change.record)
+    else retry()
   })
 
   // Re-render when a peek opens or closes, so the open record's row can say so.
@@ -252,6 +309,7 @@ function ListView({
             schema: field,
             value: record.values[name],
             label: record.labels[name] ?? null,
+            restricted: record.restricted?.[name] === true,
           })
         },
       }
@@ -279,7 +337,7 @@ function ListView({
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer({
-    count: total,
+    count: embedded && maxRows != null ? Math.min(total, maxRows) : total,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => rowHeight,
     overscan: OVERSCAN_ROWS,
@@ -448,12 +506,18 @@ function ListView({
     }
   }
 
+  const shownRows = embedded && maxRows != null ? Math.min(total, maxRows) : total
+
+
   return (
-    <div className="list-page" style={
+    <div
+      className={cn('list-page', embedded && 'list-page--embedded')}
+      style={
         // The default row height is --row-height itself; the others replace it.
-        density === 'default' ? undefined : { ['--row-height' as string]: `var(${DENSITY_TOKEN[density]})` }
+        density === 'default' || embedded ? undefined : { ['--row-height' as string]: `var(${DENSITY_TOKEN[density]})` }
       }
     >
+      {!embedded && (
       <div className="list-toolbar">
         <h1 className="list-toolbar__title">
           {capitalize(plural)}
@@ -470,16 +534,41 @@ function ListView({
           />
           <ListControls
             density={density}
-            onDensity={(next) => prefs.set({ density: next, hidden })}
-            columns={schema.list.columns.map((id) => ({ id, label: schema.fields[id].label }))}
-            hidden={hidden}
-            onToggleColumn={(id) =>
-              prefs.set({
-                density,
-                hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id],
-              })
-            }
-            onResetColumns={() => prefs.set({ density, hidden: [] })}
+            onDensity={(next) => prefs.set({ density: next, hidden, extra })}
+            // Every field this user can read, declared columns first. Long
+            // text and the record id don't make useful columns.
+            columns={[
+              ...schema.list.columns,
+              ...Object.keys(schema.fields).filter(
+                (id) =>
+                  !schema.list.columns.includes(id) &&
+                  schema.fields[id].type !== 'longtext' &&
+                  id !== 'id',
+              ),
+            ].map((id) => ({ id, label: schema.fields[id].label }))}
+            hidden={[
+              ...hidden,
+              ...Object.keys(schema.fields).filter(
+                (id) => !schema.list.columns.includes(id) && !extra.includes(id),
+              ),
+            ]}
+            onToggleColumn={(id) => {
+              if (schema.list.columns.includes(id)) {
+                prefs.set({
+                  density,
+                  extra,
+                  hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id],
+                })
+              } else {
+                prefs.set({
+                  density,
+                  hidden,
+                  extra: extra.includes(id) ? extra.filter((e) => e !== id) : [...extra, id],
+                })
+              }
+            }}
+            onResetColumns={() => prefs.set({ density, hidden: [], extra: [] })}
+            customised={hidden.length > 0 || extra.length > 0}
             onRefresh={retry}
             refreshing={state.status === 'loading'}
           />
@@ -494,7 +583,39 @@ function ListView({
         </div>
       </div>
 
-      <div ref={scrollRef} className="list-scroll">
+      )}
+
+      {!embedded && filter && Object.keys(filter).length > 0 && (
+        <div className="list-filters" role="status">
+          {Object.entries(filter).map(([name, value]) => {
+            const field = schema.fields[name]
+            const first = getRow(0)
+            // A link's name, from the rows themselves; otherwise the value.
+            const shown = (field?.type === 'many_to_one' && first?.labels[name]) || String(value)
+            return (
+              <span key={name} className="list-filters__chip">
+                <span className="list-filters__label">{field?.label ?? name}</span> is <strong>{shown}</strong>
+              </span>
+            )
+          })}
+          {onClearFilter && (
+            <button type="button" className="list-filters__clear" onClick={onClearFilter}>
+              Show all
+            </button>
+          )}
+        </div>
+      )}
+
+      <div
+        ref={scrollRef}
+        className="list-scroll"
+        // Embedded: exactly as tall as its header and rows, no inner scroll.
+        style={
+          embedded
+            ? { height: `calc(var(--table-header-height) + ${Math.max(shownRows, 1)} * var(--row-height) + 2px)`, flex: 'none' }
+            : undefined
+        }
+      >
         <div className="list-table" role="table" aria-rowcount={total} style={{ width: totalWidth }}>
           <div className="list-header" role="row">
             {headers.map((header) => {
@@ -555,7 +676,11 @@ function ListView({
             </div>
           )}
 
-          {state.status === 'ready' && total === 0 && (
+          {embedded && state.status === 'ready' && total === 0 && (
+            <p className="list-embedded-empty">None yet.</p>
+          )}
+
+          {!embedded && state.status === 'ready' && total === 0 && (
             <div className="list-state">
               {query ? (
                 <>

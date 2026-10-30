@@ -6,9 +6,11 @@ export interface ListPrefs {
   density: Density
   /** Column ids hidden from the list's declared columns. */
   hidden: string[]
+  /** Readable fields the person added beyond the declared columns. */
+  extra?: string[]
 }
 
-export const DEFAULT_LIST_PREFS: ListPrefs = { density: 'default', hidden: [] }
+export const DEFAULT_LIST_PREFS: ListPrefs = { density: 'default', hidden: [], extra: [] }
 
 export const DENSITY_TOKEN: Record<Density, string> = {
   compact: '--row-height-compact',

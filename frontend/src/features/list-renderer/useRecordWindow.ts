@@ -24,7 +24,14 @@ type State =
  * Any change to ordering or query starts over from nothing: pages fetched
  * under one sort are meaningless under another.
  */
-export function useRecordWindow(appLabel: string, model: string, ordering: string, query: string) {
+export function useRecordWindow(
+  appLabel: string,
+  model: string,
+  ordering: string,
+  query: string,
+  /** Exact-match field filters (?field=value), applied by the API on readable fields only. */
+  filterKey = '',
+) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   // Bumped on every reset; a response from an older generation is dropped.
@@ -40,9 +47,14 @@ export function useRecordWindow(appLabel: string, model: string, ordering: strin
         offset: String(page * PAGE_SIZE),
       })
       if (query) search.set('q', query)
+      if (filterKey) {
+        for (const [field, value] of Object.entries(JSON.parse(filterKey) as Record<string, string>)) {
+          search.set(field, value)
+        }
+      }
       return `${basePath}?${search.toString()}`
     },
-    [basePath, ordering, query],
+    [basePath, ordering, query, filterKey],
   )
 
   useEffect(() => {

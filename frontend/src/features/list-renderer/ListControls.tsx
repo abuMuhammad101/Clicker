@@ -80,6 +80,7 @@ export function ListControls({
   hidden,
   onToggleColumn,
   onResetColumns,
+  customised,
   onRefresh,
   refreshing,
 }: {
@@ -89,6 +90,8 @@ export function ListControls({
   hidden: string[]
   onToggleColumn: (id: string) => void
   onResetColumns: () => void
+  /** Whether the columns differ from the list's defaults (offers "Reset"). */
+  customised: boolean
   onRefresh: () => void
   refreshing: boolean
 }) {
@@ -141,9 +144,9 @@ export function ListControls({
                 )
               })}
             </ul>
-            {hidden.length > 0 && (
+            {customised && (
               <button type="button" className="list-columns__reset" onClick={onResetColumns}>
-                Show all
+                Reset to default
               </button>
             )}
           </PopoverContent>

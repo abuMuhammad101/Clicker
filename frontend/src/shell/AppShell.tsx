@@ -51,7 +51,7 @@ function initialCollapsed() {
  * the page; the shell, the registry, and the sidebar's state stay put.
  */
 export function AppShell({ user }: { user: User }) {
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const { state: registry, retry } = useRegistry()
   const [collapsed, setCollapsed] = useState(initialCollapsed)
   const [pageLabel, setPageLabel] = useState<string | null>(null)
@@ -135,7 +135,14 @@ export function AppShell({ user }: { user: User }) {
         />
         <OfflineBanner />
         <main className="app-shell__page">
-          <Page pathname={pathname} apps={apps} user={user} onLabelChange={setPageLabel} onFormState={setPageForm} />
+          <Page
+            pathname={pathname}
+            search={search}
+            apps={apps}
+            user={user}
+            onLabelChange={setPageLabel}
+            onFormState={setPageForm}
+          />
         </main>
       </div>
       <PeekHost apps={apps} />
@@ -168,12 +175,14 @@ function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: st
 
 function Page({
   pathname,
+  search,
   apps,
   user,
   onLabelChange,
   onFormState,
 }: {
   pathname: string
+  search: string
   apps: RegistryApp[] | null
   user: User
   onLabelChange: (label: string | null) => void
@@ -199,13 +208,21 @@ function Page({
   // loaded, render optimistically: the renderers have their own errors.)
   if (apps && !findInRegistry(apps, appLabel, model)) return <NotFound />
 
+  // Everything in the query except the peek stack: a list's exact-match
+  // filters (`?parent=5`, from a related list's "View all"), or a new
+  // record's prefilled values. Nothing here knows any field name.
+  const query = Object.fromEntries([...new URLSearchParams(search)].filter(([key]) => key !== 'peek'))
+  const hasQuery = Object.keys(query).length > 0
+
   if (!record) {
     return (
       <ListRenderer
-        key={`${appLabel}/${model}`}
+        key={`${appLabel}/${model}?${new URLSearchParams(query).toString()}`}
         appLabel={appLabel}
         model={model}
         onLabelChange={onLabelChange}
+        filter={hasQuery ? query : undefined}
+        onClearFilter={hasQuery ? () => navigate(pathname) : undefined}
       />
     )
   }
@@ -220,6 +237,7 @@ function Page({
         appLabel={appLabel}
         model={model}
         recordId={id === 'new' ? undefined : id}
+        prefill={id === 'new' && hasQuery ? query : undefined}
         onLabelChange={onLabelChange}
         onStateChange={onFormState}
         actions="external"

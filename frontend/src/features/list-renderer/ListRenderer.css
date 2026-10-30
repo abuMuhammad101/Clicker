@@ -716,3 +716,52 @@
   background: transparent;
   color: var(--text-on-accent);
 }
+
+/* ---------- Embedded (a related list inside a form) ---------- */
+.list-page--embedded {
+  height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.list-embedded-empty {
+  margin: 0;
+  padding: var(--space-4) var(--cell-padding-x);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ---------- A page list opened filtered (a related list's "View all") ---------- */
+.list-filters {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.list-filters__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 24px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-full);
+  background: var(--accent-subtle);
+  color: var(--text);
+}
+
+.list-filters__label {
+  color: var(--text-secondary);
+}
+
+.list-filters__clear {
+  color: var(--accent);
+}
+
+.list-filters__clear:hover {
+  text-decoration: underline;
+}

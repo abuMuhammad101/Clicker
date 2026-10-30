@@ -18,6 +18,12 @@ export type RecordId = number | 'new'
 
 export interface RecordTarget extends ModelRef {
   id: RecordId
+  /**
+   * Only for `new`: field values the new record starts with, which the form
+   * shows locked (an "Add person" under a company prefills `parent`). Raw
+   * strings, as they travel in a URL.
+   */
+  prefill?: Record<string, string>
 }
 
 const LIST_ROUTE = /^\/([a-z_]+)\/([a-z_]+)\/?$/
@@ -28,7 +34,11 @@ export function listPath(model: ModelRef) {
 }
 
 export function recordPath(target: RecordTarget) {
-  return `${listPath(target)}/${target.id}`
+  const path = `${listPath(target)}/${target.id}`
+  if (target.id === 'new' && target.prefill && Object.keys(target.prefill).length > 0) {
+    return `${path}?${new URLSearchParams(target.prefill).toString()}`
+  }
+  return path
 }
 
 export function parseRecordPath(pathname: string): RecordTarget | null {
