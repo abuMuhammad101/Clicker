@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Now
 from django.utils import timezone
 
 
@@ -16,8 +17,11 @@ class ClickerModel(models.Model):
     (PROTECT): deactivate them instead, so history keeps a name.
     """
 
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
-    updated_at = models.DateTimeField(auto_now=True)
+    # db_default as well as the Python default: the database fills these in
+    # for a row inserted by code that doesn't know the columns yet (the other
+    # machine, before it pulls), so the migration is safe while both run.
+    created_at = models.DateTimeField(default=timezone.now, db_default=Now(), editable=False)
+    updated_at = models.DateTimeField(auto_now=True, db_default=Now())
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
