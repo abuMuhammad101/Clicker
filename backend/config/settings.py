@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,8 +28,19 @@ environ.Env.read_env(BASE_DIR.parent / '.env')
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 
+# Which kind of deployment this is: `development` (default) or `production`.
+# Production hardening is switched by this flag, never by DEBUG: a debug flag
+# left off on a laptop must not be what makes cookies secure, and one left on
+# by mistake in production must not quietly turn the hardening off.
+CLICKER_ENV = env('CLICKER_ENV', default='development')
+if CLICKER_ENV not in ('development', 'production'):
+    raise ImproperlyConfigured(f'CLICKER_ENV must be development or production, not {CLICKER_ENV!r}.')
+IS_PRODUCTION = CLICKER_ENV == 'production'
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG', default=False)
+if IS_PRODUCTION and DEBUG:
+    raise ImproperlyConfigured('DEBUG must be off when CLICKER_ENV=production.')
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
 
@@ -56,16 +68,19 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=CORS_ALLOWED_ORI
 # from the same site (one registrable domain) once deployed.
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
-SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = IS_PRODUCTION
 # The CSRF token reaches the frontend in JSON (see accounts/views.py), so the
 # cookie half never needs to be readable by page scripts either.
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = 'Lax'
-CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = IS_PRODUCTION
 # An idle timeout, not a fixed lifetime: every request pushes expiry out,
 # so a session ends after 12 hours untouched — overnight, not mid-task.
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_SAVE_EVERY_REQUEST = True
+# And an absolute limit, which activity doesn't extend: however busy the
+# session, it ends this long after sign-in (foundation.middleware).
+CLICKER_SESSION_MAX_AGE = env.int('CLICKER_SESSION_MAX_AGE', default=60 * 60 * 24)
 
 # Login throttling (django-axes). Failed sign-ins are counted per username
 # *and* IP together: the 6th failure for the same name from the same address
@@ -128,6 +143,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'foundation.middleware.AbsoluteSessionLifetimeMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     # Last, as django-axes requires: it reads the outcome of authentication.
@@ -215,3 +231,42 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+
+# Production
+#
+# Everything here is on exactly when CLICKER_ENV=production, and
+# `manage.py check --deploy` passes with it. Production also has its own
+# database and its own SECRET_KEY; neither is ever shared with development.
+if IS_PRODUCTION:
+    if not ALLOWED_HOSTS:
+        raise ImproperlyConfigured('Set ALLOWED_HOSTS when CLICKER_ENV=production.')
+    # Behind the host's TLS-terminating proxy: trust its scheme header, send
+    # every plain-HTTP request to HTTPS, and tell browsers to never try HTTP
+    # again for a year (subdomains included).
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 60 * 60 * 24 * 365
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # HSTS preload (security.W021) is deliberately not set: submitting the
+    # domain to browsers' built-in preload list is hard to undo and needs the
+    # final domain. A decision for when there is one.
+    SILENCED_SYSTEM_CHECKS = ['security.W021']
+    # Real email in production (password resets, later notifications): SMTP,
+    # configured from the environment. The console backend above is dev-only.
+    MAILERS = {
+        'default': {
+            'BACKEND': 'django.core.mail.backends.smtp.EmailBackend',
+            'OPTIONS': {
+                'host': env('EMAIL_HOST', default='localhost'),
+                'port': env.int('EMAIL_PORT', default=587),
+                'username': env('EMAIL_HOST_USER', default=''),
+                'password': env('EMAIL_HOST_PASSWORD', default=''),
+                'use_tls': True,
+            },
+        },
+    }

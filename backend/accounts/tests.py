@@ -47,3 +47,25 @@ class LoginThrottlingTests(TestCase):
         self.client = APIClient()
         for _ in range(5):
             self.assertEqual(self.attempt().status_code, 400)
+
+
+class AbsoluteSessionLifetimeTests(TestCase):
+    def test_a_session_older_than_the_limit_ends_however_active(self):
+        import time
+
+        from django.conf import settings
+
+        from foundation.middleware import SESSION_STARTED_KEY
+
+        get_user_model().objects.create_user('amina', password=PASSWORD)
+        client = APIClient()
+        self.assertEqual(
+            client.post('/api/auth/login/', {'username': 'amina', 'password': PASSWORD}, format='json').status_code,
+            200,
+        )
+        self.assertEqual(client.get('/api/auth/me/').status_code, 200)
+
+        session = client.session
+        session[SESSION_STARTED_KEY] = int(time.time()) - settings.CLICKER_SESSION_MAX_AGE - 1
+        session.save()
+        self.assertEqual(client.get('/api/auth/me/').status_code, 401)

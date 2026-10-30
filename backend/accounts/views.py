@@ -21,6 +21,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from foundation.middleware import mark_session_start
+
 # One message for every failure. Saying which half was wrong tells an
 # attacker which usernames exist.
 INVALID_CREDENTIALS = 'Username or password is incorrect.'
@@ -88,6 +90,7 @@ class LoginView(APIView):
             return Response({'detail': INVALID_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
 
         login(request, user)
+        mark_session_start(request)
         return Response({'user': _user_payload(user), 'csrf_token': get_token(request)})
 
 
