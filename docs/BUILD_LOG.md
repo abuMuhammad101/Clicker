@@ -1135,3 +1135,162 @@ Hassan signed in and reviewed the real app. Each note, and what changed:
 - Reading a record: each section is a card on the ground with a row per field and hairlines between. Edit mode stays stacked on white.
 - Renderer capability added, as a prop: `FormRenderer` takes `leading` (a node shown before the title) and honours `--form-header-position` so a container can pin the header. The icon comes from the registry in the container; the form knows nothing about it.
 - Verified in the pane: header stays pinned after scrolling 300px, footer shows Edit then Done, dirty state swaps the bar and removes the footer. Not verified: edit mode's look at the new structure (the screenshot glitched), any motion, the drawer at 1024.
+
+---
+
+## 2026-10-30 | office | S-1: security foundation
+
+Sprint plan now lives in `docs/DEMO_SPRINT.md` (sessions, gates, cut order).
+Fixes all six findings from the review of `f2f7924`. One concern per commit,
+except B and C (the enforcement point and the permission model it enforces
+are one change).
+
+### What was built
+
+- **A. `foundation` app, `ClickerModel`.** `created_at`, `updated_at`,
+  `created_by`, `updated_by`, all `editable=False`, set only by the data
+  layer. Contact, Country, Product moved onto it. The timestamps also have a
+  database default, so the other machine (old code) can still insert rows
+  before it pulls. Existing rows got `created_at` = migration time and no
+  creator: that's not their real history.
+- **B. One enforcement point: `data/access.py`.** `scoped_queryset(user,
+  model, action)`, `get_record`, `readable_fields`, `writable_fields`. Every
+  list, detail, search, create, update, history and the Recents list goes
+  through it. A source-scanning test fails if a view reaches for a model's
+  manager directly. Record rules and tenancy plug in at one marked line.
+- **C. Permissions through the schema.** `build_schema(model, user)` returns
+  only readable fields, flags `read_only` / `read_only_on_create`, lists
+  `actions`; the API enforces the same `field_access` answer. Unseen model or
+  record: 404. Visible but not allowed: 403. Registry and Recents show only
+  what the user may view. A relation is hidden if its target model is.
+- **D. Write allowlist.** POST/PATCH accept only writable fields; any other
+  key (unknown, hidden, read-only, server-owned, `id`) gets the same field
+  error and nothing is saved.
+- **E. Readable-only filter, sort, search.** A sort or filter on an unreadable
+  or unknown field is a 400 with the same message; search skips unreadable
+  fields.
+- **F. Audit log.** `AuditEntry`: actor (+ username snapshot), time, IP,
+  content type, record id, action, changed fields with before/after. Written
+  inside the same `transaction.atomic()` as the change, with the row locked.
+  Append-only three ways: model `save`/`delete`, queryset `update`/`delete`,
+  and a Postgres trigger refusing UPDATE/DELETE. Admin read-only. `GET
+  /api/data/<app>/<model>/<pk>/history/` (needs view on the record; changes
+  to fields the reader can't read are stripped; IP not exposed). **No
+  back-filled history for existing records.**
+- **G. Login throttling (django-axes).** Per username+IP pair: five failures
+  get the usual uniform message, the sixth attempt (right password or not) is
+  a 429 for 15 minutes. Why axes, not DRF throttling: DRF throttles count
+  *requests* in a cache (per-process unless a shared cache is set up) and know
+  nothing of failure vs success; axes counts *failed authentications* in the
+  database, so every worker agrees, a success resets the count, and it hooks
+  into Django's `authenticate()` that a future SSO backend will also use.
+  Not per IP alone (one office NAT would lock itself out), not per username
+  alone (anyone could lock a colleague out). The client IP comes from one
+  function shared with the audit log (`foundation.audit.client_ip`).
+- **H. Production settings behind `CLICKER_ENV=production`, not DEBUG.** SSL
+  redirect, HSTS one year with subdomains, proxy SSL header, secure cookies,
+  SMTP email, and it refuses to start with DEBUG on or no ALLOWED_HOSTS.
+  Absolute session lifetime 24h from sign-in (all environments), on top of the
+  12h idle timeout. HSTS preload deliberately off (W021 silenced, reason in
+  settings). Flags in `.env.example`.
+- **I. `GET /api/auth/providers/`** → `[{"id": "password", "label": "Username
+  and password"}]`. The login screen renders from it (form for `password`, a
+  button to `/api/auth/<id>/start/` for anything else). Grepped: nothing
+  assumes username = email (email is only a display detail in the user menu).
+- **J. Roles.** Manager (every permission on every exposed model) and Clerk,
+  as Groups, re-applied after every migrate from `Schema.default_grants`.
+  `manage.py seed_roles` also creates this machine's Clerk test user from
+  `DEV_CLERK_USERNAME` / `DEV_CLERK_PASSWORD`, refuses staff/superuser/Manager
+  accounts, prints no credentials.
+- **K. CLAUDE.md: "Security rules: the third law".**
+- **Frontend (permission plumbing only):** read-only and create-time flags
+  honoured; a record the user can't update opens read-only and the drawer
+  shows no Edit; New and inline edit only with the create/update actions; a
+  plain "isn't available" state for a 404 record or list; the lockout message
+  shown on sign-in.
+
+### Decisions, one line each
+
+- **Field rules shape: `Schema.restricted_fields = ['tax_id']`.** One name
+  per sensitive field; the two permissions (`core.view_contact_tax_id`,
+  `core.change_contact_tax_id`) are derived and created automatically, so
+  they're grantable through Groups and admin like any Django permission and a
+  codename is never typed twice. Unlisted fields follow the model's grant:
+  per-field permissions for every field would be 60+ checkboxes nobody
+  maintains. A system check fails startup if a listed field doesn't exist.
+- **Role grants live on each model's Schema (`default_grants`)**, so a new
+  module brings its own roles and `foundation/roles.py` never names a model.
+- **The two built-in groups are code-owned**: re-applied on every migrate, so
+  a hand edit to Manager or Clerk in admin won't survive. Other groups are
+  untouched. S-6's roles page decides whether that changes.
+- **Audit users are PROTECTed**: a user with history can't be deleted, only
+  deactivated.
+- **Every save writes an audit row**, even one that changed nothing (someone
+  did save); the row's `changes` is then empty.
+- **Tests use Neon's direct (non-pooled) endpoint**, derived in settings by
+  dropping `-pooler` from the host when running `manage.py test`; the app
+  keeps the pooled one. The scratch test database now drops cleanly; no
+  `--keepdb` needed. (Full suite: ~8.5 minutes, network-bound.)
+
+### Definition of done
+
+1. **Pass.** Backend suite: 73 tests OK, including every denial test the gate
+   names (`foundation/test_roles.py`, `data/tests.py`, `foundation/test_audit.py`,
+   `accounts/tests.py`). The "field the Clerk can't read" in the sort/filter
+   test is a server-owned field (`created_by`): with today's grants a Clerk
+   reads every Contact field, and a hidden field is also covered by
+   `data.tests.ReadableFieldsOnlyTests`.
+2. **Pass.** `npx tsc -b`.
+3. **Pass.** `check --deploy` with `CLICKER_ENV=production DEBUG=False
+   ALLOWED_HOSTS=…`: no issues (1 silenced: W021, preload, on purpose).
+4. **Pass, against a local copy, not Neon.** Screenshots in `docs/security/`.
+   Clerk: no Products in the sidebar, Tax ID read-only on a contact,
+   `/catalog/product` shows "Nothing here". Manager: Products present, Tax ID
+   edited and saved, history shows the before/after. I have no credentials for
+   any Neon account and created none there; the check ran the real API and
+   frontend on 8200/5273 against a throwaway local SQLite database with two
+   generated test users (git-ignored `backend/.scratch/`; the served copy of
+   the passwords was deleted after). To repeat it on Neon: fill
+   `DEV_CLERK_USERNAME`/`DEV_CLERK_PASSWORD` in `.env`, run `manage.py
+   seed_roles`, sign in.
+5. **Run.** `pip-audit`: three DRF CVEs, fixed by 3.18.2, now clean. `npm
+   audit`: 12 found, `npm audit fix` left 3 low-severity, all inside the
+   shadcn CLI (a code generator, not in the shipped bundle); the fix is a
+   breaking shadcn change, so not taken.
+
+Migrations applied to the shared Neon database (axes tables, audit columns,
+`AuditEntry`, the trigger). Roles there: Manager 14 permissions, Clerk 4.
+
+### Findings and gaps
+
+- **`dev-verify` (the other machine's test user) now sees nothing**: it has
+  no group. Deny by default working as intended. Put it in Clerk or Manager in
+  admin if it's still used, or deactivate it.
+- **Hassan's own account is a superuser**, so it can do everything with or
+  without a group.
+- A user with `add` but not `change` would see the right flags on a new record
+  but the form keeps create-time flags after its first save until reloaded.
+  No role has that combination today.
+- A picker domain filter on a field the user can't read now fails (400)
+  instead of being ignored; no current domain hits that.
+- `visible_when` conditions on a field the user can't read aren't adjusted.
+- `SchemaViewer.tsx`'s hardcoded model list (the law) is still open.
+- Delete has no endpoint, so `actions.delete` is reported but unused.
+
+- Half-finished: nothing.
+- **Next single action:** S-2 — add the `date`, `integer` and `currency` (PKR)
+  field types with all eight states in the gallery, starting from the schema
+  engine's type mapping.
+
+### Decide before S-3 (Hassan's calls)
+
+1. **Who may approve reductions** (credit notes, write-offs, discounts), and is
+   there an amount above which a second approver is needed?
+2. **Clerk's real scope**: should a Clerk create contacts (today: no), archive
+   them, see tax IDs (today: read-only)?
+3. **Which workflow transitions are role-gated** in the demo journeys (e.g.
+   only a Manager posts a bill; a Clerk drafts).
+4. **Should Manager and Clerk stay code-defined**, or become editable in S-6's
+   roles page?
+5. **Absolute session length**: 24 hours from sign-in is the default; shorter
+   for the demo?
