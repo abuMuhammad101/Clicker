@@ -24,6 +24,7 @@ Later sessions plug in here, and only here:
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied
 
+from foundation import computed
 from foundation.permissions import READ, WRITE, can, field_access
 
 
@@ -50,7 +51,10 @@ def scoped_queryset(user, model, action='view'):
 
     queryset = model._default_manager.all()
     # S-6+: tenancy, then record rules, narrow `queryset` here.
-    return queryset
+
+    # Computed fields ride on every scoped queryset, so they sort, filter and
+    # sum in the database like stored columns.
+    return computed.annotate(queryset, model)
 
 
 def get_record(user, model, pk, action='view'):
@@ -67,8 +71,36 @@ def get_record(user, model, pk, action='view'):
 
 
 def readable_fields(user, model):
-    """Field names `user` may read on `model` (empty if they can't see it)."""
-    return set(field_access(user, model, _schema_field_names(model)))
+    """
+    Field names `user` may read on `model` (empty if they can't see it),
+    computed fields included when every field they're made from is readable.
+    """
+    from schema.engine import readable_computed
+
+    readable = set(field_access(user, model, _schema_field_names(model)))
+    return readable | set(readable_computed(model, readable))
+
+
+def visible_related_ids(user, model, schema, records):
+    """
+    For each many_to_one in the user's schema, which of the linked ids in
+    `records` the user may see, asked through the target's own scope (one
+    query per relation, not per row). A label is shown only for these; any
+    other link keeps its id and comes back restricted.
+    """
+    visible = {}
+    meta = model._meta
+    for name, entry in schema['fields'].items():
+        if entry['type'] != 'many_to_one' or 'computed' in entry:
+            continue
+        field = meta.get_field(name)
+        ids = {getattr(record, field.attname) for record in records} - {None}
+        target = field.related_model
+        if not ids or not can(user, target, 'view'):
+            visible[name] = set()
+            continue
+        visible[name] = set(scoped_queryset(user, target, 'view').filter(pk__in=ids).values_list('pk', flat=True))
+    return visible
 
 
 def writable_fields(user, model, action):
@@ -85,4 +117,12 @@ def writable_fields(user, model, action):
     }
 
 
-__all__ = ['READ', 'WRITE', 'get_record', 'readable_fields', 'scoped_queryset', 'writable_fields']
+__all__ = [
+    'READ',
+    'WRITE',
+    'get_record',
+    'readable_fields',
+    'scoped_queryset',
+    'visible_related_ids',
+    'writable_fields',
+]

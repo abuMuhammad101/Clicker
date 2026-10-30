@@ -16,7 +16,9 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models as djm
 from rest_framework import serializers
 
-from schema.engine import display_label
+from foundation.models import ClickerModel
+
+from schema.engine import display_label, json_safe
 
 
 # One message for every key a client may not send: a field that doesn't exist,
@@ -76,22 +78,43 @@ class ModelRecordSerializer(serializers.ModelSerializer):
         return attrs
 
 
-def serializer_for(model, writable):
+# A link to a record that doesn't exist and one the user can't see get the
+# same answer: telling them apart would confirm the hidden record exists.
+NOT_LINKABLE = 'Choose a record from the list.'
+
+
+def serializer_for(model, writable, user):
     """
     A serializer that accepts exactly `writable` (from data.access.writable_fields
     for this user and action). Server-owned and primary-key fields can never be
     in it: they aren't editable, so field_access never marks them writable.
+
+    Every many_to_one is declared here, not left to DRF: its candidates are the
+    target's *scoped* queryset for this user, so a write can only link to a
+    record the user can see. (DRF's generated field would accept any id.)
     """
+    from .access import scoped_queryset
+
     editable = [
         field.name
         for field in model._meta.concrete_fields
         if field.editable and not field.primary_key and field.name in writable
     ]
+    declared = {}
+    for name in editable:
+        field = model._meta.get_field(name)
+        if isinstance(field, djm.ForeignKey):
+            declared[name] = serializers.PrimaryKeyRelatedField(
+                queryset=scoped_queryset(user, field.related_model, 'view'),
+                allow_null=field.null,
+                required=not (field.blank or field.has_default()),
+                error_messages={'does_not_exist': NOT_LINKABLE, 'incorrect_type': NOT_LINKABLE},
+            )
     meta = type('Meta', (), {'model': model, 'fields': editable})
-    return type(f'{model.__name__}RecordSerializer', (ModelRecordSerializer,), {'Meta': meta})
+    return type(f'{model.__name__}RecordSerializer', (ModelRecordSerializer,), {'Meta': meta, **declared})
 
 
-def serialize_record(obj, schema):
+def serialize_record(obj, schema, visible_related):
     """
     The record envelope:
 
@@ -99,34 +122,61 @@ def serialize_record(obj, schema):
           "id": 7,
           "display": "Jane Doe (Acme Corp)",
           "values": {field_name: value, ...},   # exactly the schema's fields
-          "labels": {fk_field_name: "Acme Corp" | null, ...}
+          "labels": {fk_field_name: "Acme Corp" | null, ...},
+          "restricted": {fk_field_name: true, ...},   # links the user can't see
+          "meta": {"created_at": ..., "updated_at": ..., "created_by": ..., "updated_by": ...}
         }
 
-    `values` holds a many_to_one as its bare id — the same shape the API
-    accepts back on write. `labels` carries the human label for each
-    relation separately, so the picker can show "Acme Corp" without a second
-    request and without the value itself changing shape between read and
-    write.
+    `schema` is always the requesting user's: only the fields they may read are
+    in it, so only those reach the envelope. `visible_related` is
+    data.access.visible_related_ids for these records: a link's label is given
+    only when the user may see the linked record. Otherwise the id stays (it's
+    part of this record) and the label is null, marked restricted.
+
+    Decimals go out as strings, never floats (json_safe); computed values are
+    read from the scoped queryset's annotations.
     """
-    # `schema` is always the requesting user's: only the fields they may read
-    # are in it, so only those reach the envelope (and their relation labels).
     model = type(obj)
     meta = model._meta
 
     values = {}
     labels = {}
+    restricted = {}
     for name, field_schema in schema['fields'].items():
+        if 'computed' in field_schema:
+            values[name] = json_safe(getattr(obj, name, None))
+            continue
         field = meta.get_field(name)
         if field_schema['type'] == 'many_to_one':
-            values[name] = getattr(obj, field.attname)
-            related = getattr(obj, name)
-            labels[name] = display_label(related) if related is not None else None
+            linked = getattr(obj, field.attname)
+            values[name] = linked
+            if linked is not None and linked in visible_related.get(name, set()):
+                labels[name] = display_label(getattr(obj, name))
+            else:
+                labels[name] = None
+                if linked is not None:
+                    restricted[name] = True
         else:
-            values[name] = field.value_from_object(obj)
+            values[name] = json_safe(field.value_from_object(obj))
 
-    return {
+    envelope = {
         'id': obj.pk,
         'display': display_label(obj),
         'values': values,
         'labels': labels,
+        'restricted': restricted,
     }
+    if isinstance(obj, ClickerModel):
+        envelope['meta'] = {
+            'created_at': json_safe(obj.created_at),
+            'updated_at': json_safe(obj.updated_at),
+            'created_by': _person(obj.created_by),
+            'updated_by': _person(obj.updated_by),
+        }
+    return envelope
+
+
+def _person(user):
+    if user is None:
+        return None
+    return {'id': user.pk, 'display_name': user.get_full_name() or user.get_username()}

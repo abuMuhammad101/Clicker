@@ -1,4 +1,7 @@
+from decimal import Decimal
+
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from foundation.models import ClickerModel
@@ -94,6 +97,26 @@ class Contact(ClickerModel):
     is_customer = models.BooleanField(default=False)
     is_vendor = models.BooleanField(default=False)
 
+    # Commercial terms, ahead of invoicing (S-5). db_default on the integer so a
+    # machine still on older code can insert contacts while the other has
+    # migrated.
+    payment_terms_days = models.PositiveIntegerField(
+        default=30,
+        db_default=30,
+        validators=[MaxValueValidator(365)],
+        verbose_name='payment terms (days)',
+        help_text='Days a customer has to pay an invoice.',
+    )
+    credit_limit = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('0'))],
+        help_text='Leave blank for no limit.',
+    )
+    customer_since = models.DateField(null=True, blank=True)
+
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -106,13 +129,21 @@ class Contact(ClickerModel):
         # Readable and writable only with their own grant, on top of the
         # model's: core.view_contact_tax_id and core.change_contact_tax_id.
         # The two permissions are created automatically after migrate.
-        restricted_fields = ['tax_id']
+        # `active` is restricted because changing it is archiving.
+        restricted_fields = ['tax_id', 'active', 'credit_limit']
 
         # What each role may do here (Managers may do everything). A Clerk
-        # keeps contacts current but can't create them, and sees the tax ID
-        # without being able to change it.
+        # creates contacts and keeps them current, but can't archive one or
+        # change its tax ID or credit limit; they read all three.
         default_grants = {
-            'Clerk': ['view_contact', 'change_contact', 'view_contact_tax_id'],
+            'Clerk': [
+                'view_contact',
+                'add_contact',
+                'change_contact',
+                'view_contact_tax_id',
+                'view_contact_active',
+                'view_contact_credit_limit',
+            ],
         }
 
         # Order here is form layout, not Django's declaration order — group
@@ -121,7 +152,23 @@ class Contact(ClickerModel):
             {'label': 'Identity', 'fields': ['name', 'type', 'parent', 'job_title', 'tax_id']},
             {'label': 'Communication', 'fields': ['email', 'phone', 'mobile', 'website']},
             {'label': 'Address', 'fields': ['street', 'street2', 'city', 'state', 'zip', 'country']},
-            {'label': 'Classification', 'fields': ['active', 'is_customer', 'is_vendor', 'notes']},
+            {
+                'label': 'Commercial',
+                'fields': ['is_customer', 'is_vendor', 'customer_since', 'payment_terms_days', 'credit_limit'],
+            },
+            {'label': 'Classification', 'fields': ['active', 'notes']},
+        ]
+
+        # Shown under the form, in this order: the reverse relations a person
+        # reading this record wants next to it. Opt-in; `relation` is the
+        # related_name, `columns` the target's own fields.
+        related_lists = [
+            {'relation': 'children', 'label': 'People', 'columns': ['name', 'job_title', 'email', 'phone']},
+            {
+                'relation': 'supplied_products',
+                'label': 'Products supplied',
+                'columns': ['name', 'sku', 'sales_price', 'active'],
+            },
         ]
 
         list_display = ['name', 'type', 'email', 'phone', 'city', 'country']
@@ -134,6 +181,7 @@ class Contact(ClickerModel):
         field_types = {
             'phone': 'phone',
             'mobile': 'phone',
+            'credit_limit': 'currency',
         }
 
         # Single equality condition is all the spec needs today. If a future

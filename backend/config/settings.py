@@ -215,7 +215,20 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# The organisation's time zone (one organisation for now; per-organisation
+# later). "Today", "overdue" and every date shown depend on it: a bill due on
+# the 30th is overdue from midnight in Karachi, not in London.
+TIME_ZONE = 'Asia/Karachi'
+
+# The organisation's currency. One currency, held here, never per field
+# (multi-currency is in the Parking Lot). Money is Decimal end to end and
+# travels to the browser as a string.
+CLICKER_CURRENCY = {'code': 'PKR', 'symbol': 'Rs', 'decimal_places': 2}
+
+# Reductions (credit notes, write-offs, discounts; S-3) need one Manager's
+# approval, never the requester's own. Above this amount a second approver
+# would be required; None means no such threshold yet.
+CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD = None
 
 USE_I18N = True
 

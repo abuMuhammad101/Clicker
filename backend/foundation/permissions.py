@@ -16,8 +16,11 @@ The rules, deny by default:
   to write it. Those permissions are created automatically for every
   restricted field (see `ensure_field_permissions`), so a module declares a
   sensitive field once, by name, and never repeats a codename.
-- **Relations.** A many_to_one field is readable only if its target model is:
-  a contact's country is hidden from someone who can't see countries.
+- **Relations.** A many_to_one's value (the linked id) is part of the record
+  and readable with it. Its *label* is shown only if the user can see the
+  linked record (data.access.visible_related_ids); otherwise it comes back
+  restricted. *Changing* the link needs view on the target model, and the
+  new id must resolve through the target's scope.
 - **Server-owned fields** (`editable=False`) and the primary key are never
   writable by anyone.
 - An inactive user can do nothing; a superuser can do everything.
@@ -85,13 +88,13 @@ def field_access(user, model, field_names):
 
         if name in restricted and not _has_field_grant(user, model, name, 'view'):
             continue
-        if isinstance(field, (djm.ForeignKey, djm.ManyToManyField)) and not can(
+        links_to_unviewable = isinstance(field, (djm.ForeignKey, djm.ManyToManyField)) and not can(
             user, field.related_model, 'view'
-        ):
-            continue
+        )
 
         writable = (
             may_change_model
+            and not links_to_unviewable
             and field.editable
             and not field.primary_key
             and (name not in restricted or _has_field_grant(user, model, name, 'change'))

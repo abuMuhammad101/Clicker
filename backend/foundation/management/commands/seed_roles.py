@@ -25,6 +25,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         seed_roles()
         self.stdout.write('Roles applied: Manager, Clerk.')
+        self._manager_for_dev_test_user()
 
         username = os.environ.get('DEV_CLERK_USERNAME', '').strip()
         password = os.environ.get('DEV_CLERK_PASSWORD', '')
@@ -50,3 +51,16 @@ class Command(BaseCommand):
         user.save()
         user.groups.set([Group.objects.get(name=CLERK)])
         self.stdout.write(f'Clerk test user {"created" if created else "updated"} (DEV_CLERK_USERNAME).')
+
+    def _manager_for_dev_test_user(self):
+        """
+        The automated-verification account (DEV_TEST_USERNAME, `dev-verify` by
+        default) gets the Manager role. It exists on the shared database and,
+        since S-1's deny-by-default, saw nothing without one.
+        """
+        username = os.environ.get('DEV_TEST_USERNAME', '').strip() or 'dev-verify'
+        user = get_user_model().objects.filter(username=username).first()
+        if user is None:
+            return
+        user.groups.add(Group.objects.get(name=MANAGER))
+        self.stdout.write('Manager role given to the dev verification account (DEV_TEST_USERNAME).')

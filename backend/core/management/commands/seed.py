@@ -1,3 +1,6 @@
+import datetime
+from decimal import Decimal
+
 from django.core.management.base import BaseCommand
 
 from core.models import Contact, Country
@@ -155,6 +158,25 @@ class Command(BaseCommand):
                 is_customer=True,
             ),
         )
+
+        # Commercial terms (S-2). Only filled where still empty, so a value
+        # someone has since changed by hand is never overwritten.
+        commercial = {
+            'Acme Corporation': dict(
+                customer_since=datetime.date(2021, 3, 15),
+                credit_limit=Decimal('2500000.00'),
+                payment_terms_days=30,
+            ),
+            'Globex Industries': dict(customer_since=datetime.date(2023, 9, 1), payment_terms_days=45),
+            'Northwind Traders': dict(
+                customer_since=datetime.date(2019, 7, 1),
+                credit_limit=Decimal('1200000.00'),
+                payment_terms_days=60,
+            ),
+            'Marcus Bellweather': dict(customer_since=datetime.date(2024, 2, 20), payment_terms_days=15),
+        }
+        for name, values in commercial.items():
+            Contact.objects.filter(name=name, customer_since__isnull=True).update(**values)
 
         total = Contact.objects.count()
         self.stdout.write(self.style.SUCCESS(f'{total} contacts ready (including {northwind.name}, archived).'))

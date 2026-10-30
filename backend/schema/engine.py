@@ -10,11 +10,42 @@ per-module hook this engine has; if a screen needs something the `Schema`
 class can't say, that's a gap in this file, not a reason to special-case a
 model in the frontend.
 """
+import datetime
+import decimal
 import re
 
+from django.conf import settings
+from django.core import validators as djv
 from django.db import models as djm
 
+from foundation import computed as computed_fields
 from foundation.permissions import WRITE, can, field_access
+
+
+def json_safe(value):
+    """
+    A schema or record value as JSON can carry it exactly. Decimals become
+    strings, never floats: money must survive the trip to the browser to the
+    last paisa, and the frontend formats from the string.
+    """
+    if isinstance(value, decimal.Decimal):
+        return str(value)
+    if isinstance(value, (datetime.date, datetime.datetime)):
+        return value.isoformat()
+    return value
+
+
+def _bounds(field):
+    """The tightest min and max a field's validators allow (e.g. a PositiveIntegerField's 0)."""
+    low = high = None
+    for validator in field.validators:
+        if isinstance(validator, djv.MinValueValidator):
+            limit = validator.limit_value() if callable(validator.limit_value) else validator.limit_value
+            low = limit if low is None else max(low, limit)
+        elif isinstance(validator, djv.MaxValueValidator):
+            limit = validator.limit_value() if callable(validator.limit_value) else validator.limit_value
+            high = limit if high is None else min(high, limit)
+    return low, high
 
 
 def _base_type_for_field(field):
@@ -64,7 +95,9 @@ def _field_schema(field, overrides):
         'type': base_type,
         'label': label,
         'required': required,
-        'read_only': name == 'id',
+        # The primary key is identity, not input; a datetime is display-only
+        # for now (audit and system times), never typed by a person.
+        'read_only': name == 'id' or base_type == 'datetime',
         'visible_when': overrides['visible_when'].get(name),
     }
 
@@ -72,18 +105,28 @@ def _field_schema(field, overrides):
     if max_length:
         entry['max_length'] = max_length
 
-    if base_type == 'decimal':
+    if base_type in ('decimal', 'currency'):
         # Precision and scale come from the field, not a frontend guess —
         # a decimal component has no correct default for either.
         entry['max_digits'] = field.max_digits
         entry['decimal_places'] = field.decimal_places
+    if base_type == 'currency':
+        # One organisation currency for now (multi-currency is parked).
+        entry['currency'] = settings.CLICKER_CURRENCY['code']
+
+    if base_type in ('integer', 'decimal', 'currency', 'date'):
+        low, high = _bounds(field)
+        if low is not None:
+            entry['min_value'] = json_safe(low)
+        if high is not None:
+            entry['max_value'] = json_safe(high)
 
     help_text = getattr(field, 'help_text', '')
     if help_text:
         entry['help_text'] = str(help_text)
 
     if field.has_default():
-        entry['default'] = field.get_default()
+        entry['default'] = json_safe(field.get_default())
 
     if field.choices:
         entry['choices'] = [{'value': value, 'label': label} for value, label in field.choices]
@@ -250,6 +293,54 @@ def schema_field_names(model):
     return names
 
 
+def readable_computed(model, readable):
+    """Computed field names whose every dependency is in `readable`."""
+    return [
+        name
+        for name, spec in computed_fields.declarations(model).items()
+        if all(dependency in readable for dependency in computed_fields.dependencies(spec))
+    ]
+
+
+def related_lists(model, user):
+    """
+    The reverse relations a model's Schema asks to show under its form,
+    narrowed to what this user may see:
+
+        related_lists = [
+            {'relation': 'children', 'label': 'People',
+             'columns': ['name', 'job_title', 'email']},
+        ]
+
+    `relation` is the reverse accessor (the ForeignKey's related_name).
+    A list appears only if the user can view the target model and read the
+    linking field on it; `can_add` only if they may create a target record and
+    set that field. The frontend renders each with the ordinary list renderer,
+    filtered to this record.
+    """
+    schema_cls = getattr(model, 'Schema', None)
+    entries = []
+    for declared in getattr(schema_cls, 'related_lists', []) or []:
+        relation = model._meta.get_field(declared['relation'])
+        target = relation.related_model
+        link = relation.field.name
+        if not is_exposed(target) or not can(user, target, 'view'):
+            continue
+        target_access = field_access(user, target, schema_field_names(target))
+        if link not in target_access:
+            continue
+        target_meta = target._meta
+        entries.append({
+            'name': declared['relation'],
+            'label': declared.get('label') or _sentence_case(target_meta.verbose_name_plural),
+            'target': {'app_label': target_meta.app_label, 'model': target_meta.model_name},
+            'field': link,
+            'columns': [c for c in declared.get('columns', []) if c in target_access],
+            'can_add': can(user, target, 'add') and target_access[link] == WRITE,
+        })
+    return entries
+
+
 def build_schema(model, user):
     """
     The schema `user` receives for `model`, or None if they can't see it.
@@ -274,6 +365,7 @@ def build_schema(model, user):
 
     all_names = schema_field_names(model)
     access = field_access(user, model, all_names)
+    computed_specs = computed_fields.declarations(model)
     may_update = can(user, model, 'change')
     may_create = can(user, model, 'add')
 
@@ -287,13 +379,37 @@ def build_schema(model, user):
         entry['read_only'] = entry['read_only'] or not (writable and may_update)
         fields[name] = entry
 
+    # Computed fields: read-only for everyone, and visible only to someone
+    # who can read everything they're calculated from.
+    for name in readable_computed(model, set(access)):
+        spec = computed_specs[name]
+        entry = {
+            'type': spec['type'],
+            'label': spec['label'],
+            'required': False,
+            'read_only': True,
+            'read_only_on_create': True,
+            'visible_when': None,
+            'computed': {
+                'from': computed_fields.dependencies(spec),
+                'description': computed_fields.describe(model, spec),
+            },
+        }
+        if spec['type'] in ('currency', 'decimal'):
+            entry['decimal_places'] = (
+                settings.CLICKER_CURRENCY['decimal_places'] if spec['type'] == 'currency' else spec.get('decimal_places', 2)
+            )
+        if spec['type'] == 'currency':
+            entry['currency'] = settings.CLICKER_CURRENCY['code']
+        fields[name] = entry
+
     # An auto-created primary key is the record's identity, not something a
     # user fills in — the form shows it in its header, not as a field. It
     # stays in `fields` (a list column may still want it); it just never
     # lands in a form group by default. A model can still place it in a
     # group explicitly if it ever has a reason to.
-    auto_pk = meta.pk.name if isinstance(meta.pk, djm.AutoField) else None
-    form_field_names = [name for name in all_names if name != auto_pk]
+    auto_pk = meta.pk.name if isinstance(meta.pk, (djm.AutoField, djm.BigAutoField)) else None
+    form_field_names = [name for name in all_names if name != auto_pk] + list(computed_specs)
 
     # Groups are laid out from every field (so "Ungrouped" still catches an
     # author's oversight), then narrowed to what this user may see.
@@ -319,6 +435,7 @@ def build_schema(model, user):
             'search_fields': [f for f in getattr(schema_cls, 'search_fields', []) if f in fields],
         },
         'fields': fields,
+        'related_lists': related_lists(model, user),
         'actions': {
             'view': True,
             'create': may_create,

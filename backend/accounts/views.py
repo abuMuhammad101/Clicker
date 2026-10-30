@@ -49,6 +49,14 @@ def _user_payload(user):
     }
 
 
+def _organisation():
+    """
+    What every screen formats by: the organisation's currency and time zone
+    ("today", "overdue", every date shown). One organisation for now.
+    """
+    return {'currency': settings.CLICKER_CURRENCY, 'time_zone': settings.TIME_ZONE}
+
+
 @method_decorator(ensure_csrf_cookie, name='dispatch')
 class CsrfView(APIView):
     permission_classes = [AllowAny]
@@ -93,7 +101,7 @@ class LoginView(APIView):
 
         login(request, user)
         mark_session_start(request)
-        return Response({'user': _user_payload(user), 'csrf_token': get_token(request)})
+        return Response({'user': _user_payload(user), 'organisation': _organisation(), 'csrf_token': get_token(request)})
 
 
 @method_decorator(csrf_protect, name='dispatch')
@@ -124,4 +132,6 @@ class ProvidersView(APIView):
 
 class MeView(APIView):
     def get(self, request):
-        return Response({'user': _user_payload(request.user), 'csrf_token': get_token(request)})
+        return Response(
+            {'user': _user_payload(request.user), 'organisation': _organisation(), 'csrf_token': get_token(request)}
+        )

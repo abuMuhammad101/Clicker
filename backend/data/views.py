@@ -1,7 +1,7 @@
 """
 Generic record API for every model that declares a `Schema` class:
 
-    GET   /api/data/<app>/<model>/              list
+    GET   /api/data/<app>/<model>/              list (?field=value filters, exact match)
     POST  /api/data/<app>/<model>/              create
     GET   /api/data/<app>/<model>/<pk>/         retrieve
     PATCH /api/data/<app>/<model>/<pk>/         update (partial)
@@ -26,12 +26,13 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from foundation import computed as computed_fields
 from foundation.audit import client_ip, history_for, record_change, snapshot
 from foundation.models import AuditEntry, ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model, schema_field_names
 from userstate.services import record_view
 
-from .access import get_record, readable_fields, scoped_queryset, writable_fields
+from .access import get_record, readable_fields, scoped_queryset, visible_related_ids, writable_fields
 from .serializers import serialize_record, serializer_for
 
 DEFAULT_LIMIT = 20
@@ -55,11 +56,26 @@ def _user_schema(user, model):
     return schema
 
 
-def _with_relations(queryset, schema):
+def _with_relations(queryset, schema, model):
     # Every many_to_one label in the envelope touches its related row —
-    # fetch them in the same query instead of one query per relation.
-    relations = [name for name, f in schema['fields'].items() if f['type'] == 'many_to_one']
+    # fetch them in the same query instead of one query per relation. So do
+    # the record's created_by / updated_by (its `meta`).
+    relations = [
+        name for name, f in schema['fields'].items() if f['type'] == 'many_to_one' and 'computed' not in f
+    ]
+    if issubclass(model, ClickerModel):
+        relations += ['created_by', 'updated_by']
     return queryset.select_related(*relations)
+
+
+def _envelopes(user, model, schema, records):
+    records = list(records)
+    visible = visible_related_ids(user, model, schema, records)
+    return [serialize_record(record, schema, visible) for record in records]
+
+
+def _envelope(user, model, schema, record):
+    return _envelopes(user, model, schema, [record])[0]
 
 
 def _server_owned(user, model, creating):
@@ -131,6 +147,29 @@ def _sort_key(field, path):
     return F(path)
 
 
+def _field_filters(request, model, schema):
+    """
+    `?type=company&parent=5` → exact-match filters, for the list and the
+    picker alike: the first brick of S-4's filter bar. Only fields the user
+    can read (computed ones included); any other key is refused, never
+    ignored, because a filter on a hidden field would let a client guess its
+    values one request at a time.
+    """
+    readable = schema['fields']
+    refused = sorted(key for key in request.GET if key not in RESERVED_PARAMS and key not in readable)
+    if refused:
+        raise ValidationError({key: [NOT_FILTERABLE] for key in refused})
+    filters = {}
+    for key, value in request.GET.items():
+        if key in RESERVED_PARAMS:
+            continue
+        if 'computed' in readable[key]:
+            filters[key] = value
+        else:
+            filters[key] = _coerce_domain_value(model._meta.get_field(key), value)
+    return filters
+
+
 def _sort_expressions(model, name, desc):
     """
     One column's sort, as order_by expressions. Empty values go last in
@@ -140,6 +179,11 @@ def _sort_expressions(model, name, desc):
     A many_to_one sorts by its target's Meta.ordering — "sort by country"
     means by country name, not by id.
     """
+    if name in computed_fields.declarations(model):
+        # A computed field is an annotation on the scoped queryset: sort by it
+        # in the database like any column.
+        expr = F(name)
+        return [expr.desc(nulls_last=True) if desc else expr.asc(nulls_last=True)]
     field = model._meta.get_field(name)
     if isinstance(field, djm.ForeignKey):
         related = field.related_model
@@ -205,7 +249,8 @@ class ModelRecordListView(APIView):
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
-        queryset = _with_relations(scoped_queryset(request.user, model, 'view'), schema)
+        queryset = _with_relations(scoped_queryset(request.user, model, 'view'), schema, model)
+        queryset = queryset.filter(**_field_filters(request, model, schema))
         queryset = _search(queryset, schema, request.GET.get('q', ''))
         queryset = queryset.order_by(*_ordering(model, schema, request.GET.get('ordering')))
 
@@ -214,14 +259,14 @@ class ModelRecordListView(APIView):
 
         return Response({
             'count': queryset.count(),
-            'results': [serialize_record(obj, schema) for obj in queryset[offset:offset + limit]],
+            'results': _envelopes(request.user, model, schema, queryset[offset:offset + limit]),
         })
 
     def post(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         scoped_queryset(request.user, model, 'add')
-        serializer = serializer_for(model, writable_fields(request.user, model, 'add'))(data=request.data)
+        serializer = serializer_for(model, writable_fields(request.user, model, 'add'), request.user)(data=request.data)
         serializer.is_valid(raise_exception=True)
         # The record and its audit entry commit together or not at all.
         with transaction.atomic():
@@ -235,7 +280,7 @@ class ModelRecordListView(APIView):
                 after=snapshot(obj, _audited_fields(model)),
             )
         return Response(
-            serialize_record(get_record(request.user, model, obj.pk), schema),
+            _envelope(request.user, model, schema, get_record(request.user, model, obj.pk)),
             status=status.HTTP_201_CREATED,
         )
 
@@ -244,18 +289,20 @@ class ModelRecordDetailView(APIView):
     def get(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
-        obj = get_record(request.user, model, pk)
+        obj = _with_relations(scoped_queryset(request.user, model, 'view'), schema, model).filter(pk=pk).first()
+        if obj is None:
+            raise Http404('Not found.')
         # Opening a record, on any surface, is what the Recents home shows.
         # Recorded here rather than by a surface, so a new surface can't forget.
         record_view(request.user, obj)
-        return Response(serialize_record(obj, schema))
+        return Response(_envelope(request.user, model, schema, obj))
 
     def patch(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         obj = get_record(request.user, model, pk, 'change')
         writable = writable_fields(request.user, model, 'change')
-        serializer = serializer_for(model, writable)(obj, data=request.data, partial=True)
+        serializer = serializer_for(model, writable, request.user)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         fields = _audited_fields(model)
         # The change and its audit entry commit together or not at all. The
@@ -276,7 +323,7 @@ class ModelRecordDetailView(APIView):
             )
         # Re-read so relation labels and the display name reflect the save
         # (a changed parent changes a person's display name).
-        return Response(serialize_record(get_record(request.user, model, obj.pk), schema))
+        return Response(_envelope(request.user, model, schema, get_record(request.user, model, obj.pk)))
 
 
 class ModelRecordHistoryView(APIView):
@@ -307,20 +354,9 @@ class ModelSearchView(APIView):
         queryset = _search(scoped_queryset(request.user, model, 'view'), schema, request.GET.get('q', ''))
 
         # Domain filters (e.g. ?type=company for the parent picker, or
-        # ?is_vendor=true for a boolean one) — exact match, and only on fields
-        # this user can read. Filtering on a hidden field would let a client
-        # guess its values one request at a time, so any other key is refused.
-        readable = set(schema['fields'].keys())
-        refused = sorted(key for key in request.GET if key not in RESERVED_PARAMS and key not in readable)
-        if refused:
-            raise ValidationError({key: [NOT_FILTERABLE] for key in refused})
-        filters = {
-            key: _coerce_domain_value(model._meta.get_field(key), value)
-            for key, value in request.GET.items()
-            if key in readable
-        }
-        if filters:
-            queryset = queryset.filter(**filters)
+        # ?is_vendor=true for a boolean one): the same readable-fields-only
+        # exact match as the list.
+        queryset = queryset.filter(**_field_filters(request, model, schema))
 
         limit = _int_param(request, 'limit', DEFAULT_LIMIT, MAX_LIMIT)
 

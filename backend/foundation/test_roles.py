@@ -58,11 +58,38 @@ class RoleTests(TestCase):
         response = self.clerk_client.patch(self.contact_url, {'city': 'Karachi'}, format='json')
         self.assertEqual(response.status_code, 200)
 
-    def test_clerk_cannot_create_contacts(self):
+    def test_clerk_can_create_contacts(self):
         response = self.clerk_client.post('/api/data/core/contact/', {'name': 'New'}, format='json')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 201, response.content)
         schema = self.clerk_client.get('/api/schema/core/contact/').json()
-        self.assertFalse(schema['actions']['create'])
+        self.assertTrue(schema['actions']['create'])
+
+    def test_clerk_cannot_archive_a_contact(self):
+        response = self.clerk_client.patch(self.contact_url, {'active': False}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('active', response.json())
+        self.company.refresh_from_db()
+        self.assertTrue(self.company.active)
+        fields = self.clerk_client.get('/api/schema/core/contact/').json()['fields']
+        self.assertTrue(fields['active']['read_only'])
+
+    def test_clerk_reads_but_cannot_change_credit_limit(self):
+        fields = self.clerk_client.get('/api/schema/core/contact/').json()['fields']
+        self.assertTrue(fields['credit_limit']['read_only'])
+        response = self.clerk_client.patch(self.contact_url, {'credit_limit': '500000.00'}, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('credit_limit', response.json())
+        self.company.refresh_from_db()
+        self.assertIsNone(self.company.credit_limit)
+
+    def test_clerk_can_change_payment_terms_and_customer_since(self):
+        response = self.clerk_client.patch(
+            self.contact_url, {'payment_terms_days': 45, 'customer_since': '2026-10-30'}, format='json'
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.payment_terms_days, 45)
+        self.assertEqual(str(self.company.customer_since), '2026-10-30')
 
     def test_clerk_gets_404_for_products_and_their_schema(self):
         for path in (

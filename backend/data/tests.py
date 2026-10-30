@@ -133,13 +133,14 @@ class FieldPermissionTests(Fixtures):
         )
         self.assertFalse(build_schema(Contact, user)['fields']['tax_id']['read_only'])
 
-    def test_a_relation_to_an_unviewable_model_is_hidden(self):
-        user = make_user('no-countries', 'core.view_contact')
-        schema = build_schema(Contact, user)
-        self.assertNotIn('country', schema['fields'])
+    def test_a_relation_to_an_unviewable_model_keeps_its_id_but_not_its_label(self):
+        user = make_user('no-countries', 'core.view_contact', 'core.change_contact')
+        field = build_schema(Contact, user)['fields']['country']
+        self.assertTrue(field['read_only'])  # can't link to what they can't see
         record = client_for(user).get(f'/api/data/core/contact/{self.company.pk}/').json()
-        self.assertNotIn('country', record['values'])
-        self.assertNotIn('country', record['labels'])
+        self.assertEqual(record['values']['country'], self.country.pk)
+        self.assertIsNone(record['labels']['country'])
+        self.assertEqual(record['restricted'], {'country': True})
 
     def test_server_owned_fields_are_never_writable_even_for_everything(self):
         user = grant_everything(make_user('manager'))

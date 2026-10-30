@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import F
 
 from core.models import Contact
 from foundation.models import ClickerModel
@@ -44,12 +45,22 @@ class Product(ClickerModel):
 
         groups = [
             {'label': 'Identity', 'fields': ['name', 'sku', 'type', 'description']},
-            {'label': 'Pricing', 'fields': ['sales_price', 'cost']},
+            {'label': 'Pricing', 'fields': ['sales_price', 'cost', 'margin']},
             {'label': 'Logistics', 'fields': ['barcode', 'weight']},
             {'label': 'Classification', 'fields': ['active', 'supplier']},
         ]
 
-        list_display = ['name', 'sku', 'type', 'sales_price', 'supplier', 'active']
+        list_display = ['name', 'sku', 'type', 'sales_price', 'margin', 'supplier', 'active']
+
+        # Money, in the organisation's currency (settings.CLICKER_CURRENCY).
+        field_types = {'sales_price': 'currency', 'cost': 'currency'}
+
+        # Calculated in the database, never stored: sortable, filterable and
+        # summable like a column. Read-only for everyone; hidden from anyone
+        # who can't read every field it's made from.
+        computed = {
+            'margin': {'label': 'Margin', 'type': 'currency', 'expression': F('sales_price') - F('cost')},
+        }
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         search_fields = ['name', 'sku', 'barcode']
 
