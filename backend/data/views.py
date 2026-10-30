@@ -6,6 +6,7 @@ Generic record API for every model that declares a `Schema` class:
     GET   /api/data/<app>/<model>/<pk>/         retrieve
     PATCH /api/data/<app>/<model>/<pk>/         update (partial)
     GET   /api/data/<app>/<model>/search/?q=    picker search
+    GET   /api/data/<app>/<model>/<pk>/history/ the record's audit trail
 
 No per-model code anywhere in this file. Delete is deliberately absent: the
 spec's intended path is archiving (`active = false`), and a delete endpoint
@@ -16,6 +17,7 @@ its field set from the schema built for the requesting user. Nothing here
 reaches for a model's manager directly.
 """
 from django.db import models as djm
+from django.db import transaction
 from django.db.models import F, Q, Value
 from django.db.models.functions import Lower, NullIf
 from django.http import Http404
@@ -24,11 +26,12 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from foundation.models import ClickerModel
-from schema.engine import build_schema, display_label, get_exposed_model
+from foundation.audit import client_ip, history_for, record_change, snapshot
+from foundation.models import AuditEntry, ClickerModel
+from schema.engine import build_schema, display_label, get_exposed_model, schema_field_names
 from userstate.services import record_view
 
-from .access import get_record, scoped_queryset, writable_fields
+from .access import get_record, readable_fields, scoped_queryset, writable_fields
 from .serializers import serialize_record, serializer_for
 
 DEFAULT_LIMIT = 20
@@ -70,6 +73,12 @@ def _server_owned(user, model, creating):
     if creating:
         values['created_by'] = user
     return values
+
+
+def _audited_fields(model):
+    """What the audit log records for a model: every field a schema can show (minus the pk)."""
+    pk = model._meta.pk.name
+    return [name for name in schema_field_names(model) if name != pk]
 
 
 def _int_param(request, name, default, maximum=None):
@@ -214,7 +223,17 @@ class ModelRecordListView(APIView):
         scoped_queryset(request.user, model, 'add')
         serializer = serializer_for(model, writable_fields(request.user, model, 'add'))(data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save(**_server_owned(request.user, model, creating=True))
+        # The record and its audit entry commit together or not at all.
+        with transaction.atomic():
+            obj = serializer.save(**_server_owned(request.user, model, creating=True))
+            record_change(
+                actor=request.user,
+                ip_address=client_ip(request),
+                obj=obj,
+                action=AuditEntry.ACTION_CREATE,
+                before=None,
+                after=snapshot(obj, _audited_fields(model)),
+            )
         return Response(
             serialize_record(get_record(request.user, model, obj.pk), schema),
             status=status.HTTP_201_CREATED,
@@ -238,10 +257,40 @@ class ModelRecordDetailView(APIView):
         writable = writable_fields(request.user, model, 'change')
         serializer = serializer_for(model, writable)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save(**_server_owned(request.user, model, creating=False))
+        fields = _audited_fields(model)
+        # The change and its audit entry commit together or not at all. The
+        # row is locked while it's read and written, so two saves at once
+        # can't record the same "before".
+        with transaction.atomic():
+            locked = scoped_queryset(request.user, model, 'change').select_for_update().get(pk=obj.pk)
+            before = snapshot(locked, fields)
+            serializer.instance = locked
+            obj = serializer.save(**_server_owned(request.user, model, creating=False))
+            record_change(
+                actor=request.user,
+                ip_address=client_ip(request),
+                obj=obj,
+                action=AuditEntry.ACTION_UPDATE,
+                before=before,
+                after=snapshot(obj, fields),
+            )
         # Re-read so relation labels and the display name reflect the save
         # (a changed parent changes a person's display name).
         return Response(serialize_record(get_record(request.user, model, obj.pk), schema))
+
+
+class ModelRecordHistoryView(APIView):
+    """
+    GET /api/data/<app>/<model>/<pk>/history/ — the record's audit trail,
+    newest first. Anyone who can see the record can read its history, but
+    only the changes to fields they can read: hidden values stay hidden in
+    their before/after too.
+    """
+
+    def get(self, request, app_label, model_name, pk):
+        model = _resolve(app_label, model_name)
+        obj = get_record(request.user, model, pk)
+        return Response({'results': history_for(obj, readable_fields(request.user, model))})
 
 
 class ModelSearchView(APIView):
