@@ -246,3 +246,39 @@ class WriteAllowlistTests(Fixtures):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn('created_by', response.json())
+
+
+class ReadableFieldsOnlyTests(Fixtures):
+    """Filter, sort and search only on fields the user can read."""
+
+    def setUp(self):
+        super().setUp()
+        self.client = client_for(make_user('limited', 'core.view_contact', 'core.view_country'))
+
+    def test_sorting_by_a_hidden_field_is_refused(self):
+        response = self.client.get('/api/data/core/contact/?ordering=-tax_id')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('ordering', response.json())
+
+    def test_sorting_by_an_unknown_field_gets_the_same_refusal(self):
+        hidden = self.client.get('/api/data/core/contact/?ordering=tax_id').json()
+        unknown = self.client.get('/api/data/core/contact/?ordering=nonsense').json()
+        self.assertEqual(hidden, unknown)
+
+    def test_sorting_by_a_readable_field_works(self):
+        self.assertEqual(self.client.get('/api/data/core/contact/?ordering=-name').status_code, 200)
+
+    def test_filtering_by_a_hidden_field_is_refused(self):
+        response = self.client.get('/api/data/core/contact/search/?tax_id=NTN-1234567')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('tax_id', response.json())
+
+    def test_filtering_by_an_unknown_field_gets_the_same_refusal(self):
+        hidden = self.client.get('/api/data/core/contact/search/?tax_id=x').json()['tax_id']
+        unknown = self.client.get('/api/data/core/contact/search/?nonsense=x').json()['nonsense']
+        self.assertEqual(hidden, unknown)
+
+    def test_filtering_by_a_readable_field_works(self):
+        response = self.client.get('/api/data/core/contact/search/?type=company')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row['value'] for row in response.json()], [self.company.pk])

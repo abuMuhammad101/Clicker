@@ -20,6 +20,7 @@ from django.db.models import F, Q, Value
 from django.db.models.functions import Lower, NullIf
 from django.http import Http404
 from rest_framework import status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -147,11 +148,22 @@ def _sort_expressions(model, name, desc):
     ]
 
 
+# Query parameters the endpoints read themselves; everything else in a search
+# request's query string is a field filter.
+RESERVED_PARAMS = {'q', 'limit', 'offset', 'ordering'}
+
+# One message for a field that doesn't exist and one the user can't read:
+# telling them apart would confirm a hidden field exists.
+NOT_SORTABLE = 'You can’t sort by this field.'
+NOT_FILTERABLE = 'You can’t filter by this field.'
+
+
 def _ordering(model, schema, param):
     """
-    `?ordering=name,-city` → order_by expressions. Only names in the user's
-    schema are accepted; with no usable ordering, the schema's own list_sort
-    applies.
+    `?ordering=name,-city` → order_by expressions. Only fields the user can
+    read may be sorted by: sorting on a hidden field would reveal its values
+    by their order. Any other name is refused with a 400, never silently
+    ignored. With no ordering requested, the schema's own list_sort applies.
 
     The primary key is always the final tiebreaker. The list is fetched in
     windows by offset, and without a total order two rows that tie on the
@@ -161,8 +173,12 @@ def _ordering(model, schema, param):
     requested = []
     for part in (param or '').split(','):
         part = part.strip()
-        if part.lstrip('-') in fields:
-            requested.append((part.lstrip('-'), part.startswith('-')))
+        if not part:
+            continue
+        name = part.lstrip('-')
+        if name not in fields:
+            raise ValidationError({'ordering': [NOT_SORTABLE]})
+        requested.append((name, part.startswith('-')))
     if not requested:
         requested = [
             (sort['field'], sort['direction'] == 'desc')
@@ -242,13 +258,17 @@ class ModelSearchView(APIView):
         queryset = _search(scoped_queryset(request.user, model, 'view'), schema, request.GET.get('q', ''))
 
         # Domain filters (e.g. ?type=company for the parent picker, or
-        # ?is_vendor=true for a boolean one) — exact match, and only against
-        # field names in this user's schema.
-        valid_fields = set(schema['fields'].keys())
+        # ?is_vendor=true for a boolean one) — exact match, and only on fields
+        # this user can read. Filtering on a hidden field would let a client
+        # guess its values one request at a time, so any other key is refused.
+        readable = set(schema['fields'].keys())
+        refused = sorted(key for key in request.GET if key not in RESERVED_PARAMS and key not in readable)
+        if refused:
+            raise ValidationError({key: [NOT_FILTERABLE] for key in refused})
         filters = {
             key: _coerce_domain_value(model._meta.get_field(key), value)
             for key, value in request.GET.items()
-            if key in valid_fields
+            if key in readable
         }
         if filters:
             queryset = queryset.filter(**filters)
