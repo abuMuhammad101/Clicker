@@ -1294,3 +1294,159 @@ Migrations applied to the shared Neon database (axes tables, audit columns,
    roles page?
 5. **Absolute session length**: 24 hours from sign-in is the default; shorter
    for the demo?
+
+## 2026-10-30 | office | S-2: field types and data shapes for billing
+
+The engine now has the types a billing ERP needs, built once so every module
+in S-5 and S-6 gets them free. No business modules yet. The backend landed as
+one commit (`16e03ec`: the parts share `engine.py`, `access.py` and the
+serializers); the frontend as two (field types, then related lists and
+filters).
+
+### What was built
+
+- **Part 0, Hassan's S-1 decisions.** Clerk may create contacts, may not
+  archive them (`active` restricted) or change `tax_id`; reads `credit_limit`
+  but can't change it. `dev-verify` gets Manager in `seed_roles`. Reductions:
+  one Manager, never their own request; the second-approver threshold is a
+  setting (`CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD = None`, no limit) for
+  S-3 to read. `DEV_CLERK_USERNAME`/`DEV_CLERK_PASSWORD` written to this
+  machine's `.env` (generated, never printed); `seed_roles` run on Neon:
+  Manager 18 permissions, Clerk 7.
+- **Part 1, relation scope.** A link's id is always readable; it is
+  *writable* only if the user can view the target model, and a written id must
+  exist in `scoped_queryset(user, target, 'view')`. Forbidden and nonexistent
+  ids get the same field error ("Choose a record from the list."). The label
+  is fetched through the target's scope too; when it can't be, the envelope
+  says `restricted: {field: true}` and the UI shows a muted "Restricted", not
+  a link.
+- **Part 2, types.**
+  - `date`: typed day-first (`30/10/2026`, `30-10-26`, `30 oct`, `today`,
+    `yesterday`, `tomorrow`), stored ISO, shown "30 Oct 2026". Picker with
+    presets Today / Yesterday / Start of month / End of month; arrows move a
+    day or a week, PageUp/PageDown a month, Enter picks, Esc closes. Min/max
+    come from the model's validators.
+  - `datetime`: read-only, "30 Oct 2026, 14:05" in the organisation's time
+    zone; the record header shows "Updated 3 minutes ago by …", the exact time
+    on hover.
+  - `integer`: right-aligned, tabular, thousands separators, no spinner,
+    min/max from validators.
+  - `currency`: declared per field in `Schema.field_types`; PKR from one
+    setting (`CLICKER_CURRENCY`); "Rs 1,245,000.00", paisa muted, a minus sign
+    and never red; a compact lakh/crore formatter for summaries ("Rs 12.4
+    lakh", "Rs 6,870 crore"). Decimals travel as strings end to end: Python
+    `Decimal` → JSON string → TS string → BigInt for maths. No float anywhere.
+    Applied to `Product.sales_price`/`cost` and `Contact.credit_limit`.
+  - `TIME_ZONE = 'Asia/Karachi'`. It now matters: "today", "overdue" and any
+    date computed on the server depend on it. `/api/auth/me` sends the
+    currency and time zone so the browser formats with the same ones.
+- **Part 3, computed fields.** `Schema.computed = {'margin': {'label',
+  'type', 'expression': F('sales_price') - F('cost')}}`. The scoping function
+  annotates them, so they sort, filter and aggregate in the database. Never in
+  the write allowlist, never audited, hidden when any field they derive from
+  is unreadable. The UI marks them with Σ and a tooltip ("Calculated: Sales
+  price − Cost") generated from the expression. Today-dependent values are
+  supported with `days_since('field')` (tested with a mocked today, not used
+  by any model yet).
+- **Part 4, related lists and list filters.** `Schema.related_lists =
+  [{'relation': 'children', 'label': 'People', 'columns': [...]}]`. The form
+  renders each with the ordinary `ListRenderer`, embedded and filtered to the
+  record: count in the header, the first 10 rows, then "View all 37" to the
+  full list with the filter on. Shown only if the user can view the target and
+  read the link; Add only with add permission and a writable link, and it
+  opens the new record in a peek with the link prefilled and locked. Generic
+  list filter `?field=value` (exact match, readable fields only, else 400).
+  Proved with a company's People and Products supplied.
+- **Part 5, Contact commercial terms.** `payment_terms_days` (integer,
+  default 30, max 365), `credit_limit` (currency, optional, ≥ 0),
+  `customer_since` (date, optional), in a "Commercial" group. Additive
+  migration with a database default, applied to Neon. Seed values for Acme,
+  Globex, Northwind and Marcus (only where empty).
+
+### Decisions, one line each
+
+- **Currency is declared, not inferred** (`field_types = {'sales_price':
+  'currency'}`): a `DecimalField` can be a quantity or a rate; only the author
+  knows it's money.
+- **Computed fields are database expressions, not Python properties**, so
+  sorting and filtering by margin happens in Postgres across all rows, not on
+  one page of them.
+- **A computed field's description is generated from its expression**, so the
+  tooltip can't drift from the maths.
+- **Related lists name the reverse relation** (`children`) and the engine
+  finds the link field and target from it: one word for the author, nothing
+  to keep in sync.
+- **Prefill travels in the URL** (`/core/contact/new?parent=4`, or inside the
+  peek param), so a prefilled new record survives a reload and opens in any
+  surface; the form locks prefilled fields.
+- **Renderer capabilities added as props, as the second law asks:**
+  `ListRenderer` gets `filter`, `columns`, `variant: 'embedded'`, `maxRows`,
+  `onTotal`, `onClearFilter`; `FormRenderer` gets `prefill`; field components
+  get `restricted` and `computed`. No container-specific code inside them.
+- **The column chooser now offers every readable field**, not only the
+  declared columns, with "Reset to default": needed to show `customer_since`
+  in the list without making it a default column.
+- **A list refetches when a record it doesn't hold changes**, so a related
+  list's count updates after Add (a partial answer to stale views).
+- **"Restricted" is muted, not italic**: italics clipped at 13px in a cell.
+
+### Definition of done
+
+1. **Pass.** Backend suite: 101 tests OK, including the S-2 denials: linking
+   to a record outside the user's scope (same error as a nonexistent one),
+   label withheld and flagged restricted, computed field not writable and not
+   audited, computed field hidden when its source is restricted, list filter
+   on an unreadable field refused, Clerk cannot archive or change
+   `tax_id`/`credit_limit`, related list hidden from a user who can't see the
+   target.
+2. **Pass.** `npx tsc -b`; `npm run build`; lint shows only the six earlier
+   warnings.
+3. **Pass.** Gallery: all 8 states for date (plus the open picker), integer
+   and currency; datetime display; the calculated mark; a restricted link.
+   `docs/design/s2/gallery-{1440,1024}-{light,dark}-*.jpg`.
+4. **Pass, against a local copy, not Neon** (same method as S-1: the real API
+   and frontend on 8200/5273, a throwaway SQLite database, generated users,
+   the served password file deleted after). `docs/design/s2/1-…` to `6-…`:
+   Globex shows People and Products supplied; Add from People opens the peek
+   with Parent locked to "Globex Industries"; products sort by margin; margin
+   shows the Σ mark; a date typed day-first and one picked from a preset.
+5. **Pass.** Typing "30/10/2026" saved `2026-10-30` (read back from the API)
+   and the contacts list shows "30 Oct 2026".
+
+### Findings and gaps
+
+- **Product seed prices are tiny for PKR** (they were written as dollars), so
+  prices and margins read as a few rupees. Reseed with rupee-scale prices before the demo.
+- **A person's display name includes the parent's name** ("Person (Company)").
+  Once record rules exist, that leaks a company name to someone who can see
+  the person but not the company. Fix alongside record rules.
+- **The integer empty placeholder is "0"**, which reads like a value. Should
+  be blank or "—"; small, left for Hassan's eye.
+- **A Clerk can't set `tax_id` on create** (restricted for change, and create
+  counts as change). Matches the decision literally; may not be what's wanted
+  when a Clerk adds a company.
+- **The date picker sits tight against the right edge at 1024.** It fits, with
+  no margin. Align it to the input's end if it bothers.
+- **Datetime has only a read-only state.** An editable datetime (a meeting
+  time) needs its own states designed first.
+- **Stale views remain** for records a list *does* hold (edited in a peek over
+  that list): the list refetches only for records it doesn't know.
+- `SchemaViewer.tsx`'s hardcoded model list (the law) is still open.
+
+- Half-finished: nothing.
+- **Next single action:** S-3 — draft the workflow-state schema (states,
+  transitions, who may run each) on a throwaway model, starting from Hassan's
+  answers below.
+
+### Decide before S-3 (Hassan's calls)
+
+1. **Invoice states:** Draft → Posted → Paid, plus Cancelled? Is "Partially
+   paid" a state or just a balance?
+2. **Who runs each transition:** may a Clerk post an invoice, or only draft
+   it? Who may cancel a posted one?
+3. **Reductions (credit notes, write-offs):** Draft → Requested → Approved /
+   Rejected → Applied? The approver is a Manager, never the requester.
+4. **Can a posted document be edited at all**, or only reversed with a credit
+   note? (The usual ERP answer: reversed only.)
+5. **Is "Overdue" a state or a computed flag** from the due date and today? (I
+   would make it computed: nobody should have to move an invoice into Overdue.)
