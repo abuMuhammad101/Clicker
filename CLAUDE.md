@@ -43,6 +43,20 @@ The contract lives in `frontend/src/records/` (and `docs/BUILD_LOG.md`, "surface
 
 If a renderer genuinely needs a new capability for a container, add it as a prop or event, and say so plainly in the log.
 
+## Security rules: the third law
+
+- **Deny by default.** Every model, field and action needs an explicit grant (Django permissions through Groups; restricted fields via `Schema.restricted_fields`; role grants via `Schema.default_grants`).
+- **One enforcement point:** `data/access.py` (`scoped_queryset`, `get_record`, `readable_fields`, `writable_fields`), built on `foundation/permissions.py`. The schema a user receives *is* the permission check; the API enforces the same function. Permission functions take the user explicitly, never `request.user`.
+- **Writes are allowlisted from the schema.** Any other key is refused by name. Server-owned fields (`editable=False`: audit fields, later workflow state, computed values, company) are never client-writable.
+- **Every write is audited in the same transaction.** The audit log is append-only, for managers too (model, queryset and a Postgres trigger refuse change).
+- **Records you can't see are 404.** Visible but not allowed is 403.
+- **Filter, sort and search only on readable fields.**
+- **Money is Decimal.** Posted financial documents are never edited, only reversed.
+- **Whoever creates a financial document can't approve its reduction.**
+- **No secrets in code, logs or chat.** Production has its own database and credentials.
+- **`check --deploy`, `pip-audit` and `npm audit` pass before any deploy** (`CLICKER_ENV=production`).
+- **Every permission rule has a test that proves it denies.**
+
 ---
 
 ## Stack
@@ -77,15 +91,14 @@ Hassan is a product designer, new to backend work. He is the design authority an
 
 ## Current state
 
-**Phase 1 (The Machine) is complete. Phase 2 is in progress: 2a (authentication) and 2b (module registry, app shell) are done, and the surfaces contract has landed.** `docs/BUILD_LOG.md` is the history and its newest entry ends with the next single action; read that before starting work.
+**Phase 1 is complete; Phase 2's 2a, 2b, the surfaces contract and 2c (permissions) are done. The demo sprint is under way: see `docs/DEMO_SPRINT.md` (sessions, gates, cut order). S-1, the security foundation, is done.** `docs/BUILD_LOG.md` is the history and its newest entry ends with the next single action; read that before starting work.
 
 ### What exists
 - **Backend:** Django + DRF on Neon. `core` (Contact, Country), `catalog` (Product), `accounts` (session auth), `userstate` (per-user preferences, record views). The schema endpoint, generic record API (runs `Model.clean()`), search endpoint and registry endpoint are all derived from models that opt in with a `Schema` class.
 - **Frontend:** the 8 registry field components plus decimal, form and list renderers, and an app shell (sidebar and breadcrumbs generated from the registry, Recents as home, contextual save bar, peek drawer). Product's screens appeared with zero frontend changes, which passed Phase 1's exit test.
-- **Auth:** every API endpoint requires a Django session. Anonymous requests get 401.
+- **Auth and access:** every API endpoint requires a Django session (401 otherwise); sign-in is throttled (django-axes). Roles Manager and Clerk are Groups seeded after every migrate. Every model is a `foundation.ClickerModel` with server-owned audit fields, and every write is in the append-only `AuditEntry` log.
 
 ### Known open problems
-- **Stale views:** renderers never refetch, so a record edited in a peek leaves the list or form behind it showing old data. The fix is a record-changed signal, which is a deliberate renderer change; decide before adding more containers.
 - **Deploy blockers:** a custom same-site domain (the session cookie won't cross `*.pages.dev` to `*.onrender.com`), login rate limiting, and deactivating `dev-verify` on any shared database.
 - **Never visually reviewed:** the shell, peek and save bar were verified by DOM and tests, not screenshots. Density and craft are Hassan's call, by eye.
 
