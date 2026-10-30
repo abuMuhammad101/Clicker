@@ -240,6 +240,11 @@ def build_schema(model):
         # no current module declares a one_to_many field to show one.
         if field.auto_created and not field.concrete:
             continue
+        # Server-owned fields (the audit fields, and later workflow state and
+        # computed values) are not part of what a user reads or writes through
+        # a form. `editable=False` is Django's own marker for them.
+        if not field.editable and not field.primary_key:
+            continue
         fields[field.name] = _field_schema(field, overrides)
 
     # An auto-created primary key is the record's identity, not something a

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import sys
 from pathlib import Path
 
 import environ
@@ -84,6 +85,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'foundation',
     'accounts',
     'core',
     'catalog',
@@ -129,6 +131,14 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': env.db('DATABASE_URL'),
 }
+
+# Tests create and drop a scratch database. Neon's pooled endpoint (PgBouncer)
+# keeps connections to it open, so the DROP at teardown fails with "being
+# accessed by other users". Tests therefore use the direct endpoint: the same
+# host without `-pooler`, which is how Neon names the two. The app itself
+# keeps the pooled one.
+if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    DATABASES['default']['HOST'] = DATABASES['default']['HOST'].replace('-pooler.', '.')
 
 
 # Password validation

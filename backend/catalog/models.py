@@ -1,9 +1,10 @@
 from django.db import models
 
 from core.models import Contact
+from foundation.models import ClickerModel
 
 
-class Product(models.Model):
+class Product(ClickerModel):
     TYPE_GOODS = 'goods'
     TYPE_SERVICE = 'service'
     TYPE_CHOICES = [

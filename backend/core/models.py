@@ -1,8 +1,10 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from foundation.models import ClickerModel
 
-class Country(models.Model):
+
+class Country(ClickerModel):
     name = models.CharField(max_length=100)
     code = models.CharField(max_length=2, unique=True)
 
@@ -25,7 +27,7 @@ class Country(models.Model):
         return self.name
 
 
-class Contact(models.Model):
+class Contact(ClickerModel):
     TYPE_PERSON = 'person'
     TYPE_COMPANY = 'company'
     TYPE_CHOICES = [
