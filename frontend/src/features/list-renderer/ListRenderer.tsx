@@ -118,7 +118,15 @@ function ListLoader({
   if (schemaState.status === 'error') {
     return (
       <div className="list-page">
-        <LoadError message={schemaState.message} onRetry={onRetry} />
+        {schemaState.notFound ? (
+          // Doesn't exist, or not for this user: the API answers both with 404.
+          <div className="list-state" role="alert">
+            <p className="list-state__title">This list isn’t available</p>
+            <p className="list-state__message">It doesn’t exist, or you don’t have access to it.</p>
+          </div>
+        ) : (
+          <LoadError message={schemaState.message} onRetry={onRetry} />
+        )}
       </div>
     )
   }
@@ -475,12 +483,14 @@ function ListView({
             onRefresh={retry}
             refreshing={state.status === 'loading'}
           />
-          <Button asChild className="h-[var(--control-height)]">
-            <RecordRef model={{ app_label: appLabel, model }} id="new">
-              <Plus className="size-4" aria-hidden />
-              New {schema.verbose_name}
-            </RecordRef>
-          </Button>
+          {schema.actions.create && (
+            <Button asChild className="h-[var(--control-height)]">
+              <RecordRef model={{ app_label: appLabel, model }} id="new">
+                <Plus className="size-4" aria-hidden />
+                New {schema.verbose_name}
+              </RecordRef>
+            </Button>
+          )}
         </div>
       </div>
 
@@ -575,12 +585,14 @@ function ListView({
                   <p className="list-state__message">
                     Add the first {schema.verbose_name} and it will show up here.
                   </p>
-                  <Button asChild className="h-[var(--control-height)]">
-                    <RecordRef model={{ app_label: appLabel, model }} id="new">
-                      <Plus className="size-4" aria-hidden />
-                      New {schema.verbose_name}
-                    </RecordRef>
-                  </Button>
+                  {schema.actions.create && (
+                    <Button asChild className="h-[var(--control-height)]">
+                      <RecordRef model={{ app_label: appLabel, model }} id="new">
+                        <Plus className="size-4" aria-hidden />
+                        New {schema.verbose_name}
+                      </RecordRef>
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -617,7 +629,10 @@ function ListView({
                       const name = cell.column.id
                       const field = schema.fields[name]
                       const editable =
-                        loaded && isInlineEditable(field) && isVisible(field, record.values)
+                        loaded &&
+                        schema.actions.update &&
+                        isInlineEditable(field) &&
+                        isVisible(field, record.values)
                       const isEditing = editing?.index === virtualRow.index && editing.field === name
                       const justSaved = savedCell?.index === virtualRow.index && savedCell.field === name
                       return (

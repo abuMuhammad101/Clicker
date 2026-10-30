@@ -237,7 +237,7 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                 <kbd className="kbd">{shortcutHint()}</kbd>
               </Button>
               <span className="peek__spacer" />
-              {topEditing ? (
+              {topForm?.canUpdate === false ? null : topEditing ? (
                 <Button
                   variant="outline"
                   onClick={() =>

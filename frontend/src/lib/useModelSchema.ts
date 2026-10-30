@@ -4,7 +4,8 @@ import type { ModelSchema } from '@/types/schema'
 
 type State =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  /** `notFound`: the model doesn't exist for this user (a 404). Nothing to retry. */
+  | { status: 'error'; message: string; notFound: boolean }
   | { status: 'ready'; schema: ModelSchema }
 
 export function useModelSchema(appLabel: string, modelName: string): State {
@@ -21,7 +22,7 @@ export function useModelSchema(appLabel: string, modelName: string): State {
       .catch((error: unknown) => {
         if (cancelled) return
         const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
-        setState({ status: 'error', message })
+        setState({ status: 'error', message, notFound: error instanceof ApiError && error.status === 404 })
       })
 
     return () => {

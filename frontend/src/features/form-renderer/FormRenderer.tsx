@@ -39,6 +39,8 @@ export interface FormState {
   dirty: boolean
   /** How many fields differ from what was loaded. */
   changes: number
+  /** Whether this user may edit the record at all (the schema's `update` action). */
+  canUpdate: boolean
   saving: boolean
   save: () => void
   discard: () => void
@@ -84,7 +86,7 @@ export function FormRenderer(props: FormRendererProps) {
 
 type RecordState =
   | { status: 'loading' }
-  | { status: 'error'; message: string }
+  | { status: 'error'; message: string; notFound: boolean }
   | { status: 'ready'; record: RecordEnvelope | null }
 
 function FormSheet({
@@ -112,12 +114,19 @@ function FormSheet({
       .catch((error: unknown) => {
         if (cancelled) return
         const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
-        setRecordState({ status: 'error', message })
+        setRecordState({ status: 'error', message, notFound: error instanceof ApiError && error.status === 404 })
       })
     return () => {
       cancelled = true
     }
   }, [appLabel, model, recordId])
+
+  if (
+    (schemaState.status === 'error' && schemaState.notFound) ||
+    (recordState.status === 'error' && recordState.notFound)
+  ) {
+    return <NotAvailable />
+  }
 
   if (schemaState.status === 'error' || recordState.status === 'error') {
     const message =
@@ -152,7 +161,9 @@ function FormSheet({
 
   return (
     <EditableForm
-      schema={schemaState.schema}
+      // A new record uses what this user may set when creating
+      // (read_only_on_create), not when editing an existing one.
+      schema={recordState.record ? schemaState.schema : forCreate(schemaState.schema)}
       record={recordState.record}
       appLabel={appLabel}
       model={model}
@@ -164,6 +175,18 @@ function FormSheet({
       actions={actions}
     />
   )
+}
+
+function forCreate(schema: ModelSchema): ModelSchema {
+  return {
+    ...schema,
+    fields: Object.fromEntries(
+      Object.entries(schema.fields).map(([name, field]) => [
+        name,
+        { ...field, read_only: field.read_only_on_create ?? field.read_only },
+      ]),
+    ),
+  }
 }
 
 function initialValues(schema: ModelSchema, record: RecordEnvelope | null) {
@@ -221,7 +244,10 @@ function EditableForm({
   leading?: ReactNode
   actions?: 'inline' | 'external'
 }) {
-  const viewing = mode === 'view'
+  // Read-only when the container asks for it, and always when this user may
+  // not edit the record: the schema's `update` action is the API's own answer.
+  const canUpdate = schema.actions.update
+  const viewing = mode === 'view' || (initialRecord != null && !canUpdate)
   const [record, setRecord] = useState(initialRecord)
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, initialRecord),
@@ -370,9 +396,9 @@ function EditableForm({
     [],
   )
   useEffect(() => {
-    onStateChange?.({ dirty: isDirty, changes: changeCount, saving, ...commands })
+    onStateChange?.({ dirty: isDirty, changes: changeCount, canUpdate, saving, ...commands })
     return () => onStateChange?.(null)
-  }, [isDirty, changeCount, saving, commands, onStateChange])
+  }, [isDirty, changeCount, canUpdate, saving, commands, onStateChange])
 
   // Any in-app navigation while dirty — this header's link, the sidebar,
   // a breadcrumb, browser back/forward — is held back and routed through
@@ -612,6 +638,19 @@ function SchemaSkeleton() {
           </div>
         </section>
       </div>
+    </div>
+  )
+}
+
+/**
+ * A record that doesn't exist and one this user may not see look the same, on
+ * purpose: the API answers 404 for both. Nothing to retry.
+ */
+function NotAvailable() {
+  return (
+    <div className="form-sheet form-sheet--error" role="alert">
+      <h1 className="form-error__title">This record isn’t available</h1>
+      <p className="form-error__message">It doesn’t exist, or you don’t have access to it.</p>
     </div>
   )
 }

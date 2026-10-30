@@ -41,7 +41,10 @@ export interface FieldSchema {
   type: FieldType
   label: string
   required: boolean
+  /** Not writable by this user when editing an existing record. */
   read_only: boolean
+  /** Not writable by this user when creating a record. */
+  read_only_on_create?: boolean
   visible_when: VisibleWhen | null
   max_length?: number
   max_digits?: number
@@ -76,6 +79,14 @@ export interface ListSchema {
   search_fields: string[]
 }
 
+/** What this user may do with the model, from the same check the API enforces. */
+export interface SchemaActions {
+  view: boolean
+  create: boolean
+  update: boolean
+  delete: boolean
+}
+
 export interface ModelSchema {
   model: string
   app_label: string
@@ -85,4 +96,5 @@ export interface ModelSchema {
   groups: FieldGroup[]
   list: ListSchema
   fields: Record<string, FieldSchema>
+  actions: SchemaActions
 }
