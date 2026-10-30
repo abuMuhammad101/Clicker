@@ -15,6 +15,9 @@ class Country(ClickerModel):
     class Schema:
         icon = 'globe'
         display_field = 'name'
+        # Countries are seeded reference data: a Clerk reads them (a contact's
+        # country) and changes nothing.
+        default_grants = {'Clerk': ['view_country']}
         list_display = ['name', 'code']
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         search_fields = ['name', 'code']
@@ -104,6 +107,13 @@ class Contact(ClickerModel):
         # model's: core.view_contact_tax_id and core.change_contact_tax_id.
         # The two permissions are created automatically after migrate.
         restricted_fields = ['tax_id']
+
+        # What each role may do here (Managers may do everything). A Clerk
+        # keeps contacts current but can't create them, and sees the tax ID
+        # without being able to change it.
+        default_grants = {
+            'Clerk': ['view_contact', 'change_contact', 'view_contact_tax_id'],
+        }
 
         # Order here is form layout, not Django's declaration order — group
         # order and field order within a group are both explicit, on purpose.

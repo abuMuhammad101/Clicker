@@ -19,3 +19,8 @@ def ensure_permissions(sender, using='default', verbosity=0, **kwargs):
     for app_config in apps.get_app_configs():
         create_permissions(app_config, verbosity=0, using=using)
     ensure_field_permissions([model for model in apps.get_models() if is_exposed(model)])
+
+    # The built-in roles, from the grants each model declares.
+    from .roles import seed_roles
+
+    seed_roles(using=using)
