@@ -2,10 +2,12 @@ import json
 import re
 
 from django.apps import apps
+from django.http import Http404
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from data.access import scoped_queryset
 from schema.engine import _sentence_case, display_label, is_exposed
 
 from .models import RecordView, UserPreference
@@ -31,7 +33,12 @@ class RecentsView(APIView):
             model = view.content_type.model_class()
             if model is None or not is_exposed(model):
                 continue
-            obj = model.objects.filter(pk=view.object_id).first()
+            # Through the same scope as every other read: a record (or a whole
+            # model) this user can no longer see drops out of their Recents.
+            try:
+                obj = scoped_queryset(request.user, model, 'view').filter(pk=view.object_id).first()
+            except Http404:
+                continue
             if obj is None:
                 continue
             app_config = apps.get_app_config(model._meta.app_label)

@@ -100,6 +100,11 @@ class Contact(ClickerModel):
         icon = 'users'
         display_field = 'display_name'
 
+        # Readable and writable only with their own grant, on top of the
+        # model's: core.view_contact_tax_id and core.change_contact_tax_id.
+        # The two permissions are created automatically after migrate.
+        restricted_fields = ['tax_id']
+
         # Order here is form layout, not Django's declaration order — group
         # order and field order within a group are both explicit, on purpose.
         groups = [

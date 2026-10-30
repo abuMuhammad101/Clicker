@@ -3,7 +3,7 @@ from django.test import SimpleTestCase
 from catalog.models import Product
 from core.models import Contact, Country
 from foundation.models import ClickerModel
-from schema.engine import build_schema
+from schema.engine import schema_field_names
 
 
 class BaseModelTests(SimpleTestCase):
@@ -16,6 +16,6 @@ class BaseModelTests(SimpleTestCase):
             self.assertFalse(Contact._meta.get_field(name).editable, name)
 
     def test_server_owned_fields_never_reach_a_schema(self):
-        fields = build_schema(Contact)['fields']
+        fields = schema_field_names(Contact)
         for name in ClickerModel.SERVER_OWNED_FIELDS:
             self.assertNotIn(name, fields)

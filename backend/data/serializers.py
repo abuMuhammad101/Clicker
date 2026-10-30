@@ -16,7 +16,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import models as djm
 from rest_framework import serializers
 
-from schema.engine import build_schema, display_label
+from schema.engine import display_label
 
 
 class ModelRecordSerializer(serializers.ModelSerializer):
@@ -71,7 +71,7 @@ def serializer_for(model):
     return type(f'{model.__name__}RecordSerializer', (ModelRecordSerializer,), {'Meta': meta})
 
 
-def serialize_record(obj, schema=None):
+def serialize_record(obj, schema):
     """
     The record envelope:
 
@@ -88,8 +88,9 @@ def serialize_record(obj, schema=None):
     request and without the value itself changing shape between read and
     write.
     """
+    # `schema` is always the requesting user's: only the fields they may read
+    # are in it, so only those reach the envelope (and their relation labels).
     model = type(obj)
-    schema = schema or build_schema(model)
     meta = model._meta
 
     values = {}

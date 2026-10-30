@@ -14,6 +14,8 @@ import re
 
 from django.db import models as djm
 
+from foundation.permissions import WRITE, can, field_access
+
 
 def _base_type_for_field(field):
     if isinstance(field, djm.EmailField):
@@ -141,7 +143,7 @@ def _icon_name(model):
     return icon if isinstance(icon, str) and _ICON_NAME.match(icon) else None
 
 
-def build_registry():
+def build_registry(user):
     """
     What exists: every installed app with at least one exposed model, and
     those models. Derived entirely from Django's app registry — the same
@@ -154,6 +156,9 @@ def build_registry():
     Apps keep INSTALLED_APPS order. Models within an app are alphabetical
     by label: predictable, and needs no extra metadata. (If a module ever
     needs a deliberate order, that's a `Schema` attribute, added then.)
+
+    Only models `user` may view are listed: navigation is not a way to learn
+    that a module exists.
     """
     from django.apps import apps
 
@@ -171,7 +176,7 @@ def build_registry():
                 'icon': _icon_name(model),
             }
             for model in app_config.get_models()
-            if is_exposed(model)
+            if is_exposed(model) and can(user, model, 'view')
         ]
         if not models:
             continue
@@ -225,7 +230,40 @@ def _build_groups(schema_cls, field_names):
     return groups
 
 
-def build_schema(model):
+def schema_field_names(model):
+    """
+    The fields a schema can expose for `model`, before any user is considered:
+    concrete fields and forward relations, minus server-owned ones. Reverse
+    relations (auto_created, not concrete) aren't exposed yet — no current
+    module declares a one_to_many field to show one.
+    """
+    names = []
+    for field in model._meta.get_fields():
+        if field.auto_created and not field.concrete:
+            continue
+        # Server-owned fields (the audit fields, and later workflow state and
+        # computed values) are not part of what a user reads or writes through
+        # a form. `editable=False` is Django's own marker for them.
+        if not field.editable and not field.primary_key:
+            continue
+        names.append(field.name)
+    return names
+
+
+def build_schema(model, user):
+    """
+    The schema `user` receives for `model`, or None if they can't see it.
+
+    This is the permission check, not a picture of it: the API enforces the
+    same `field_access` answer this function filters by. Hidden fields are
+    absent everywhere (fields, groups, list columns, sort, search, default
+    filters); fields the user may read but not write come back `read_only`
+    (for editing an existing record) and `read_only_on_create` (for a new
+    one); `actions` says which writes the user may attempt at all.
+    """
+    if not can(user, model, 'view'):
+        return None
+
     meta = model._meta
     schema_cls = getattr(model, 'Schema', None)
     overrides = {
@@ -234,18 +272,20 @@ def build_schema(model):
         'domains': getattr(schema_cls, 'domains', {}),
     }
 
+    all_names = schema_field_names(model)
+    access = field_access(user, model, all_names)
+    may_update = can(user, model, 'change')
+    may_create = can(user, model, 'add')
+
     fields = {}
-    for field in meta.get_fields():
-        # Reverse relations (auto_created, not concrete) aren't exposed yet —
-        # no current module declares a one_to_many field to show one.
-        if field.auto_created and not field.concrete:
+    for name in all_names:
+        if name not in access:
             continue
-        # Server-owned fields (the audit fields, and later workflow state and
-        # computed values) are not part of what a user reads or writes through
-        # a form. `editable=False` is Django's own marker for them.
-        if not field.editable and not field.primary_key:
-            continue
-        fields[field.name] = _field_schema(field, overrides)
+        entry = _field_schema(meta.get_field(name), overrides)
+        writable = access[name] == WRITE
+        entry['read_only_on_create'] = entry['read_only'] or not (writable and may_create)
+        entry['read_only'] = entry['read_only'] or not (writable and may_update)
+        fields[name] = entry
 
     # An auto-created primary key is the record's identity, not something a
     # user fills in — the form shows it in its header, not as a field. It
@@ -253,7 +293,15 @@ def build_schema(model):
     # lands in a form group by default. A model can still place it in a
     # group explicitly if it ever has a reason to.
     auto_pk = meta.pk.name if isinstance(meta.pk, djm.AutoField) else None
-    form_field_names = [name for name in fields if name != auto_pk]
+    form_field_names = [name for name in all_names if name != auto_pk]
+
+    # Groups are laid out from every field (so "Ungrouped" still catches an
+    # author's oversight), then narrowed to what this user may see.
+    groups = []
+    for group in _build_groups(schema_cls, form_field_names):
+        visible = [name for name in group['fields'] if name in fields]
+        if visible:
+            groups.append({'label': group['label'], 'fields': visible})
 
     return {
         'model': meta.model_name,
@@ -261,12 +309,20 @@ def build_schema(model):
         'verbose_name': str(meta.verbose_name),
         'verbose_name_plural': str(meta.verbose_name_plural),
         'display_field': getattr(schema_cls, 'display_field', None),
-        'groups': _build_groups(schema_cls, form_field_names),
+        'groups': groups,
         'list': {
-            'columns': getattr(schema_cls, 'list_display', list(fields.keys())),
-            'sort': getattr(schema_cls, 'list_sort', []),
-            'default_filters': getattr(schema_cls, 'list_filter_defaults', {}),
-            'search_fields': getattr(schema_cls, 'search_fields', []),
+            'columns': [c for c in getattr(schema_cls, 'list_display', all_names) if c in fields],
+            'sort': [s for s in getattr(schema_cls, 'list_sort', []) if s['field'] in fields],
+            'default_filters': {
+                k: v for k, v in getattr(schema_cls, 'list_filter_defaults', {}).items() if k in fields
+            },
+            'search_fields': [f for f in getattr(schema_cls, 'search_fields', []) if f in fields],
         },
         'fields': fields,
+        'actions': {
+            'view': True,
+            'create': may_create,
+            'update': may_update,
+            'delete': can(user, model, 'delete'),
+        },
     }

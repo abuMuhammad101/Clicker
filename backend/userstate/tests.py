@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from catalog.models import Product
 from core.models import Contact, Country
+from foundation.testing import grant_everything
 from schema.engine import build_registry
 
 User = get_user_model()
@@ -13,8 +14,8 @@ User = get_user_model()
 
 class AuthedTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user('alice', password='x')
-        self.other = User.objects.create_user('bob', password='x')
+        self.user = grant_everything(User.objects.create_user('alice', password='x'))
+        self.other = grant_everything(User.objects.create_user('bob', password='x'))
         self.client = APIClient()
         self.client.force_login(self.user)
         self.country = Country.objects.create(name='Testland', code='TL')
@@ -28,14 +29,18 @@ class RegistryTests(AuthedTestCase):
 
         from schema.engine import is_exposed
 
+        from foundation.permissions import can
+
+        # Every exposed model this user may view. (A proxy model another test
+        # defines at runtime is exposed but was never granted, so it's out.)
         expected = {
             (model._meta.app_label, model._meta.model_name)
             for model in apps.get_models()
-            if is_exposed(model)
+            if is_exposed(model) and can(self.user, model, 'view')
         }
         listed = {
             (app['app_label'], entry['model'])
-            for app in build_registry()
+            for app in build_registry(self.user)
             for entry in app['models']
         }
         self.assertEqual(listed, expected)
@@ -45,7 +50,7 @@ class RegistryTests(AuthedTestCase):
     def test_declared_icon_is_passed_through_and_missing_is_null(self):
         entries = {
             entry['model']: entry
-            for app in build_registry()
+            for app in build_registry(self.user)
             for entry in app['models']
         }
         self.assertEqual(entries['contact']['icon'], 'users')

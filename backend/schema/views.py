@@ -6,16 +6,21 @@ from .engine import build_registry, build_schema, get_exposed_model
 
 
 class ModelSchemaView(APIView):
+    """GET /api/schema/<app>/<model>/ — this user's schema, or 404 if they can't see the model."""
+
     def get(self, request, app_label, model_name):
         try:
             model = get_exposed_model(app_label, model_name)
         except LookupError:
-            raise Http404(f'No model registered as {app_label}.{model_name}')
-        return Response(build_schema(model))
+            raise Http404('Not found.')
+        schema = build_schema(model, request.user)
+        if schema is None:
+            raise Http404('Not found.')
+        return Response(schema)
 
 
 class RegistryView(APIView):
-    """GET /api/registry/ — the installed modules and their models, for navigation."""
+    """GET /api/registry/ — the modules and models this user may view, for navigation."""
 
     def get(self, request):
-        return Response({'apps': build_registry()})
+        return Response({'apps': build_registry(request.user)})

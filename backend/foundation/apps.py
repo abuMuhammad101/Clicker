@@ -11,3 +11,11 @@ class FoundationConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'foundation'
     verbose_name = 'Foundation'
+
+    def ready(self):
+        from django.db.models.signals import post_migrate
+
+        from . import checks  # noqa: F401  (registers the system checks)
+        from .signals import ensure_permissions
+
+        post_migrate.connect(ensure_permissions, sender=self, dispatch_uid='foundation.ensure_permissions')

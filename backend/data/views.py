@@ -10,6 +10,10 @@ Generic record API for every model that declares a `Schema` class:
 No per-model code anywhere in this file. Delete is deliberately absent: the
 spec's intended path is archiving (`active = false`), and a delete endpoint
 will be designed with PROTECT errors in mind when something needs it.
+
+Every path gets its rows from `data.access` (the one enforcement point) and
+its field set from the schema built for the requesting user. Nothing here
+reaches for a model's manager directly.
 """
 from django.db import models as djm
 from django.db.models import F, Q, Value
@@ -19,9 +23,11 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from foundation.models import ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model
 from userstate.services import record_view
 
+from .access import get_record, scoped_queryset
 from .serializers import serialize_record, serializer_for
 
 DEFAULT_LIMIT = 20
@@ -34,14 +40,35 @@ def _resolve(app_label, model_name):
     try:
         return get_exposed_model(app_label, model_name)
     except LookupError:
-        raise Http404(f'No model registered as {app_label}.{model_name}')
+        raise Http404('Not found.')
 
 
-def _queryset(model, schema):
+def _user_schema(user, model):
+    """The schema this user gets, or 404 if they can't see the model."""
+    schema = build_schema(model, user)
+    if schema is None:
+        raise Http404('Not found.')
+    return schema
+
+
+def _with_relations(queryset, schema):
     # Every many_to_one label in the envelope touches its related row —
     # fetch them in the same query instead of one query per relation.
     relations = [name for name, f in schema['fields'].items() if f['type'] == 'many_to_one']
-    return model.objects.select_related(*relations)
+    return queryset.select_related(*relations)
+
+
+def _server_owned(user, model, creating):
+    """
+    The values the data layer sets on every write, never the client: who
+    created the record (on create) and who changed it last.
+    """
+    if not issubclass(model, ClickerModel):
+        return {}
+    values = {'updated_by': user}
+    if creating:
+        values['created_by'] = user
+    return values
 
 
 def _int_param(request, name, default, maximum=None):
@@ -58,8 +85,8 @@ def _coerce_domain_value(field, value):
     Everything off a query string is a string — `?is_vendor=true` arrives
     as the Python string 'true', not a bool. Most field types accept that
     fine (CharField, IntegerField's own lookup), but BooleanField does not:
-    Contact.objects.filter(is_vendor='true') raises ValidationError, it
-    doesn't coerce. A domain filter on a boolean field would 500 the picker
+    filtering a boolean field by the string 'true' raises ValidationError,
+    it doesn't coerce. A domain filter on a boolean field would 500 the picker
     without this.
     """
     if isinstance(field, djm.BooleanField):
@@ -68,7 +95,11 @@ def _coerce_domain_value(field, value):
 
 
 def _search(queryset, schema, query):
-    """Case-insensitive contains across the schema's search_fields."""
+    """
+    Case-insensitive contains across the schema's search_fields. The schema
+    is the user's, so a field they can't read is never searched: matching on
+    it would reveal what's in it.
+    """
     query = query.strip()
     search_fields = schema['list']['search_fields']
     if not query or not search_fields:
@@ -118,9 +149,9 @@ def _sort_expressions(model, name, desc):
 
 def _ordering(model, schema, param):
     """
-    `?ordering=name,-city` → order_by expressions. Only names the schema
-    knows are accepted; anything else is dropped rather than raising. With
-    no usable ordering, the schema's own list_sort applies.
+    `?ordering=name,-city` → order_by expressions. Only names in the user's
+    schema are accepted; with no usable ordering, the schema's own list_sort
+    applies.
 
     The primary key is always the final tiebreaker. The list is fetched in
     windows by offset, and without a total order two rows that tie on the
@@ -148,8 +179,9 @@ def _ordering(model, schema, param):
 class ModelRecordListView(APIView):
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
-        schema = build_schema(model)
-        queryset = _search(_queryset(model, schema), schema, request.GET.get('q', ''))
+        schema = _user_schema(request.user, model)
+        queryset = _with_relations(scoped_queryset(request.user, model, 'view'), schema)
+        queryset = _search(queryset, schema, request.GET.get('q', ''))
         queryset = queryset.order_by(*_ordering(model, schema, request.GET.get('ordering')))
 
         limit = _int_param(request, 'limit', LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT)
@@ -162,23 +194,22 @@ class ModelRecordListView(APIView):
 
     def post(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
+        schema = _user_schema(request.user, model)
+        scoped_queryset(request.user, model, 'add')
         serializer = serializer_for(model)(data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save()
-        return Response(serialize_record(obj), status=status.HTTP_201_CREATED)
+        obj = serializer.save(**_server_owned(request.user, model, creating=True))
+        return Response(
+            serialize_record(get_record(request.user, model, obj.pk), schema),
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class ModelRecordDetailView(APIView):
-    def _get_object(self, model, schema, pk):
-        try:
-            return _queryset(model, schema).get(pk=pk)
-        except model.DoesNotExist:
-            raise Http404(f'No {model._meta.verbose_name} with id {pk}')
-
     def get(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
-        schema = build_schema(model)
-        obj = self._get_object(model, schema, pk)
+        schema = _user_schema(request.user, model)
+        obj = get_record(request.user, model, pk)
         # Opening a record, on any surface, is what the Recents home shows.
         # Recorded here rather than by a surface, so a new surface can't forget.
         record_view(request.user, obj)
@@ -186,14 +217,14 @@ class ModelRecordDetailView(APIView):
 
     def patch(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
-        schema = build_schema(model)
-        obj = self._get_object(model, schema, pk)
+        schema = _user_schema(request.user, model)
+        obj = get_record(request.user, model, pk, 'change')
         serializer = serializer_for(model)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        obj = serializer.save()
+        obj = serializer.save(**_server_owned(request.user, model, creating=False))
         # Re-read so relation labels and the display name reflect the save
         # (a changed parent changes a person's display name).
-        return Response(serialize_record(self._get_object(model, schema, obj.pk), schema))
+        return Response(serialize_record(get_record(request.user, model, obj.pk), schema))
 
 
 class ModelSearchView(APIView):
@@ -206,14 +237,12 @@ class ModelSearchView(APIView):
 
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
-        schema = build_schema(model)
-        queryset = _search(model.objects.all(), schema, request.GET.get('q', ''))
+        schema = _user_schema(request.user, model)
+        queryset = _search(scoped_queryset(request.user, model, 'view'), schema, request.GET.get('q', ''))
 
         # Domain filters (e.g. ?type=company for the parent picker, or
         # ?is_vendor=true for a boolean one) — exact match, and only against
-        # field names the schema actually knows about. Anything else in the
-        # query string is silently ignored rather than raising, since
-        # arbitrary junk in a search box's request shouldn't 500 the picker.
+        # field names in this user's schema.
         valid_fields = set(schema['fields'].keys())
         filters = {
             key: _coerce_domain_value(model._meta.get_field(key), value)
