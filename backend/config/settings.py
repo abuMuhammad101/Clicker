@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 import environ
@@ -66,6 +67,31 @@ CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_AGE = 60 * 60 * 12
 SESSION_SAVE_EVERY_REQUEST = True
 
+# Login throttling (django-axes). Failed sign-ins are counted per username
+# *and* IP together: the 6th failure for the same name from the same address
+# within the cool-off locks that pair out for 15 minutes. Not per IP alone:
+# a whole office behind one address (a clearing agency's floor) would lock
+# each other out. Not per username alone: anyone could lock a colleague out
+# by typing their name. Counts live in the database, so every worker process
+# agrees. A successful sign-in clears the count.
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
+]
+# Five failures are answered with the usual message; from the sixth attempt
+# on, right password or not, the pair is locked out (accounts/views.py).
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(minutes=15)
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_CALLABLE = 'accounts.views.locked_out_response'
+# How many reverse proxies sit in front of the app (0 in development). The
+# client address is read that many hops from the right of X-Forwarded-For,
+# never from what the client itself put there. Used by axes and the audit log.
+CLICKER_TRUSTED_PROXY_COUNT = env.int('CLICKER_TRUSTED_PROXY_COUNT', default=0)
+# One definition of "the client's address" for throttling and the audit log.
+AXES_CLIENT_IP_CALLABLE = 'foundation.audit.client_ip'
+
 REST_FRAMEWORK = {
     # Locked by default. Every API view requires a logged-in user unless it
     # explicitly opts out (only the login and CSRF endpoints do).
@@ -85,6 +111,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders',
+    'axes',
     'foundation',
     'accounts',
     'core',
@@ -103,6 +130,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Last, as django-axes requires: it reads the outcome of authentication.
+    'axes.middleware.AxesMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

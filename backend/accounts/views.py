@@ -10,7 +10,9 @@ The CSRF token travels in JSON rather than being read from the cookie by
 page scripts, so both cookies stay httpOnly. Django rotates the token on
 login, which is why login and me return a fresh one.
 """
+from axes.handlers.proxy import AxesProxyHandler
 from django.contrib.auth import authenticate, login, logout
+from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
@@ -22,6 +24,15 @@ from rest_framework.views import APIView
 # One message for every failure. Saying which half was wrong tells an
 # attacker which usernames exist.
 INVALID_CREDENTIALS = 'Username or password is incorrect.'
+
+# After too many failures for one username from one address. It says nothing
+# about whether that username exists: the lock applies to any name typed.
+LOCKED_OUT = 'Too many failed sign-ins. Wait 15 minutes, then try again.'
+
+
+def locked_out_response(request, *args, **kwargs):
+    """django-axes' lockout response (AXES_LOCKOUT_CALLABLE), as the API speaks it."""
+    return JsonResponse({'detail': LOCKED_OUT}, status=429)
 
 
 def _user_payload(user):
@@ -60,7 +71,19 @@ class LoginView(APIView):
             return Response({'detail': INVALID_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
 
         # authenticate() also rejects inactive users, under the same message.
-        user = authenticate(request, username=username.strip(), password=password)
+        # It gets the plain Django request: django-axes counts failures on it
+        # and marks it when this username-and-address pair is locked out.
+        django_request = request._request
+        credentials = {'username': username.strip()}
+        # Already locked before this attempt: refuse without checking the
+        # password at all, so a correct guess during the lock is worthless.
+        if AxesProxyHandler.is_locked(django_request, credentials=credentials):
+            return Response({'detail': LOCKED_OUT}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+        user = authenticate(django_request, username=credentials['username'], password=password)
+        # The failure that *reaches* the limit is still answered like any other
+        # failure; the lock shows from the next attempt. (axes marks this
+        # request locked, and its middleware would otherwise swap the answer.)
+        django_request.axes_locked_out = False
         if user is None:
             return Response({'detail': INVALID_CREDENTIALS}, status=status.HTTP_400_BAD_REQUEST)
 
