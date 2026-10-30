@@ -1,23 +1,19 @@
-import { cn } from '@/lib/utils'
 import { ListCell } from '../shared/ListCell'
-import { formatDecimalDisplay, splitDecimalDisplay } from './decimalFormat'
+import { Amount } from './DecimalField'
 
 interface DecimalListCellProps {
-  value: number | null
+  value: string | null
   decimalPlaces: number
+  /** A currency symbol ("Rs"), for currency cells. */
+  symbol?: string
 }
 
-export function DecimalListCell({ value, decimalPlaces }: DecimalListCellProps) {
-  const isNegative = value != null && value < 0
-  const [whole, decimals] = splitDecimalDisplay(
-    value != null ? formatDecimalDisplay(value, decimalPlaces) : '',
-  )
+/** Right-aligned, tabular, decimals muted; a negative is a minus sign, never red. */
+export function DecimalListCell({ value, decimalPlaces, symbol }: DecimalListCellProps) {
+  const empty = value == null || value === ''
   return (
-    <ListCell empty={value == null} className="list-cell--numeric">
-      <span className={cn(isNegative && 'text-[color:var(--danger)]')}>
-        {whole}
-        {decimals && <span className="list-cell__decimals">{decimals}</span>}
-      </span>
+    <ListCell empty={empty} className="list-cell--numeric">
+      {!empty && <Amount value={value} places={decimalPlaces} symbol={symbol} />}
     </ListCell>
   )
 }

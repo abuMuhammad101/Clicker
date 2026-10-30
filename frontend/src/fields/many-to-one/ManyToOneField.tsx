@@ -26,6 +26,8 @@ interface ManyToOneFieldProps extends FieldProps<number> {
   displayValue?: string | null
   /** Gallery-only: keeps the popover open so a state can be screenshotted. */
   forceOpen?: boolean
+  /** The current value links to a record this user can't see. */
+  restricted?: boolean
 }
 
 export function ManyToOneField({
@@ -46,6 +48,7 @@ export function ManyToOneField({
   dirty,
   forceFocused,
   forceOpen,
+  restricted,
 }: ManyToOneFieldProps) {
   const [openState, setOpenState] = useState(false)
   const open = forceOpen ?? openState
@@ -56,6 +59,9 @@ export function ManyToOneField({
   // record is reloaded — so the pick's own label wins while it matches.
   const [picked, setPicked] = useState<{ value: number; label: string } | null>(null)
   const shownLabel = picked && picked.value === value ? picked.label : displayValue
+  // A link the user can't see: the id stays, the name is withheld, and it's
+  // shown as "Restricted", never as a link to follow.
+  const isRestricted = restricted === true && !(picked && picked.value === value)
 
   if (loading) {
     return (
@@ -75,7 +81,9 @@ export function ManyToOneField({
       readOnly={readOnly}
       dirty={dirty}
       readOnlyValue={
-        shownLabel && value != null ? (
+        isRestricted ? (
+          <span className="restricted-value">Restricted</span>
+        ) : shownLabel && value != null ? (
           <RecordRef model={target} id={value} surface="peek" className="truncate hover:underline">
             {shownLabel}
           </RecordRef>
@@ -99,7 +107,9 @@ export function ManyToOneField({
               forceFocused && FORCE_FOCUS_CLASSES,
             )}
           >
-            <span className="truncate">{shownLabel || placeholder || emptyPrompt(label)}</span>
+            <span className={cn('truncate', isRestricted && 'restricted-value')}>
+              {isRestricted ? 'Restricted' : shownLabel || placeholder || emptyPrompt(label)}
+            </span>
             <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -171,7 +181,7 @@ export function ManyToOneField({
           </Command>
         </PopoverContent>
       </Popover>
-      {value != null && (
+      {value != null && !isRestricted && (
         // The way into the related record. A RecordRef like every other one:
         // it asks for a peek, it doesn't navigate.
         <RecordRef

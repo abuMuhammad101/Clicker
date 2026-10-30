@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import type { FieldSchema, FieldType } from '@/types/schema'
 import { BooleanListCell } from './boolean/BooleanListCell'
+import { CurrencyListCell } from './currency/CurrencyListCell'
+import { DateListCell } from './date/DateListCell'
+import { DateTimeListCell } from './datetime/DateTimeListCell'
+import { IntegerListCell } from './integer/IntegerListCell'
 import { DecimalListCell } from './decimal/DecimalListCell'
 import { EmailListCell } from './email/EmailListCell'
 import { LongtextListCell } from './longtext/LongtextListCell'
@@ -20,6 +24,8 @@ export interface ListCellArgs {
   value: unknown
   /** Human label for the value, where the value is a reference. */
   label: string | null
+  /** The value links to a record this user can't see. */
+  restricted?: boolean
 }
 
 type Renderer = (args: ListCellArgs) => ReactNode
@@ -35,14 +41,24 @@ const LIST_CELLS: Partial<Record<FieldType, Renderer>> = {
   boolean: (a) => <BooleanListCell value={a.value === true} />,
   decimal: (a) => (
     <DecimalListCell
-      value={typeof a.value === 'number' ? a.value : null}
+      value={a.value == null || a.value === '' ? null : String(a.value)}
       decimalPlaces={a.schema.decimal_places ?? 2}
     />
   ),
+  currency: (a) => (
+    <CurrencyListCell
+      value={a.value == null || a.value === '' ? null : String(a.value)}
+      decimalPlaces={a.schema.decimal_places}
+    />
+  ),
+  integer: (a) => <IntegerListCell value={typeof a.value === 'number' ? a.value : a.value == null ? null : Number(a.value)} />,
+  date: (a) => <DateListCell value={asString(a.value)} />,
+  datetime: (a) => <DateTimeListCell value={asString(a.value)} />,
   selection: (a) => <SelectionListCell value={asString(a.value)} choices={a.schema.choices ?? []} />,
   many_to_one: (a) => (
     <ManyToOneListCell
       label={a.label}
+      restricted={a.restricted}
       target={a.schema.target}
       id={typeof a.value === 'number' ? a.value : null}
     />

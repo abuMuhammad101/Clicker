@@ -54,6 +54,24 @@ export interface FieldSchema {
   target?: FieldTarget
   domain?: Record<string, unknown>
   help_text?: string
+  /** From the model's validators: a number (integer), a decimal string, or an ISO date. */
+  min_value?: number | string
+  max_value?: number | string
+  /** Currency fields: the organisation currency's code ("PKR"). */
+  currency?: string
+  /** Present on computed fields: what it's calculated from, for the "calculated" mark. */
+  computed?: { from: string[]; description: string }
+}
+
+/** A reverse relation shown under a record's form (Schema.related_lists). */
+export interface RelatedListSchema {
+  name: string
+  label: string
+  target: FieldTarget
+  /** The field on the target that points back at this record. */
+  field: string
+  columns: string[]
+  can_add: boolean
 }
 
 export interface FieldGroup {
@@ -96,5 +114,6 @@ export interface ModelSchema {
   groups: FieldGroup[]
   list: ListSchema
   fields: Record<string, FieldSchema>
+  related_lists?: RelatedListSchema[]
   actions: SchemaActions
 }

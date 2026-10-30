@@ -112,3 +112,66 @@
 .yes-no--no {
   color: var(--text-muted);
 }
+
+/* A computed field's mark: quiet until you ask, then it says what it's made of. */
+.calculated-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-left: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  cursor: help;
+}
+
+.calculated-mark svg {
+  width: 10px;
+  height: 10px;
+}
+
+.calculated-mark:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+
+/* A link the reader can't see: the record exists, its name is withheld. */
+.restricted-value {
+  color: var(--text-muted);
+}
+
+/* ---------- Amounts ----------
+   Right-aligned, tabular figures; the decimals recede. A negative is a minus
+   sign, never red: red belongs to status. */
+.amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.amount__symbol {
+  color: var(--text-secondary);
+}
+
+.amount__fraction {
+  color: var(--text-muted);
+}
+
+.amount-input {
+  position: relative;
+  width: 100%;
+}
+
+.amount-input__symbol {
+  position: absolute;
+  top: 50%;
+  left: var(--control-padding-x);
+  transform: translateY(-50%);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.amount-input--symbol [data-slot='input'] {
+  padding-left: calc(var(--control-padding-x) + 2.2em);
+}

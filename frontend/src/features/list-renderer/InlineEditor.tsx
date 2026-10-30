@@ -33,11 +33,16 @@ export function InlineEditor({ field, value, onCommit, onCancel }: InlineEditorP
     if (done.current) return
     done.current = true
     if (!commit) return onCancel()
-    if (field.type === 'decimal' || field.type === 'integer') return onCommit(parseDecimalInput(raw))
+    // Numbers stay strings until the API: a decimal or money value is never a float.
+    if (field.type === 'integer') {
+      const parsed = parseDecimalInput(raw.replace(/,/g, ''))
+      return onCommit(parsed == null ? null : Number(parsed))
+    }
+    if (field.type === 'decimal' || field.type === 'currency') return onCommit(parseDecimalInput(raw.replace(/,/g, '')))
     onCommit(raw.trim() === '' ? null : raw.trim())
   }
 
-  const numeric = field.type === 'decimal' || field.type === 'integer'
+  const numeric = field.type === 'decimal' || field.type === 'integer' || field.type === 'currency'
   // The buttons must not take focus from the input, or blur would save first.
   const keepFocus = (event: React.MouseEvent) => event.preventDefault()
 
@@ -47,11 +52,11 @@ export function InlineEditor({ field, value, onCommit, onCancel }: InlineEditorP
         ref={input}
         className="list-inline-input"
         value={raw}
-        inputMode={field.type === 'decimal' ? 'decimal' : field.type === 'integer' ? 'numeric' : undefined}
+        inputMode={field.type === 'decimal' || field.type === 'currency' ? 'decimal' : field.type === 'integer' ? 'numeric' : undefined}
         aria-label={field.label}
         onChange={(event) => {
           const next = event.target.value
-          if (field.type === 'decimal' && !isValidDecimalInput(next, field.max_digits ?? 18, field.decimal_places ?? 2)) return
+          if ((field.type === 'decimal' || field.type === 'currency') && !isValidDecimalInput(next, field.max_digits ?? 18, field.decimal_places ?? 2)) return
           if (field.type === 'integer' && !isValidDecimalInput(next, field.max_digits ?? 18, 0)) return
           setRaw(next)
         }}

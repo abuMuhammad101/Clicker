@@ -17,6 +17,7 @@ import { TextField } from '@/fields/text/TextField'
 import { TextListCell } from '@/fields/text/TextListCell'
 import { UrlField } from '@/fields/url/UrlField'
 import { UrlListCell } from '@/fields/url/UrlListCell'
+import { S2Sections } from './S2Sections'
 import './FieldGallery.css'
 
 const TYPE_CHOICES = [
@@ -576,7 +577,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-focused"
                 label="Sales price"
-                value={1234.5}
+                value="1234.50"
                 maxDigits={10}
                 decimalPlaces={2}
                 onChange={noop}
@@ -587,7 +588,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-filled"
                 label="Sales price"
-                value={1234.5}
+                value="1234.50"
                 maxDigits={10}
                 decimalPlaces={2}
                 onChange={noop}
@@ -597,7 +598,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-disabled"
                 label="Sales price"
-                value={1234.5}
+                value="1234.50"
                 maxDigits={10}
                 decimalPlaces={2}
                 disabled
@@ -608,7 +609,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-readonly"
                 label="Sales price"
-                value={1234.5}
+                value="1234.50"
                 maxDigits={10}
                 decimalPlaces={2}
                 readOnly
@@ -619,7 +620,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-error"
                 label="Sales price"
-                value={99999999999}
+                value="99999999999.00"
                 maxDigits={10}
                 decimalPlaces={2}
                 error="Sales price exceeds 10 digits."
@@ -652,7 +653,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-negative"
                 label="Cost adjustment"
-                value={-42.5}
+                value="-42.50"
                 maxDigits={10}
                 decimalPlaces={2}
                 onChange={noop}
@@ -662,7 +663,7 @@ export function FieldGallery() {
               <DecimalField
                 name="decimal-zero"
                 label="Cost"
-                value={0}
+                value="0.00"
                 maxDigits={10}
                 decimalPlaces={2}
                 onChange={noop}
@@ -673,22 +674,24 @@ export function FieldGallery() {
         <div className="gallery__section">
           <h3 className="gallery__section-title">List cell</h3>
           <ListCellRow
-            filled={<DecimalListCell value={1234.5} decimalPlaces={2} />}
+            filled={<DecimalListCell value="1234.50" decimalPlaces={2} />}
             empty={<DecimalListCell value={null} decimalPlaces={2} />}
           />
           <div className="gallery__list-row" style={{ marginTop: 'var(--space-3)' }}>
             <div className="gallery__list-row-label">Negative / zero</div>
             <div className="gallery__list-cells">
               <div className="gallery__list-cell-slot">
-                <DecimalListCell value={-42.5} decimalPlaces={2} />
+                <DecimalListCell value="-42.50" decimalPlaces={2} />
               </div>
               <div className="gallery__list-cell-slot">
-                <DecimalListCell value={0} decimalPlaces={2} />
+                <DecimalListCell value="0.00" decimalPlaces={2} />
               </div>
             </div>
           </div>
         </div>
       </TypeSection>
+
+      <S2Sections />
 
       <TypeSection type="many_to_one" source="Contact.parent → Contact, domain: type=company">
         <div className="gallery__section">

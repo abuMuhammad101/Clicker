@@ -1,6 +1,10 @@
 import type { ReactNode } from 'react'
 import type { FieldSchema, FieldType } from '@/types/schema'
 import { BooleanField } from './boolean/BooleanField'
+import { CurrencyField } from './currency/CurrencyField'
+import { DateField } from './date/DateField'
+import { DateTimeField } from './datetime/DateTimeField'
+import { IntegerField } from './integer/IntegerField'
 import { DecimalField } from './decimal/DecimalField'
 import { EmailField } from './email/EmailField'
 import { LongtextField } from './longtext/LongtextField'
@@ -30,6 +34,8 @@ export interface FormFieldArgs {
   dirty?: boolean
   /** Form-level view mode: read-only whatever the field's own schema says. */
   readOnly?: boolean
+  /** The value links to a record this user can't see (many_to_one). */
+  restricted?: boolean
 }
 
 type Renderer = (args: FormFieldArgs) => ReactNode
@@ -46,8 +52,13 @@ function common(args: FormFieldArgs) {
     disabled: args.disabled,
     dirty: args.dirty,
     onChange: args.onChange,
+    // A computed field carries the "calculated" mark and is never editable.
+    computed: args.schema.computed ? { description: args.schema.computed.description } : undefined,
   }
 }
+
+const asDecimalString = (value: unknown) => (value == null || value === '' ? null : String(value))
+const asNumber = (value: unknown) => (typeof value === 'number' ? value : value == null ? null : Number(value))
 
 const asString = (value: unknown) => (value == null ? null : String(value))
 
@@ -61,11 +72,35 @@ const FORM_COMPONENTS: Partial<Record<FieldType, Renderer>> = {
   decimal: (a) => (
     <DecimalField
       {...common(a)}
-      value={typeof a.value === 'number' ? a.value : null}
-      maxDigits={a.schema.max_digits ?? 10}
+      value={asDecimalString(a.value)}
+      maxDigits={a.schema.max_digits ?? 20}
       decimalPlaces={a.schema.decimal_places ?? 2}
     />
   ),
+  currency: (a) => (
+    <CurrencyField
+      {...common(a)}
+      value={asDecimalString(a.value)}
+      maxDigits={a.schema.max_digits ?? 20}
+      decimalPlaces={a.schema.decimal_places}
+    />
+  ),
+  integer: (a) => (
+    <IntegerField
+      {...common(a)}
+      value={asNumber(a.value)}
+      maxValue={typeof a.schema.max_value === 'number' ? a.schema.max_value : undefined}
+    />
+  ),
+  date: (a) => (
+    <DateField
+      {...common(a)}
+      value={asString(a.value)}
+      min={typeof a.schema.min_value === 'string' ? a.schema.min_value : undefined}
+      max={typeof a.schema.max_value === 'string' ? a.schema.max_value : undefined}
+    />
+  ),
+  datetime: (a) => <DateTimeField {...common(a)} value={asString(a.value)} />,
   selection: (a) => (
     <SelectionField {...common(a)} value={asString(a.value)} choices={a.schema.choices ?? []} />
   ),
@@ -74,6 +109,7 @@ const FORM_COMPONENTS: Partial<Record<FieldType, Renderer>> = {
       {...common(a)}
       value={typeof a.value === 'number' ? a.value : null}
       displayValue={a.displayValue}
+      restricted={a.restricted}
       target={a.schema.target!}
       domain={
         a.schema.domain

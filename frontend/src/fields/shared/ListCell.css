@@ -42,3 +42,10 @@
 .list-cell__decimals {
   color: var(--text-muted);
 }
+
+/* A number too wide for its column keeps its sign and symbol and loses
+   nothing silently: the cell scrolls nothing, it shows the whole amount and
+   lets the column be widened. */
+.list-cell--numeric .amount {
+  min-width: max-content;
+}

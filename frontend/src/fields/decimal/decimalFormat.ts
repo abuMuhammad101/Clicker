@@ -1,14 +1,16 @@
+import { formatDecimal } from '@/lib/money'
+
 /**
+ * Decimals are strings end to end ("1245000.50"), exactly as the API sends
+ * them: never a JavaScript number, which can't hold every value exactly.
+ *
  * Thousands-separated, padded to the field's declared scale. Used for the
  * blurred/readonly/list-cell display — never while the user is actively
  * typing, which shows the raw string instead (see DecimalField).
  */
-export function formatDecimalDisplay(value: number | null, decimalPlaces: number): string {
-  if (value == null) return ''
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: decimalPlaces,
-    maximumFractionDigits: decimalPlaces,
-  })
+export function formatDecimalDisplay(value: string | null, decimalPlaces: number): string {
+  if (value == null || value === '') return ''
+  return formatDecimal(value, decimalPlaces)
 }
 
 /**
@@ -30,16 +32,16 @@ export function isValidDecimalInput(raw: string, maxDigits: number, decimalPlace
   return true
 }
 
-/** The raw string → the committed number, or null for "not a number yet". */
-export function parseDecimalInput(raw: string): number | null {
-  if (raw === '') return null
-  const parsed = Number(raw)
-  return Number.isNaN(parsed) ? null : parsed
+/** The raw string → the committed decimal string, or null for "not a number yet". */
+export function parseDecimalInput(raw: string): string | null {
+  if (raw === '' || raw === '-' || raw === '.' || raw === '-.') return null
+  const trimmed = raw.endsWith('.') ? raw.slice(0, -1) : raw
+  return trimmed.startsWith('.') ? `0${trimmed}` : trimmed.replace(/^-\./, '-0.')
 }
 
 /** The unformatted editing representation of a committed value. */
-export function toRawDecimalString(value: number | null): string {
-  return value == null ? '' : String(value)
+export function toRawDecimalString(value: string | null): string {
+  return value ?? ''
 }
 
 /** "1,234.50" → ["1,234", ".50"], so a cell can let the decimals recede. */

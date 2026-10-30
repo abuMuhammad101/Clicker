@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { apiGet, apiSend, ApiError, onUnauthorized, setCsrfToken } from '@/lib/api'
+import { setOrganisation, type Organisation } from '@/lib/organisation'
 import { AuthContext, type AuthState, type User } from './authContext'
 
 interface SessionResponse {
   user: User
+  /** Currency and time zone every screen formats by. */
+  organisation?: Organisation
   csrf_token: string
 }
 
@@ -20,8 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false
     apiGet<SessionResponse>('/auth/me/', { probe: true })
-      .then(({ user, csrf_token }) => {
+      .then(({ user, organisation, csrf_token }) => {
         if (cancelled) return
+        setOrganisation(organisation)
         setCsrfToken(csrf_token)
         setState({ status: 'authenticated', user, expired: false })
       })
@@ -53,10 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // A token issued for the old session is no good after it ended; a fresh
     // one is cheap and makes the login POST independent of what came before.
     await fetchCsrfToken()
-    const { user, csrf_token } = await apiSend<SessionResponse>('POST', '/auth/login/', {
+    const { user, organisation, csrf_token } = await apiSend<SessionResponse>('POST', '/auth/login/', {
       username,
       password,
     })
+    setOrganisation(organisation)
     setCsrfToken(csrf_token)
     setState({ status: 'authenticated', user, expired: false })
   }, [])
