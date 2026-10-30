@@ -51,7 +51,8 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
     } catch (caught) {
       setPassword('')
       setError(
-        caught instanceof ApiError && caught.status === 400
+        // 400: wrong credentials. 429: too many failed attempts, locked for a while.
+        caught instanceof ApiError && (caught.status === 400 || caught.status === 429)
           ? caught.message
           : 'Could not reach the server. Check your connection and try again.',
       )

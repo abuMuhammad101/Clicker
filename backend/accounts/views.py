@@ -5,12 +5,14 @@ The four auth endpoints:
     POST /api/auth/login/    public — username + password → session
     POST /api/auth/logout/   ends the session server-side
     GET  /api/auth/me/       the current user, or 401
+    GET  /api/auth/providers/  public — the ways to sign in, for the login screen
 
 The CSRF token travels in JSON rather than being read from the cookie by
 page scripts, so both cookies stay httpOnly. Django rotates the token on
 login, which is why login and me return a fresh one.
 """
 from axes.handlers.proxy import AxesProxyHandler
+from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
@@ -99,6 +101,25 @@ class LogoutView(APIView):
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ProvidersView(APIView):
+    """
+    The sign-in methods this deployment offers, in order. The login screen
+    renders from this list, so adding single sign-on later (Amazon Cognito,
+    Microsoft Entra and others, via OIDC on the backend, still ending in a
+    Django session) is a backend change plus one entry here: the screen
+    already knows how to show more than one way in.
+
+    Contract for a future entry: {"id": "<provider>", "label": "<shown on the
+    button>"}; the screen sends the browser to /api/auth/<id>/start/.
+    """
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        return Response({'providers': settings.CLICKER_SIGN_IN_PROVIDERS})
 
 
 class MeView(APIView):

@@ -89,6 +89,11 @@ CLICKER_SESSION_MAX_AGE = env.int('CLICKER_SESSION_MAX_AGE', default=60 * 60 * 2
 # each other out. Not per username alone: anyone could lock a colleague out
 # by typing their name. Counts live in the database, so every worker process
 # agrees. A successful sign-in clears the count.
+# Ways to sign in, as the login screen lists them (GET /api/auth/providers/).
+# Password only for now. Usernames are not assumed to be email addresses
+# anywhere: an SSO provider's subject can map onto any username.
+CLICKER_SIGN_IN_PROVIDERS = [{'id': 'password', 'label': 'Username and password'}]
+
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',

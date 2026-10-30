@@ -4,6 +4,11 @@ if (!API_URL) {
   throw new Error('VITE_API_URL is not set — check .env at the repo root.')
 }
 
+/** An absolute API URL, for the rare link the browser follows itself (an SSO start). */
+export function apiUrl(path: string) {
+  return `${API_URL}${path}`
+}
+
 /**
  * DRF's validation error body: field name → messages, plus
  * `non_field_errors` for errors that belong to the record as a whole.

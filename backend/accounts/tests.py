@@ -69,3 +69,10 @@ class AbsoluteSessionLifetimeTests(TestCase):
         session[SESSION_STARTED_KEY] = int(time.time()) - settings.CLICKER_SESSION_MAX_AGE - 1
         session.save()
         self.assertEqual(client.get('/api/auth/me/').status_code, 401)
+
+
+class ProvidersTests(TestCase):
+    def test_anyone_can_list_the_ways_to_sign_in(self):
+        response = APIClient().get('/api/auth/providers/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {'providers': [{'id': 'password', 'label': 'Username and password'}]})
