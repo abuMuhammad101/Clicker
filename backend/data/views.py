@@ -27,7 +27,7 @@ from foundation.models import ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model
 from userstate.services import record_view
 
-from .access import get_record, scoped_queryset
+from .access import get_record, scoped_queryset, writable_fields
 from .serializers import serialize_record, serializer_for
 
 DEFAULT_LIMIT = 20
@@ -196,7 +196,7 @@ class ModelRecordListView(APIView):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         scoped_queryset(request.user, model, 'add')
-        serializer = serializer_for(model)(data=request.data)
+        serializer = serializer_for(model, writable_fields(request.user, model, 'add'))(data=request.data)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(**_server_owned(request.user, model, creating=True))
         return Response(
@@ -219,7 +219,8 @@ class ModelRecordDetailView(APIView):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         obj = get_record(request.user, model, pk, 'change')
-        serializer = serializer_for(model)(obj, data=request.data, partial=True)
+        writable = writable_fields(request.user, model, 'change')
+        serializer = serializer_for(model, writable)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         obj = serializer.save(**_server_owned(request.user, model, creating=False))
         # Re-read so relation labels and the display name reflect the save

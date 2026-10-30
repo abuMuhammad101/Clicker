@@ -178,3 +178,71 @@ class OneEnforcementPointTests(SimpleTestCase):
                     line = source[: match.start()].count('\n') + 1
                     offenders.append(f'{relative}:{line} {match.group(0)}')
         self.assertEqual(offenders, [], 'Use data.access.scoped_queryset() instead.')
+
+
+class WriteAllowlistTests(Fixtures):
+    clerk_perms = (
+        'core.view_contact',
+        'core.change_contact',
+        'core.view_contact_tax_id',
+        'core.view_country',
+    )
+
+    def patch(self, user, body):
+        return client_for(user).patch(f'/api/data/core/contact/{self.company.pk}/', body, format='json')
+
+    def test_a_read_only_field_is_rejected_by_name_not_dropped(self):
+        response = self.patch(make_user('clerk', *self.clerk_perms), {'tax_id': 'NTN-9999999'})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('tax_id', response.json())
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.tax_id, 'NTN-1234567')
+
+    def test_one_bad_key_rejects_the_whole_write(self):
+        response = self.patch(make_user('clerk', *self.clerk_perms), {'name': 'Renamed', 'tax_id': 'X'})
+        self.assertEqual(response.status_code, 400)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.name, 'Indus Traders')
+
+    def test_unknown_hidden_and_server_owned_keys_get_the_same_refusal(self):
+        user = make_user('limited', 'core.view_contact', 'core.change_contact')
+        bodies = [{'no_such_field': 1}, {'tax_id': 'X'}, {'created_by': 1}, {'updated_at': '2020-01-01'}, {'id': 5}]
+        messages = []
+        for body in bodies:
+            response = self.patch(user, body)
+            self.assertEqual(response.status_code, 400, body)
+            messages.append(response.json()[next(iter(body))])
+        self.assertEqual(len({str(m) for m in messages}), 1, messages)
+
+    def test_writable_fields_still_save(self):
+        response = self.patch(make_user('clerk', *self.clerk_perms), {'city': 'Karachi'})
+        self.assertEqual(response.status_code, 200)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.city, 'Karachi')
+
+    def test_with_both_field_grants_the_field_saves(self):
+        user = make_user('manager-ish', *self.clerk_perms, 'core.change_contact_tax_id')
+        self.assertEqual(self.patch(user, {'tax_id': 'NTN-7654321'}).status_code, 200)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.tax_id, 'NTN-7654321')
+
+    def test_the_data_layer_sets_who_created_and_changed_a_record(self):
+        creator = grant_everything(make_user('creator'))
+        response = client_for(creator).post('/api/data/core/contact/', {'name': 'New Co'}, format='json')
+        self.assertEqual(response.status_code, 201, response.content)
+        record = Contact.objects.get(pk=response.json()['id'])
+        self.assertEqual((record.created_by, record.updated_by), (creator, creator))
+
+        editor = grant_everything(make_user('editor'))
+        client_for(editor).patch(f'/api/data/core/contact/{record.pk}/', {'city': 'Lahore'}, format='json')
+        record.refresh_from_db()
+        self.assertEqual((record.created_by, record.updated_by), (creator, editor))
+
+    def test_a_client_cannot_claim_to_be_someone_else(self):
+        user = grant_everything(make_user('creator'))
+        other = make_user('framed')
+        response = client_for(user).post(
+            '/api/data/core/contact/', {'name': 'X', 'created_by': other.pk}, format='json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('created_by', response.json())

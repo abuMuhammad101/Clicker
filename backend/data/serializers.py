@@ -19,8 +19,23 @@ from rest_framework import serializers
 from schema.engine import display_label
 
 
+# One message for every key a client may not send: a field that doesn't exist,
+# one they can't see, one they can see but not change, a server-owned one.
+# Distinguishing them would tell a probing client which hidden fields exist.
+NOT_WRITABLE = 'This field can’t be set.'
+
+
 class ModelRecordSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
+        if not isinstance(data, dict):
+            raise serializers.ValidationError({'non_field_errors': ['Expected an object of field values.']})
+        # The write allowlist: only fields this user's schema marks writable.
+        # Anything else is refused by name, never silently dropped, so a
+        # client can't believe it changed something it didn't.
+        refused = sorted(name for name in data if name not in self.Meta.fields)
+        if refused:
+            raise serializers.ValidationError({name: [NOT_WRITABLE] for name in refused})
+
         # The frontend sends null for an emptied text input. Django stores an
         # empty CharField/TextField as '' (null=False), and DRF would reject
         # the null outright. Treat null as "empty" for those fields so the API
@@ -61,11 +76,16 @@ class ModelRecordSerializer(serializers.ModelSerializer):
         return attrs
 
 
-def serializer_for(model):
+def serializer_for(model, writable):
+    """
+    A serializer that accepts exactly `writable` (from data.access.writable_fields
+    for this user and action). Server-owned and primary-key fields can never be
+    in it: they aren't editable, so field_access never marks them writable.
+    """
     editable = [
         field.name
         for field in model._meta.concrete_fields
-        if field.editable and not field.primary_key
+        if field.editable and not field.primary_key and field.name in writable
     ]
     meta = type('Meta', (), {'model': model, 'fields': editable})
     return type(f'{model.__name__}RecordSerializer', (ModelRecordSerializer,), {'Meta': meta})
