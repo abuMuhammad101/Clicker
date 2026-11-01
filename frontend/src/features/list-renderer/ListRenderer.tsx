@@ -9,7 +9,21 @@ import {
   type SortingState,
 } from '@tanstack/react-table'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, ArrowUp, ArrowUpRight, Check, Pencil, Plus } from 'lucide-react'
+import {
+  Archive,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpRight,
+  Check,
+  CloudOff,
+  FileQuestion,
+  Inbox,
+  Pencil,
+  Plus,
+  SearchX,
+} from 'lucide-react'
+import { StatePanel } from '@/components/StatePanel'
+import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isNumericType, renderListCell } from '@/fields/listRegistry'
@@ -142,10 +156,11 @@ function ListLoader({
       <div className="list-page">
         {schemaState.notFound ? (
           // Doesn't exist, or not for this user: the API answers both with 404.
-          <div className="list-state" role="alert">
-            <p className="list-state__title">This list isn’t available</p>
-            <p className="list-state__message">It doesn’t exist, or you don’t have access to it.</p>
-          </div>
+          <StatePanel
+            icon={FileQuestion}
+            title="This list isn’t available"
+            message="It doesn’t exist, or you don’t have access to it."
+          />
         ) : (
           <LoadError message={schemaState.message} onRetry={onRetry} />
         )}
@@ -217,10 +232,17 @@ function ListView({
     const all = [...shown, ...added]
     return all.length > 0 ? all : schema.list.columns
   }, [schema.list.columns, schema.fields, hidden, extra, columnsOverride])
-  const filterKey = useMemo(
-    () => (filter ? JSON.stringify(Object.fromEntries(Object.entries(filter).map(([k, v]) => [k, String(v)]))) : ''),
-    [filter],
-  )
+  // Archived records are out of the list unless asked for: one switch in the
+  // toolbar, which lists the archived ones instead.
+  const archiveField = schema.archive_field ?? null
+  const [showArchived, setShowArchived] = useState(false)
+  const filterKey = useMemo(() => {
+    const effective: Record<string, string | number> = { ...filter }
+    if (showArchived && archiveField) effective[archiveField] = 'false'
+    return Object.keys(effective).length > 0
+      ? JSON.stringify(Object.fromEntries(Object.entries(effective).map(([k, v]) => [k, String(v)])))
+      : ''
+  }, [filter, showArchived, archiveField])
   const searchRef = useRef<HTMLInputElement>(null)
   const [searchInput, setSearchInput] = useState('')
   const [query, setQuery] = useState('')
@@ -257,7 +279,9 @@ function ListView({
     const known =
       state.status === 'ready' &&
       Object.values(state.pages).some((rows) => rows.some((row) => row.id === change.record.id))
-    if (known) replaceRecord(change.record)
+    // Archived or restored: it no longer belongs in this list (or now does).
+    const belongs = !archiveField || (change.record.values[archiveField] === false) === showArchived
+    if (known && belongs) replaceRecord(change.record)
     else retry()
   })
 
@@ -305,6 +329,22 @@ function ListView({
           // Hidden means not applicable: a field that doesn't apply to this
           // row shows as empty, whatever value is stored behind it.
           if (!isVisible(field, record.values)) return <ListCell empty />
+          // A workflow state reads as a chip, in its schema tone.
+          const state = schema.workflow?.field === name
+            ? schema.workflow.states.find((s) => s.value === record.values[name])
+            : undefined
+          if (state) {
+            return (
+              <ListCell>
+                <StatusChip label={state.label} tone={state.tone} />
+              </ListCell>
+            )
+          }
+          // A document number is a record identifier: Plex Mono, like the header's.
+          if (field.assigned) {
+            const value = record.values[name]
+            return value ? <ListCell className="list-cell--identifier" title={String(value)}>{String(value)}</ListCell> : <ListCell empty />
+          }
           return renderListCell({
             schema: field,
             value: record.values[name],
@@ -520,7 +560,7 @@ function ListView({
       {!embedded && (
       <div className="list-toolbar">
         <h1 className="list-toolbar__title">
-          {capitalize(plural)}
+          {showArchived ? `Archived ${plural}` : capitalize(plural)}
           {state.status === 'ready' && (
             <span className="list-toolbar__count">{total.toLocaleString()}</span>
           )}
@@ -572,7 +612,19 @@ function ListView({
             onRefresh={retry}
             refreshing={state.status === 'loading'}
           />
-          {schema.actions.create && (
+          {archiveField && (
+            <Button
+              type="button"
+              variant="outline"
+              aria-pressed={showArchived}
+              onClick={() => setShowArchived((on) => !on)}
+              className={cn('h-[var(--control-height)]', showArchived && 'list-toolbar__toggle--on')}
+            >
+              <Archive className="size-4" aria-hidden />
+              Archived
+            </Button>
+          )}
+          {schema.actions.create && !showArchived && (
             <Button asChild className="h-[var(--control-height)]">
               <RecordRef model={{ app_label: appLabel, model }} id="new">
                 <Plus className="size-4" aria-hidden />
@@ -667,13 +719,11 @@ function ListView({
           {state.status === 'loading' && <SkeletonRows columns={widths} />}
 
           {state.status === 'error' && (
-            <div className="list-state">
-              <p className="list-state__title">Couldn’t load {plural}</p>
-              <p className="list-state__message">{state.message}</p>
+            <StatePanel icon={CloudOff} tone="danger" title={`Couldn’t load ${plural}`} message={state.message}>
               <Button variant="outline" onClick={retry} className="h-[var(--control-height)]">
                 Try again
               </Button>
-            </div>
+            </StatePanel>
           )}
 
           {embedded && state.status === 'ready' && total === 0 && (
@@ -681,46 +731,46 @@ function ListView({
           )}
 
           {!embedded && state.status === 'ready' && total === 0 && (
-            <div className="list-state">
-              {query ? (
-                <>
-                  <p className="list-state__title">No {plural} match “{query}”</p>
-                  <p className="list-state__message">
-                    Search looks in{' '}
-                    {schema.list.search_fields.map((f) => schema.fields[f]?.label ?? f).join(', ')}.
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setSearchInput('')}
-                    className="h-[var(--control-height)]"
-                  >
-                    Clear search
+            query ? (
+              <StatePanel
+                icon={SearchX}
+                title={`No ${showArchived ? 'archived ' : ''}${plural} match “${query}”`}
+                message={`Search looks in ${schema.list.search_fields.map((f) => schema.fields[f]?.label ?? f).join(', ')}.`}
+              >
+                <Button variant="outline" onClick={() => setSearchInput('')} className="h-[var(--control-height)]">
+                  Clear search
+                </Button>
+              </StatePanel>
+            ) : showArchived ? (
+              <StatePanel
+                icon={Archive}
+                title={`No archived ${plural}`}
+                message={`Archiving a ${schema.verbose_name} takes it out of the list without deleting it. Archived ones show up here.`}
+              >
+                <Button variant="outline" onClick={() => setShowArchived(false)} className="h-[var(--control-height)]">
+                  Back to {plural}
+                </Button>
+              </StatePanel>
+            ) : (
+              <StatePanel
+                icon={Inbox}
+                title={`No ${plural} yet`}
+                message={
+                  schema.actions.create
+                    ? `Add the first ${schema.verbose_name} and it will show up here.`
+                    : `When someone adds a ${schema.verbose_name}, it will show up here.`
+                }
+              >
+                {schema.actions.create && (
+                  <Button asChild className="h-[var(--control-height)]">
+                    <RecordRef model={{ app_label: appLabel, model }} id="new">
+                      <Plus className="size-4" aria-hidden />
+                      New {schema.verbose_name}
+                    </RecordRef>
                   </Button>
-                </>
-              ) : (
-                <>
-                  <div className="list-ghost" aria-hidden="true">
-                    {[70, 52, 62, 44].map((width, i) => (
-                      <div key={i} className="list-ghost__row">
-                        <span style={{ width: `${width}%` }} />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="list-state__title">No {plural} yet</p>
-                  <p className="list-state__message">
-                    Add the first {schema.verbose_name} and it will show up here.
-                  </p>
-                  {schema.actions.create && (
-                    <Button asChild className="h-[var(--control-height)]">
-                      <RecordRef model={{ app_label: appLabel, model }} id="new">
-                        <Plus className="size-4" aria-hidden />
-                        New {schema.verbose_name}
-                      </RecordRef>
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
+                )}
+              </StatePanel>
+            )
           )}
 
           {state.status === 'ready' && total > 0 && (
@@ -859,13 +909,11 @@ function SkeletonRows({ columns }: { columns: number[] }) {
 
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="list-state">
-      <p className="list-state__title">Couldn’t load this list</p>
-      <p className="list-state__message">{message}</p>
+    <StatePanel icon={CloudOff} tone="danger" title="Couldn’t load this list" message={message}>
       <Button variant="outline" onClick={onRetry} className="h-[var(--control-height)]">
         Try again
       </Button>
-    </div>
+    </StatePanel>
   )
 }
 

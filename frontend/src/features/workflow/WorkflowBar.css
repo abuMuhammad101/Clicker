@@ -1,0 +1,168 @@
+/* One band under the record header: the stepper on the left, the next step
+   in words and its button on the right. Dense on purpose; it wraps to two
+   rows in a narrow container (the peek) instead of squeezing. */
+.workflow-bar {
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5) var(--space-8);
+  padding: var(--space-5) var(--form-pad-x, var(--space-8));
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface);
+}
+
+/* ---------- Stepper ---------- */
+.workflow-steps {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.workflow-step__marker {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--surface);
+}
+
+.workflow-step__marker svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 3;
+}
+
+.workflow-step__line {
+  width: 20px;
+  height: 1px;
+  margin: 0 var(--space-4);
+  background: var(--border-strong);
+}
+
+/* Done: quiet, ticked. */
+.workflow-step--done {
+  color: var(--text-secondary);
+}
+
+.workflow-step--done .workflow-step__marker {
+  border-color: var(--text-muted);
+  background: var(--text-muted);
+}
+
+/* Where the record is now: the one thing in the stepper with weight. Its
+   colour is the state's tone, so "Requested" reads amber and "Approved"
+   green, as the chip does. */
+.workflow-step--current,
+.workflow-step--exit {
+  --step-tone: var(--text);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.workflow-step--current .workflow-step__marker,
+.workflow-step--exit .workflow-step__marker {
+  border-color: var(--step-tone);
+  background: var(--step-tone);
+  box-shadow: 0 0 0 3px var(--surface-sunken);
+}
+
+.workflow-step--current.workflow-step--positive,
+.workflow-step--exit.workflow-step--positive {
+  --step-tone: var(--positive);
+}
+
+.workflow-step--current.workflow-step--warning,
+.workflow-step--exit.workflow-step--warning {
+  --step-tone: var(--warning);
+}
+
+.workflow-step--current.workflow-step--danger,
+.workflow-step--exit.workflow-step--danger {
+  --step-tone: var(--danger);
+}
+
+.workflow-step--current.workflow-step--info,
+.workflow-step--exit.workflow-step--info {
+  --step-tone: var(--info);
+}
+
+/* A neutral exit (Cancelled) is an ending, not an alarm. */
+.workflow-step--exit.workflow-step--neutral {
+  --step-tone: var(--text-muted);
+}
+
+/* ---------- Next step ---------- */
+.workflow-bar__next {
+  display: flex;
+  flex: 1 1 320px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.workflow-bar__sentence {
+  min-width: 0;
+  max-width: 64ch;
+  text-wrap: balance;
+  text-align: right;
+}
+
+/* Inline, not flex: if the sentence wraps, the icon stays with its first word. */
+.workflow-bar__lead {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+
+.workflow-bar__lead-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: var(--space-3);
+  vertical-align: -2px;
+  color: var(--text-muted);
+}
+
+.workflow-bar__detail {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.workflow-bar__actions {
+  display: flex;
+  flex: none;
+  gap: var(--space-4);
+}
+
+/* Narrow (the peek): the sentence goes left, under the stepper. */
+@container (max-width: 560px) {
+  .workflow-bar__next {
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+
+  .workflow-bar__sentence {
+    text-align: left;
+  }
+}

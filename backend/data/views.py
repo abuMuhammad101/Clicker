@@ -79,8 +79,9 @@ def _envelopes(user, model, schema, records):
         # Per record: which transitions this user may run on it now, whether
         # its state refuses edits, and who it's waiting for. The header shows
         # exactly these.
+        roles_cache = {}
         for envelope, record in zip(envelopes, records):
-            envelope['workflow'] = workflow.record_status(user, record)
+            envelope['workflow'] = workflow.record_status(user, record, roles_cache)
     return envelopes
 
 

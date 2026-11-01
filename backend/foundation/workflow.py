@@ -213,19 +213,28 @@ def schema_for(user, model):
         if hint:
             entry['hint'] = hint
         transitions.append(entry)
+    path = list(decl.get('path') or [value for value, _ in field.choices])
+    states = []
+    for value, label in field.choices:
+        state = {'value': value, 'label': str(label), 'tone': tones.get(value, 'neutral')}
+        if value not in path:
+            # An exit (Cancelled, Rejected): the step it leaves the path from,
+            # so the stepper can place it whichever transitions this user holds.
+            state['after'] = next(
+                (s for spec in decl['transitions'].values() if spec['to'] == value for s in spec['from'] if s in path),
+                None,
+            )
+        states.append(state)
     return {
         'field': decl['field'],
-        'states': [
-            {'value': value, 'label': str(label), 'tone': tones.get(value, 'neutral')}
-            for value, label in field.choices
-        ],
-        'path': list(decl.get('path') or [value for value, _ in field.choices]),
+        'states': states,
+        'path': path,
         'locked': list(decl.get('locked', ())),
         'transitions': transitions,
     }
 
 
-def record_status(user, obj):
+def record_status(user, obj, roles_cache=None):
     """
     What a record's header needs to say about its workflow for this user:
 
@@ -234,6 +243,9 @@ def record_status(user, obj):
     - `waiting`: when they can do nothing, who can and what ("Waiting for a
       Manager to approve or reject it."). Never a disabled button with no
       explanation: if a step is someone else's, the sentence says whose.
+
+    `roles_cache` (a dict) lets a list of records share one lookup of who
+    holds each transition, instead of one query per record.
     """
     model = type(obj)
     decl = declaration(model)
@@ -255,17 +267,19 @@ def record_status(user, obj):
     if not pending:
         return status
     actions = _either([s['label'] for _, s in pending])
-    roles = sorted({role for n, _ in pending for role in roles_that_may_run(model, n)})
+    cache = roles_cache if roles_cache is not None else {}
+    for n, _ in pending:
+        if (model, n) not in cache:
+            cache[(model, n)] = roles_that_may_run(model, n)
+    roles = sorted({role for n, _ in pending for role in cache[(model, n)]})
     barred = next(
         (s['not_by'] for n, s in pending if s.get('not_by') and may_run(user, model, n)
          and getattr(obj, meta.get_field(s['not_by']).attname) == user.pk),
         None,
     )
     if barred:
-        status['waiting'] = (
-            f'You’re the {meta.get_field(barred).verbose_name} of this {meta.verbose_name}, '
-            f'so {_a(roles)} other than you has to {actions} it.'
-        )
+        others = f'another {" or ".join(roles)}' if roles else 'someone else'
+        status['waiting'] = f'You’re its {meta.get_field(barred).verbose_name}, so {others} has to {actions} it.'
     else:
         status['waiting'] = f'Waiting for {_a(roles)} to {actions} it.'
     return status

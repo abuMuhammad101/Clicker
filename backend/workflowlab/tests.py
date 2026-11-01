@@ -76,7 +76,11 @@ class WorkflowSchemaTests(LabTestCase):
         self.assertEqual(workflow['field'], 'state')
         self.assertEqual(workflow['path'], ['draft', 'requested', 'approved'])
         self.assertEqual(workflow['states'][0], {'value': 'draft', 'label': 'Draft', 'tone': 'neutral'})
-        self.assertEqual({s['value']: s['tone'] for s in workflow['states']}['rejected'], 'danger')
+        rejected = next(s for s in workflow['states'] if s['value'] == 'rejected')
+        self.assertEqual(rejected, {'value': 'rejected', 'label': 'Rejected', 'tone': 'danger', 'after': 'requested'})
+        # A Clerk can't cancel a bill, but the stepper still knows where Cancelled sits.
+        cancelled = next(s for s in build_schema(LabBill, self.clerk)['workflow']['states'] if s['value'] == 'cancelled')
+        self.assertEqual(cancelled['after'], 'draft')
         self.assertIn('requested', workflow['locked'])
         self.assertNotIn('draft', workflow['locked'])
 
@@ -200,10 +204,7 @@ class WorkflowApiTests(LabTestCase):
         self.run_as(self.manager_client, adjustment, 'request')
         status = self.status_for(self.manager_client, adjustment)
         self.assertEqual(status['available'], [])
-        self.assertEqual(
-            status['waiting'],
-            'You’re the requester of this lab adjustment, so a Manager other than you has to approve or reject it.',
-        )
+        self.assertEqual(status['waiting'], 'You’re its requester, so another Manager has to approve or reject it.')
         self.assertEqual(self.status_for(self.other_manager_client, adjustment)['available'], ['approve', 'reject'])
 
     def test_a_finished_record_waits_for_nobody(self):

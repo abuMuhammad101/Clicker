@@ -765,3 +765,17 @@
 .list-filters__clear:hover {
   text-decoration: underline;
 }
+
+/* ---------- Document numbers and the archived switch ---------- */
+/* A document number is a record identifier: Plex Mono, tabular. */
+.list-cell--identifier {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The archived switch, on: reads as selected, not as a primary action. */
+.list-toolbar__toggle--on {
+  border-color: var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}

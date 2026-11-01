@@ -144,3 +144,73 @@
   width: auto;
   min-width: 240px;
 }
+
+/* ---------- S-3: records in place, chips, a static dialog ---------- */
+.gallery__records {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.gallery__record {
+  margin: 0;
+}
+
+.gallery__record-caption {
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.gallery__record-sheet {
+  --form-sheet-max-width: 960px;
+}
+
+.gallery__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+
+.gallery__chip-slot {
+  display: inline-flex;
+  max-width: 200px;
+}
+
+/* The archive confirmation, drawn flat so it can be judged beside the rest. */
+.gallery__dialog {
+  max-width: 440px;
+  padding: var(--space-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+}
+
+.gallery__dialog-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.gallery__dialog-body {
+  margin: var(--space-3) 0 var(--space-8);
+  font-size: var(--text-base);
+  color: var(--text-muted);
+}
+
+.gallery__dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.gallery__records--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-8);
+}
+
+.gallery__records--grid .gallery__record-sheet {
+  height: calc(100% - var(--space-8));
+}

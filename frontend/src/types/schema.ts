@@ -1,6 +1,6 @@
 /**
  * Mirrors backend/schema/engine.py's output. The field type registry is
- * fixed by CLAUDE.md — the full union is declared here even though not
+ * fixed by CLAUDE.md â€” the full union is declared here even though not
  * every type appears in a model's schema yet.
  */
 
@@ -66,6 +66,8 @@ export interface FieldSchema {
    * (read-only afterwards). `note` is the rule in words, shown in both forms.
    */
   write_once?: { note: string }
+  /** Server-assigned on create (a document number): what an empty one says instead. */
+  assigned?: string
 }
 
 /** A reverse relation shown under a record's form (Schema.related_lists). */
@@ -81,7 +83,7 @@ export interface RelatedListSchema {
 
 export interface FieldGroup {
   /**
-   * null means "the model declared no groups at all" (e.g. Country) — render
+   * null means "the model declared no groups at all" (e.g. Country) â€” render
    * the fields with no section heading. A literal "Ungrouped" label means
    * groups were declared but these fields weren't assigned to one; render it
    * visibly, since that's a module author's oversight, not a design choice.
@@ -107,7 +109,43 @@ export interface SchemaActions {
   view: boolean
   create: boolean
   update: boolean
+  /** Archive and restore: an edit of `archive_field`, allowed when the user may write it. */
+  archive: boolean
   delete: boolean
+}
+
+export type Tone = 'positive' | 'warning' | 'danger' | 'info' | 'neutral'
+
+export interface WorkflowState {
+  value: string
+  label: string
+  tone: Tone
+  /** Only on exits (states off the path): the path step it leaves from. */
+  after?: string | null
+}
+
+/** A transition this user holds the grant for. Ones they lack are never sent. */
+export interface WorkflowTransition {
+  name: string
+  label: string
+  from: string[]
+  to: string
+  /** Ask before running it; the text is the consequence. */
+  confirm?: string
+  /** What it does, shown beside its button before anyone presses it. */
+  hint?: string
+}
+
+/** Schema.workflow: the states and the transitions this user may run. */
+export interface WorkflowSchema {
+  /** The state field's name. */
+  field: string
+  states: WorkflowState[]
+  /** The main line of states, in order; others are exits (Cancelled, Rejected). */
+  path: string[]
+  /** States in which the record can't be edited. */
+  locked: string[]
+  transitions: WorkflowTransition[]
 }
 
 export interface ModelSchema {
@@ -120,5 +158,9 @@ export interface ModelSchema {
   list: ListSchema
   fields: Record<string, FieldSchema>
   related_lists?: RelatedListSchema[]
+  /** Null when the model has no workflow. */
+  workflow?: WorkflowSchema | null
+  /** A boolean field where false means archived; null when the model can't be archived. */
+  archive_field?: string | null
   actions: SchemaActions
 }

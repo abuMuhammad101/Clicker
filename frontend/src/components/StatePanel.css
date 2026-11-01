@@ -1,0 +1,56 @@
+/* Left-aligned like everything else in the app: a state is read, not
+   presented. Sticky-left inside a sideways-scrolling table. */
+.state-panel {
+  position: sticky;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 440px;
+  padding: var(--space-10) var(--space-6);
+}
+
+.state-panel__icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+}
+
+.state-panel__icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.state-panel--danger .state-panel__icon {
+  border-color: var(--danger-border);
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.state-panel__title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.state-panel__message {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal, 1.45);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.state-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}

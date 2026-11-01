@@ -7,3 +7,9 @@ import { createContext } from 'react'
  * the same mark without each component passing it along.
  */
 export const WriteOnceNoteContext = createContext<string | null>(null)
+
+/**
+ * What an empty server-assigned field says instead of "—" ("Assigned when
+ * saved"), or null. A new bill's number is not missing; it's on its way.
+ */
+export const AssignedNoteContext = createContext<string | null>(null)

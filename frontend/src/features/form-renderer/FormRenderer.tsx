@@ -9,19 +9,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Archive, ArchiveRestore, CloudOff, FileQuestion, LockKeyhole } from 'lucide-react'
+import { StatePanel } from '@/components/StatePanel'
+import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { renderFormField } from '@/fields/registry'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
 import { formatDateTime, relativeTime } from '@/lib/dates'
+import { Link } from '@/lib/Link'
 import { navigate, useNavigationBlocker } from '@/lib/router'
 import { toast } from '@/lib/toast'
-import { emitRecordChanged, useRecordChanged } from '@/records'
+import { emitRecordChanged, listPath, useRecordChanged } from '@/records'
 import { useModelSchema } from '@/lib/useModelSchema'
 import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
-import type { ModelSchema } from '@/types/schema'
+import type { ModelSchema, WorkflowTransition } from '@/types/schema'
+import { WorkflowBar } from '../workflow/WorkflowBar'
 import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
 
@@ -130,11 +135,39 @@ function FormSheet({
     }
   }, [appLabel, model, recordId])
 
-  if (
+  // A missing record waits for the schema, so its "Back to …" way out
+  // arrives with it instead of popping in afterwards.
+  const notFound =
     (schemaState.status === 'error' && schemaState.notFound) ||
-    (recordState.status === 'error' && recordState.notFound)
-  ) {
-    return <NotAvailable />
+    (recordState.status === 'error' && recordState.notFound && schemaState.status !== 'loading')
+  const cannotCreate = recordId == null && schemaState.status === 'ready' && !schemaState.schema.actions.create
+  const failed = !notFound && (schemaState.status === 'error' || recordState.status === 'error')
+  // The states below name themselves too, so a breadcrumb never ends in "…".
+  const stateLabel = notFound
+    ? 'Not available'
+    : cannotCreate && schemaState.status === 'ready'
+      ? `New ${schemaState.schema.verbose_name}`
+      : failed
+        ? 'Couldn’t load'
+        : null
+  useEffect(() => {
+    if (stateLabel == null) return
+    onLabelChange?.(stateLabel)
+    return () => onLabelChange?.(null)
+  }, [stateLabel, onLabelChange])
+
+  if (notFound) {
+    return (
+      <NotAvailable
+        back={schemaState.status === 'ready' ? { to: listPath({ app_label: appLabel, model }), plural: schemaState.schema.verbose_name_plural } : null}
+      />
+    )
+  }
+
+  // 403: the model is visible, but this user may not add to it. Said before
+  // they fill anything in, not after they press Save.
+  if (cannotCreate && schemaState.status === 'ready') {
+    return <CannotCreate appLabel={appLabel} model={model} schema={schemaState.schema} />
   }
 
   if (schemaState.status === 'error' || recordState.status === 'error') {
@@ -273,12 +306,15 @@ function EditableForm({
   // A new record's prefilled values start it and stay locked: the form was
   // opened *for* that parent, so changing it here would be a different act.
   const [prefillValues] = useState(() => coercePrefill(schema, prefill))
-  const [locked] = useState(() => new Set(initialRecord ? [] : Object.keys(prefillValues)))
+  const [prefilled] = useState(() => new Set(initialRecord ? [] : Object.keys(prefillValues)))
   // Read-only when the container asks for it, and always when this user may
   // not edit the record: the schema's `update` action is the API's own answer.
   const canUpdate = schema.actions.update
-  const viewing = mode === 'view' || (initialRecord != null && !canUpdate)
   const [record, setRecord] = useState(initialRecord)
+  // A record in a locked workflow state (posted, requested) reads like one
+  // the user can't edit: the server would refuse the save anyway.
+  const locked = record?.workflow?.locked === true
+  const viewing = mode === 'view' || (record != null && (!canUpdate || locked))
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, initialRecord, prefillValues),
   )
@@ -329,7 +365,7 @@ function EditableForm({
   // its name, so a locked "Parent" reads "Acme Corporation", not a number.
   useEffect(() => {
     let cancelled = false
-    for (const name of locked) {
+    for (const name of prefilled) {
       const field = schema.fields[name]
       const id = values[name]
       if (field?.type !== 'many_to_one' || !field.target || typeof id !== 'number') continue
@@ -434,6 +470,80 @@ function EditableForm({
     setConfirmDiscard(false)
   }
 
+  // --- Workflow: running a transition ---------------------------------------
+  const workflow = schema.workflow ?? null
+  const [running, setRunning] = useState<string | null>(null)
+  const [confirmTransition, setConfirmTransition] = useState<WorkflowTransition | null>(null)
+
+  /**
+   * Take a server envelope as the new truth (after a transition or archive).
+   * Fields the user has changed and not saved keep their edits.
+   */
+  const accept = (saved: RecordEnvelope) => {
+    setRecord(saved)
+    setValues((current) =>
+      Object.fromEntries(
+        Object.entries(saved.values).map(([name, value]) => [name, dirtyFields.has(name) ? current[name] : value]),
+      ),
+    )
+    setBaseline(saved.values)
+    setLabels(saved.labels)
+    // Not onSaved: a transition or an archive isn't a save, and the
+    // container would announce it as one. Other views hear it from here.
+    emitRecordChanged({ app_label: appLabel, model }, saved)
+  }
+
+  const runTransition = async (transition: WorkflowTransition) => {
+    if (!record || !workflow) return
+    setConfirmTransition(null)
+    setRunning(transition.name)
+    try {
+      const saved = await apiSend<RecordEnvelope>(
+        'POST',
+        `/data/${appLabel}/${model}/${record.id}/transitions/${transition.name}/`,
+      )
+      accept(saved)
+      const to = workflow.states.find((s) => s.value === transition.to)?.label ?? transition.to
+      toast({ message: `${capitalize(schema.verbose_name)} ${to.toLowerCase()}` })
+    } catch (error) {
+      // 409/403: someone else moved it first, or it's no longer this user's
+      // to move. Say so, and show where it actually is now.
+      toast({ kind: 'error', message: error instanceof ApiError ? error.message : 'Could not reach the API.' })
+      apiGet<RecordEnvelope>(`/data/${appLabel}/${model}/${record.id}/`).then(accept).catch(() => undefined)
+    } finally {
+      setRunning(null)
+    }
+  }
+
+  const askToRun = (transition: WorkflowTransition) => {
+    if (transition.confirm) setConfirmTransition(transition)
+    else void runTransition(transition)
+  }
+
+  // --- Archive: an edit of the schema's archive field -----------------------
+  const archiveField = schema.archive_field ?? null
+  const archived = record != null && archiveField != null && record.values[archiveField] === false
+  const [confirmArchive, setConfirmArchive] = useState(false)
+
+  const setArchived = async (archive: boolean) => {
+    if (!record || !archiveField) return
+    setConfirmArchive(false)
+    try {
+      const saved = await apiSend<RecordEnvelope>('PATCH', `/data/${appLabel}/${model}/${record.id}/`, {
+        [archiveField]: !archive,
+      })
+      accept(saved)
+      toast(
+        archive
+          ? { message: `${saved.display} archived`, action: { label: 'Undo', onClick: () => void setArchived(false) } }
+          : { message: `${saved.display} restored` },
+      )
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
+      toast({ kind: 'error', message: `Couldn’t ${archive ? 'archive' : 'restore'} ${record.display}. ${message}` })
+    }
+  }
+
   // The commands never change identity (they call the latest save/discard
   // through a ref), so a container holding this state isn't re-rendered into
   // a loop by it.
@@ -485,12 +595,16 @@ function EditableForm({
       <header className="form-header">
         {leading && <div className="form-header__lead">{leading}</div>}
         <div className="form-header__text">
-          <h1 className="form-header__title" title={record?.display}>
-            {record ? record.display : `New ${schema.verbose_name}`}
-          </h1>
+          <div className="form-header__headline">
+            <h1 className="form-header__title" title={record?.display}>
+              {record ? record.display : `New ${schema.verbose_name}`}
+            </h1>
+            {record && workflow && <StateChip schema={schema} value={values[workflow.field]} />}
+            {archived && <StatusChip label="Archived" />}
+          </div>
           <p className="form-header__meta">
             <span className="form-header__model">{schema.verbose_name_plural}</span>
-            {record && <span className="form-header__id">#{record.id}</span>}
+            {record && <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>}
             {record?.meta && (
               // Relative where it's glanced at; the exact time on hover.
               <span className="form-header__updated">
@@ -503,10 +617,20 @@ function EditableForm({
             )}
           </p>
         </div>
-        {!viewing && (
         <div className="form-header__actions">
-          {justSaved && <span className="form-header__status">Saved</span>}
-          {actions === 'inline' && (
+          {justSaved && !viewing && <span className="form-header__status">Saved</span>}
+          {record && schema.actions.archive && !archived && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setConfirmArchive(true)}
+              className="h-[var(--control-height)] text-[color:var(--text-secondary)]"
+            >
+              <Archive className="size-4" aria-hidden />
+              Archive
+            </Button>
+          )}
+          {!viewing && actions === 'inline' && (
             <>
             <Button
               type="button"
@@ -523,8 +647,39 @@ function EditableForm({
             </>
           )}
         </div>
-        )}
       </header>
+
+      {workflow && (
+        <WorkflowBar
+          workflow={workflow}
+          state={String(values[workflow.field] ?? schema.fields[workflow.field]?.default ?? workflow.path[0])}
+          status={record?.workflow}
+          verboseName={schema.verbose_name}
+          running={running}
+          dirty={isDirty}
+          onRun={askToRun}
+        />
+      )}
+
+      {archived && (
+        <div className="form-notice" role="status">
+          <Archive className="form-notice__icon" aria-hidden />
+          <p className="form-notice__text">
+            Archived. It’s out of the {schema.verbose_name_plural} list and pickers; anything that points at it still does.
+          </p>
+          {schema.actions.archive && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void setArchived(false)}
+              className="h-[var(--control-height)]"
+            >
+              <ArchiveRestore className="size-4" aria-hidden />
+              Restore
+            </Button>
+          )}
+        </div>
+      )}
 
       {formErrors.length > 0 && (
         <div className="form-banner" role="alert">
@@ -541,7 +696,7 @@ function EditableForm({
         errors={fieldErrors}
         dirtyFields={dirtyFields}
         readOnly={viewing}
-        locked={locked}
+        locked={prefilled}
         restricted={record?.restricted}
         onChange={setValue}
       />
@@ -552,6 +707,39 @@ function EditableForm({
           lists={schema.related_lists}
         />
       )}
+
+      {/* A transition that asks first names the record and says the
+          consequence. "Go back", not "Cancel": the transition itself may be
+          called Cancel. */}
+      <AlertDialog open={confirmTransition != null} onOpenChange={(open) => !open && setConfirmTransition(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmTransition?.label} {record?.display}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>{confirmTransition?.confirm}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => confirmTransition && void runTransition(confirmTransition)}>
+              {confirmTransition?.label}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmArchive} onOpenChange={setConfirmArchive}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive {record?.display}?</AlertDialogTitle>
+            <AlertDialogDescription>{archiveConsequence(schema)}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void setArchived(true)}>Archive</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
         <AlertDialogContent>
@@ -666,8 +854,10 @@ function FormBody({
       {schema.groups.map((group, index) => {
         // While loading there are no values to evaluate conditions against,
         // so every field shows; once loaded, visible_when decides.
+        // The workflow state is drawn by the workflow bar (stepper and chip),
+        // not repeated as a field.
         const visible = group.fields.filter(
-          (name) => loading || isVisible(schema.fields[name], values),
+          (name) => name !== schema.workflow?.field && (loading || isVisible(schema.fields[name], values)),
         )
         if (visible.length === 0) return null
         return (
@@ -723,25 +913,73 @@ function SchemaSkeleton() {
 
 /**
  * A record that doesn't exist and one this user may not see look the same, on
- * purpose: the API answers 404 for both. Nothing to retry.
+ * purpose: the API answers 404 for both. Nothing to retry; the way forward is
+ * the list it would have been in, when that list is visible.
  */
-function NotAvailable() {
+function capitalize(text: string) {
+  return text.charAt(0).toUpperCase() + text.slice(1)
+}
+
+/** A numbered document's own identifier ("BILL-2026-00012"), which says more than its id. */
+function documentNumber(schema: ModelSchema, record: RecordEnvelope): string | null {
+  const name = Object.keys(schema.fields).find((field) => schema.fields[field].assigned)
+  const value = name ? record.values[name] : null
+  return typeof value === 'string' && value ? value : null
+}
+
+/** What archiving does, said before it's done. Shared with the gallery. */
+export function archiveConsequence(schema: Pick<ModelSchema, 'verbose_name' | 'verbose_name_plural'>) {
   return (
-    <div className="form-sheet form-sheet--error" role="alert">
-      <h1 className="form-error__title">This record isn’t available</h1>
-      <p className="form-error__message">It doesn’t exist, or you don’t have access to it.</p>
+    `It leaves the ${schema.verbose_name_plural} list and stops appearing when someone picks a ` +
+    `${schema.verbose_name}. Anything that already points at it keeps pointing at it, and it can be restored at any time.`
+  )
+}
+
+/** The record's workflow state as a chip, in the tone the schema gives it. */
+function StateChip({ schema, value }: { schema: ModelSchema; value: unknown }) {
+  const state = schema.workflow?.states.find((s) => s.value === value)
+  return state ? <StatusChip label={state.label} tone={state.tone} /> : null
+}
+
+function NotAvailable({ back }: { back: { to: string; plural: string } | null }) {
+  return (
+    <div className="form-sheet form-sheet--state">
+      <StatePanel icon={FileQuestion} title="This record isn’t available" message="It doesn’t exist, or you don’t have access to it.">
+        {back && (
+          <Button asChild variant="outline" className="h-[var(--control-height)]">
+            <Link to={back.to}>Back to {back.plural}</Link>
+          </Button>
+        )}
+      </StatePanel>
+    </div>
+  )
+}
+
+/** 403 on create: the list is visible, adding to it isn't. */
+function CannotCreate({ appLabel, model, schema }: { appLabel: string; model: string; schema: ModelSchema }) {
+  return (
+    <div className="form-sheet form-sheet--state">
+      <StatePanel
+        icon={LockKeyhole}
+        title={`You can’t add ${schema.verbose_name_plural}`}
+        message={`Your role lets you see ${schema.verbose_name_plural} but not add them. Someone who manages access can change that.`}
+      >
+        <Button asChild variant="outline" className="h-[var(--control-height)]">
+          <Link to={listPath({ app_label: appLabel, model })}>Back to {schema.verbose_name_plural}</Link>
+        </Button>
+      </StatePanel>
     </div>
   )
 }
 
 function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <div className="form-sheet form-sheet--error" role="alert">
-      <h1 className="form-error__title">Couldn’t load this record</h1>
-      <p className="form-error__message">{message}</p>
-      <Button variant="outline" onClick={onRetry} className="h-[var(--control-height)]">
-        Try again
-      </Button>
+    <div className="form-sheet form-sheet--state">
+      <StatePanel icon={CloudOff} tone="danger" title="Couldn’t load this record" message={message}>
+        <Button variant="outline" onClick={onRetry} className="h-[var(--control-height)]">
+          Try again
+        </Button>
+      </StatePanel>
     </div>
   )
 }

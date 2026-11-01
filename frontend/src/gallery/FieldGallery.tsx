@@ -18,6 +18,7 @@ import { TextListCell } from '@/fields/text/TextListCell'
 import { UrlField } from '@/fields/url/UrlField'
 import { UrlListCell } from '@/fields/url/UrlListCell'
 import { S2Sections } from './S2Sections'
+import { S3Sections } from './S3Sections'
 import './FieldGallery.css'
 
 const TYPE_CHOICES = [
@@ -84,6 +85,8 @@ export function FieldGallery() {
           — not part of the schema-driven renderer.
         </p>
       </div>
+
+      <S3Sections />
 
       <TypeSection type="text" source="Contact.name">
         <div className="gallery__section">

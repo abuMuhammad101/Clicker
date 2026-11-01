@@ -18,6 +18,18 @@ export interface RecordEnvelope {
     created_by: RecordPerson | null
     updated_by: RecordPerson | null
   }
+  /** Present when the model has a workflow: what this user can do to this record now. */
+  workflow?: RecordWorkflow
+}
+
+export interface RecordWorkflow {
+  /** Transitions this user may run now (granted, right state, not barred). */
+  available: string[]
+  locked: boolean
+  /** Why it can't be edited, in words; null when it can. */
+  locked_reason: string | null
+  /** When this user can do nothing: who can, and what. Null otherwise. */
+  waiting: string | null
 }
 
 export interface RecordPerson {

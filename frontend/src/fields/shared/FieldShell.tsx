@@ -2,7 +2,7 @@ import { CircleAlert, LockKeyhole, Sigma, type LucideIcon } from 'lucide-react'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
 import { useContext, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { WriteOnceNoteContext } from './fieldNotes'
+import { AssignedNoteContext, WriteOnceNoteContext } from './fieldNotes'
 import './FieldShell.css'
 
 interface FieldShellProps {
@@ -42,6 +42,7 @@ export function FieldShell({
   // A write-once field says its rule while it's still editable (creating)
   // and after it isn't: feedforward, so nobody meets the lock by surprise.
   const writeOnce = useContext(WriteOnceNoteContext)
+  const assigned = useContext(AssignedNoteContext)
   return (
     <div className="field-shell">
       <label
@@ -62,7 +63,7 @@ export function FieldShell({
               readOnlyValue == null && 'field-shell__readonly-value--empty',
             )}
           >
-            {readOnlyValue ?? '—'}
+            {readOnlyValue ?? assigned ?? '—'}
           </div>
         ) : (
           children

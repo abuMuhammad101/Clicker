@@ -126,6 +126,18 @@
   white-space: nowrap;
 }
 
+/* The title and its state chips on one line; the title gives way first. */
+.form-header__headline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.form-header__headline .status-chip {
+  flex: none;
+}
+
 .form-header__meta {
   display: flex;
   gap: var(--space-3);
@@ -228,6 +240,38 @@
 
 .form-sheet--error {
   padding: var(--space-8);
+}
+
+/* 404, 403 and load failures: the shared state panel on the sheet. */
+.form-sheet--state .state-panel {
+  padding: var(--space-9) var(--form-pad-x, var(--space-8));
+}
+
+/* A fact about the whole record (archived), above its fields. Neutral, not
+   an alarm: nothing is wrong. */
+.form-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: var(--space-6) var(--form-pad-x, var(--space-8)) 0;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+}
+
+.form-notice__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.form-notice__text {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text-secondary);
 }
 
 .form-error__title {

@@ -1597,3 +1597,38 @@ second half of S-3.
 - Decisions for the Notion Decision Log: workflow transitions are
   per-transition grants declared in the Schema; posted documents are
   reversed, never edited; numbering by a locked per-year sequence row.
+
+## 2026-11-01 | second machine | S-3 UI (in progress) and fast tests
+
+- **Fast tests:** `TEST_DATABASE_URL` points tests at a local Postgres 18
+  (README, "Fast tests"); MD5 hasher in tests only. Suite: 138 tests in
+  10.4s locally vs 963s on Neon.
+- **Backend:** workflows declare `path`, `tones`, per-transition `hint`;
+  a transition that hands work to an approver gets "This goes to a Manager
+  for approval." Envelope `workflow` has `available`, `locked`,
+  `locked_reason`, `waiting` (who can act, in words). Exit states carry
+  `after`. `Schema.archive_field` (Contact, Product): archive is an edit of
+  that field, offered only to who may write it; archived records leave lists
+  and pickers unless `?active=false`. Lab split into `LabBill` and
+  `LabAdjustment`; `CLICKER_LAB=1` installs it in development (applied on
+  Neon, seeded with `manage.py seed_lab --manager dev-verify --clerk
+  dev-clerk-home`). Note: the office machine's migrate (without the flag)
+  strips lab permissions from Manager; set CLICKER_LAB=1 there too.
+- **Frontend:** `WorkflowBar` (stepper, next step in words, one primary
+  button, never a disabled button: a sentence says whose step it is),
+  `StatusChip`, `StatePanel` (empty, no match, archived-empty, error, 403,
+  404), archive confirm naming the record + archived notice + Restore + Undo
+  toast, list "Archived" switch, state chips and mono numbers in cells,
+  "Assigned when saved" on a new record's number, 403 on /new without the
+  create grant. Gallery section "workflow / archive / states" at the top of
+  /dev/gallery. Tests: backend 149, frontend 19.
+- Screenshots so far (Clerk, light): `docs/design/s3/`.
+
+- Half-finished: Manager-view and dark-mode screenshots. Signing the browser
+  pane in needs a person: reading a stored test password was (rightly)
+  blocked.
+- **Next single action:** sign the browser pane in as `dev-verify`, then
+  capture at 1440 light and dark: gallery #workflow and #states, an
+  adjustment requested by the Clerk (Approve/Reject), one the Manager
+  requested (waiting), contact archive confirm, archived contact, and the
+  dark versions of the Clerk screens. Then Hassan judges before S-4.
