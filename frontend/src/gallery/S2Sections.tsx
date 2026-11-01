@@ -65,9 +65,66 @@ function States({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * A placeholder must never look like data: empty and zero, side by side, in
+ * each place a value appears (the editable field, the read-only value the
+ * peek shows, and the list cell).
+ */
+function EmptyVsZero() {
+  const pair = (empty: ReactNode, zero: ReactNode) => (
+    <div className="gallery__pair">
+      <div>{empty}</div>
+      <div>{zero}</div>
+    </div>
+  )
+  return (
+    <section className="gallery__type" id="empty-vs-zero">
+      <div className="gallery__type-header">
+        <span className="gallery__type-name">empty vs zero</span>
+        <span className="gallery__type-label">left: no value · right: a stored 0 — a placeholder must never look like data</span>
+      </div>
+      <div className="gallery__section">
+        <div className="gallery__states">
+          <StateRow label="Integer · editable">
+            {pair(
+              <IntegerField name="ez-i-empty" label="Payment terms (days)" value={null} onChange={noop} />,
+              <IntegerField name="ez-i-zero" label="Payment terms (days)" value={0} onChange={noop} />,
+            )}
+          </StateRow>
+          <StateRow label="Integer · read-only">
+            {pair(
+              <IntegerField name="ez-i-ro-empty" label="Payment terms (days)" value={null} readOnly />,
+              <IntegerField name="ez-i-ro-zero" label="Payment terms (days)" value={0} readOnly />,
+            )}
+          </StateRow>
+          <StateRow label="Integer · list cell">
+            {pair(<IntegerListCell value={null} />, <IntegerListCell value={0} />)}
+          </StateRow>
+          <StateRow label="Currency · editable">
+            {pair(
+              <CurrencyField name="ez-c-empty" label="Credit limit" value={null} onChange={noop} maxDigits={14} />,
+              <CurrencyField name="ez-c-zero" label="Credit limit" value="0" onChange={noop} maxDigits={14} />,
+            )}
+          </StateRow>
+          <StateRow label="Currency · read-only">
+            {pair(
+              <CurrencyField name="ez-c-ro-empty" label="Credit limit" value={null} maxDigits={14} readOnly />,
+              <CurrencyField name="ez-c-ro-zero" label="Credit limit" value="0" maxDigits={14} readOnly />,
+            )}
+          </StateRow>
+          <StateRow label="Currency · list cell">
+            {pair(<CurrencyListCell value={null} />, <CurrencyListCell value="0" />)}
+          </StateRow>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function S2Sections() {
   return (
     <>
+      <EmptyVsZero />
       <TypeSection type="date" source="Contact.customer_since: typed day-first, stored ISO, shown “30 Oct 2026”">
         <States>
           <StateRow label="Default">

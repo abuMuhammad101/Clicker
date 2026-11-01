@@ -173,6 +173,8 @@ Each type has **two** components, not one:
 ### Content rules
 The renderer composes screens without a designer present. Every component needs a defined answer for content it has never seen: very long values, very long labels, absent values, min/max column widths. Decide it in the component — there is no screen-level place to decide it.
 
+**A placeholder must never look like data.** An empty field and a field holding zero must read differently everywhere. An empty *editable* field shows the muted prompt "Set <label>…" (`emptyPrompt`), left-aligned, with no digit, date, amount or currency symbol in it. An empty *read-only* value (the peek, a read-only form, a list cell) shows a muted "—": a prompt is an instruction, and there is nothing to act on there. A real zero always shows as a value ("0", "Rs 0.00"). Tested in `frontend/src/fields/emptyIsNotData.test.tsx`.
+
 ---
 
 ## Design system

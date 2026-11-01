@@ -175,3 +175,11 @@
 .amount-input--symbol [data-slot='input'] {
   padding-left: calc(var(--control-padding-x) + 2.2em);
 }
+
+/* Empty, an amount field reads like every other empty field: the "Set …"
+   prompt at the start of the box, no currency symbol in front of it.
+   Unlayered, so it beats the input's own right-alignment utility. */
+.amount-input--empty [data-slot='input'] {
+  padding-left: var(--control-padding-x);
+  text-align: left;
+}

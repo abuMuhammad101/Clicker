@@ -62,7 +62,7 @@ export function SelectionField({
           className={cn('w-full', forceFocused && FORCE_FOCUS_CLASSES)}
           aria-invalid={!!error}
         >
-          <SelectValue placeholder={placeholder ?? emptyPrompt(label, 'Select')} />
+          <SelectValue placeholder={placeholder ?? emptyPrompt(label)} />
         </SelectTrigger>
         <SelectContent>
           {choices.map((choice) => (

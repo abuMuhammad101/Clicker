@@ -4,7 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { decimalParts } from '@/lib/money'
 import { cn } from '@/lib/utils'
 import { FieldShell } from '../shared/FieldShell'
-import { FORCE_FOCUS_CLASSES, type FieldProps } from '../shared/types'
+import { FORCE_FOCUS_CLASSES, emptyPrompt, type FieldProps } from '../shared/types'
 import { formatDecimalDisplay, isValidDecimalInput, parseDecimalInput, toRawDecimalString } from './decimalFormat'
 
 export interface DecimalFieldProps extends FieldProps<string> {
@@ -65,6 +65,9 @@ export function DecimalField({
   }
 
   const showRaw = focused || forceFocused
+  // Empty and not being typed into: the box shows only the "Set …" prompt.
+  // A placeholder must never look like data, so no "0.00" and no "Rs".
+  const empty = !showRaw && (value == null || value === '')
 
   return (
     <FieldShell
@@ -78,8 +81,8 @@ export function DecimalField({
       computed={computed}
       readOnlyValue={value != null && value !== '' ? <Amount value={value} places={decimalPlaces} symbol={symbol} /> : undefined}
     >
-      <div className={cn('amount-input', symbol && 'amount-input--symbol')}>
-        {symbol && (
+      <div className={cn('amount-input', symbol && !empty && 'amount-input--symbol', empty && 'amount-input--empty')}>
+        {symbol && !empty && (
           <span className="amount-input__symbol" aria-hidden="true">
             {symbol}
           </span>
@@ -102,7 +105,7 @@ export function DecimalField({
           }}
           onBlur={() => setFocused(false)}
           disabled={disabled}
-          placeholder={placeholder ?? (0).toFixed(decimalPlaces)}
+          placeholder={placeholder ?? emptyPrompt(label)}
           aria-invalid={!!error}
           aria-label={symbol ? `${label}, in ${symbol}` : undefined}
           className={cn('text-right tabular-nums', forceFocused && FORCE_FOCUS_CLASSES)}
