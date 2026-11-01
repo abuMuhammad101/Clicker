@@ -45,7 +45,7 @@ If a renderer genuinely needs a new capability for a container, add it as a prop
 
 ## Security rules: the third law
 
-- **Deny by default.** Every model, field and action needs an explicit grant (Django permissions through Groups; restricted fields via `Schema.restricted_fields`; role grants via `Schema.default_grants`).
+- **Deny by default.** Every model, field and action needs an explicit grant (Django permissions through Groups; restricted fields via `Schema.restricted_fields`; role grants via `Schema.default_grants`). A restricted field has three grant levels: `view_<model>_<field>` (read), `add_<model>_<field>` (write-once: set on create, read-only after) and `change_<model>_<field>` (write any time).
 - **One enforcement point:** `data/access.py` (`scoped_queryset`, `get_record`, `readable_fields`, `writable_fields`), built on `foundation/permissions.py`. The schema a user receives *is* the permission check; the API enforces the same function. Permission functions take the user explicitly, never `request.user`.
 - **Writes are allowlisted from the schema.** Any other key is refused by name. Server-owned fields (`editable=False`: audit fields, later workflow state, computed values, company) are never client-writable.
 - **Every write is audited in the same transaction.** The audit log is append-only, for managers too (model, queryset and a Postgres trigger refuse change).

@@ -1450,3 +1450,75 @@ filters).
    note? (The usual ERP answer: reversed only.)
 5. **Is "Overdue" a state or a computed flag** from the due date and today? (I
    would make it computed: nobody should have to move an invoice into Overdue.)
+
+
+## 2026-11-01 | second machine | S-2 review fixes (before S-3)
+
+Three fixes from Hassan's review of S-2, one commit each, with tests.
+
+- **1. Product seed in rupees** (`5944ba7`). The catalogue was priced in
+  dollars, so it read as a few rupees. `seed_products` now holds Pakistani
+  B2B prices in PKR (A4 paper carton Rs 9,500; mesh office chair Rs 38,000;
+  1.5-ton inverter AC Rs 245,000; freight, customs, storage and an annual
+  maintenance contract as services), every cost below its price. It now
+  **updates by SKU** instead of only creating (that is why the dollar prices
+  had stuck): re-running reprices in place and deletes nothing, and a
+  supplier is only chosen when a product is first created. New goods carry
+  valid EAN-13 barcodes on Pakistan's 896 prefix. **Run on Neon:** 15 updated,
+  6 created, 21 total. Tests in `backend/catalog/tests.py` (4). Seed writes
+  bypass the audit log, as S-2's seeds did.
+- **2. Empty never looks like data** (`fb0a623`). Integer, decimal and
+  currency share `DecimalField`, whose placeholder was `0` / `0.00`; it is
+  now the shared "Set <label>…" prompt, left-aligned, and an empty currency
+  box hides its "Rs". The selection field's "Select …" became "Set …" too.
+  A real zero shows "0" / "Rs 0.00". **Interpretation to check:** read-only
+  places (the peek's view mode, a read-only form, list cells) show the muted
+  "—" for empty, not the prompt: a prompt is an instruction and there is
+  nothing to act on there, and "Set city…" down a list column would undo the
+  density rules. CLAUDE.md's content rules now say so ("A placeholder must
+  never look like data"). **Vitest added** (`npm test`; dev dependency only):
+  rendered-HTML tests for empty vs zero in field, read-only value and list
+  cell. Gallery section "empty vs zero" at `/dev/gallery`; screenshots
+  `docs/design/s2/empty-vs-zero-1440-{light,dark}.jpg`.
+- **3. Write-once field access** (`daea6f2`). A third grant level for a
+  restricted field, beside view and change: **`add_<model>_<field>`, set it
+  when creating a record, read-only after.** Declared like the others: the
+  field stays in `restricted_fields`, the role gets the codename in
+  `default_grants`; the permission row is created automatically after
+  migrate. `field_access` returns `CREATE_ONLY`; `writable_fields(user, model,
+  'add')` includes it and `'change'` doesn't, so POST accepts it and PATCH
+  refuses it by name. `build_schema(model, user, mode=None)`: without a mode
+  it still sends both `read_only_on_create` and `read_only` (what the form
+  uses); `mode='create'|'edit'` collapses `read_only` to that mode, and
+  `/api/schema/...?mode=` passes it (anything else is a 400). A write-once
+  field carries `write_once.note`, "Set when the record is created. Ask a
+  Manager to change it.", built from whichever roles hold the change grant.
+  Applied: Clerk gets `add_contact_tax_id`; Manager keeps full write; the
+  Clerk's `credit_limit` and `active` stay read-only on create. In the UI the
+  field shows a small lock beside its label (the same pattern as the Σ mark)
+  with that note as its tooltip, in the create form while still editable and
+  read-only afterwards. **Applied on Neon** (`migrate` + `seed_roles`).
+  Tests: `backend/foundation/test_write_once.py` (13: Clerk creates with a
+  tax ID, accepted and audited; Clerk PATCH refused by name, no audit row;
+  Manager PATCH accepted, audited with before/after; schema in both modes;
+  the unknown mode refused) and `frontend/src/fields/writeOnce.test.tsx` (3).
+  Browser-checked as a real Clerk: editable with the lock on a new company,
+  read-only with the lock on Acme; `docs/design/s2/write-once-clerk-*.jpg`.
+
+- Verification: backend **117 tests pass** (12 minutes against Neon's test
+  database); frontend 12 Vitest tests pass; `tsc -b` clean.
+- New on this machine: `dev-clerk-home`, a Clerk-role test account
+  (`DEV_CLERK_*` in this machine's `.env`, generated). Separate from the
+  office machine's Clerk account on purpose: `seed_roles` resets the
+  password of the account it's given.
+- `npm audit`: 6 findings (2 low, 4 moderate), all inside the `shadcn` CLI's
+  dependency tree (`deepmerge`, `minimatch`); none ship in the bundle, none
+  came from Vitest.
+
+- Half-finished: nothing.
+- **Next single action:** S-3, draft the workflow-state schema (see the next
+  entry).
+
+- Decisions for the Notion Decision Log: write-once as a third field-grant
+  level (`add_` on the field), reusable for bill, connection and
+  bill-of-lading numbers in S-5/S-6.
