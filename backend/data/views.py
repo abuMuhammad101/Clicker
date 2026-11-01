@@ -7,6 +7,7 @@ Generic record API for every model that declares a `Schema` class:
     PATCH /api/data/<app>/<model>/<pk>/         update (partial)
     GET   /api/data/<app>/<model>/search/?q=    picker search
     GET   /api/data/<app>/<model>/<pk>/history/ the record's audit trail
+    POST  /api/data/<app>/<model>/<pk>/transitions/<name>/ move its workflow state
 
 No per-model code anywhere in this file. Delete is deliberately absent: the
 spec's intended path is archiving (`active = false`), and a delete endpoint
@@ -27,6 +28,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from foundation import computed as computed_fields
+from foundation import numbering, workflow
 from foundation.audit import client_ip, history_for, record_change, snapshot
 from foundation.models import AuditEntry, ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model, schema_field_names
@@ -34,6 +36,7 @@ from userstate.services import record_view
 
 from .access import get_record, readable_fields, scoped_queryset, visible_related_ids, writable_fields
 from .serializers import serialize_record, serializer_for
+from .transitions import Conflict, run_transition
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 50
@@ -71,7 +74,16 @@ def _with_relations(queryset, schema, model):
 def _envelopes(user, model, schema, records):
     records = list(records)
     visible = visible_related_ids(user, model, schema, records)
-    return [serialize_record(record, schema, visible) for record in records]
+    envelopes = [serialize_record(record, schema, visible) for record in records]
+    if schema.get('workflow'):
+        # Per record: which transitions this user may run on it now, and
+        # whether its state refuses edits. The form shows exactly these.
+        for envelope, record in zip(envelopes, records):
+            envelope['workflow'] = {
+                'available': workflow.available(user, record),
+                'locked': workflow.is_locked(record),
+            }
+    return envelopes
 
 
 def _envelope(user, model, schema, record):
@@ -268,9 +280,11 @@ class ModelRecordListView(APIView):
         scoped_queryset(request.user, model, 'add')
         serializer = serializer_for(model, writable_fields(request.user, model, 'add'), request.user)(data=request.data)
         serializer.is_valid(raise_exception=True)
-        # The record and its audit entry commit together or not at all.
+        # The record and its audit entry commit together or not at all. Its
+        # document number, if it has one, is taken inside the same
+        # transaction, so a failed create never uses one up.
         with transaction.atomic():
-            obj = serializer.save(**_server_owned(request.user, model, creating=True))
+            obj = serializer.save(**_server_owned(request.user, model, creating=True), **numbering.assigned_values(model))
             record_change(
                 actor=request.user,
                 ip_address=client_ip(request),
@@ -301,6 +315,12 @@ class ModelRecordDetailView(APIView):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         obj = get_record(request.user, model, pk, 'change')
+        if workflow.is_locked(obj):
+            # A posted document is reversed, never edited.
+            raise Conflict(
+                f'This {model._meta.verbose_name} is {workflow.state_label(model, workflow.state_of(obj))}, '
+                'so it can’t be edited.'
+            )
         writable = writable_fields(request.user, model, 'change')
         serializer = serializer_for(model, writable, request.user)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -323,6 +343,18 @@ class ModelRecordDetailView(APIView):
             )
         # Re-read so relation labels and the display name reflect the save
         # (a changed parent changes a person's display name).
+        return Response(_envelope(request.user, model, schema, get_record(request.user, model, obj.pk)))
+
+
+class ModelRecordTransitionView(APIView):
+    """POST /api/data/<app>/<model>/<pk>/transitions/<name>/ — move a record's state (see data.transitions)."""
+
+    def post(self, request, app_label, model_name, pk, name):
+        model = _resolve(app_label, model_name)
+        schema = _user_schema(request.user, model)
+        obj = run_transition(
+            request.user, model, pk, name, ip_address=client_ip(request), audited_fields=_audited_fields(model)
+        )
         return Response(_envelope(request.user, model, schema, get_record(request.user, model, obj.pk)))
 
 

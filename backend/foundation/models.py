@@ -79,7 +79,8 @@ class AuditEntry(models.Model):
 
     ACTION_CREATE = 'create'
     ACTION_UPDATE = 'update'
-    ACTION_CHOICES = [(ACTION_CREATE, 'Created'), (ACTION_UPDATE, 'Updated')]
+    ACTION_TRANSITION = 'transition'
+    ACTION_CHOICES = [(ACTION_CREATE, 'Created'), (ACTION_UPDATE, 'Updated'), (ACTION_TRANSITION, 'Moved')]
 
     timestamp = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
     actor = models.ForeignKey(
@@ -118,3 +119,19 @@ class AuditEntry(models.Model):
 
     def __str__(self):
         return f'{self.actor_username} {self.action} {self.content_type.model} #{self.record_id}'
+
+
+class Sequence(models.Model):
+    """
+    One document-number counter (for example "catalog.invoice:2026"). Read
+    and advanced only under a row lock inside the transaction that creates
+    the record (see foundation.numbering), so two creates at once queue
+    rather than share a number, and a create that rolls back takes its
+    number with it: no duplicates and no gaps.
+    """
+
+    key = models.CharField(max_length=150, unique=True)
+    last = models.PositiveBigIntegerField(default=0)
+
+    def __str__(self):
+        return f'{self.key} = {self.last}'

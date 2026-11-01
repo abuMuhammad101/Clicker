@@ -19,6 +19,7 @@ from django.core import validators as djv
 from django.db import models as djm
 
 from foundation import computed as computed_fields
+from foundation import numbering, workflow
 from foundation.permissions import CREATE_ONLY, WRITE, can, field_access, roles_that_can_change
 
 
@@ -280,14 +281,17 @@ def schema_field_names(model):
     relations (auto_created, not concrete) aren't exposed yet — no current
     module declares a one_to_many field to show one.
     """
+    # Server-owned, but the point of the record: its workflow state and its
+    # document number are read by everyone who can see it, written by no one.
+    shown = {decl['field'] for decl in (workflow.declaration(model), numbering.declaration(model)) if decl}
     names = []
     for field in model._meta.get_fields():
         if field.auto_created and not field.concrete:
             continue
-        # Server-owned fields (the audit fields, and later workflow state and
-        # computed values) are not part of what a user reads or writes through
-        # a form. `editable=False` is Django's own marker for them.
-        if not field.editable and not field.primary_key:
+        # Other server-owned fields (the audit fields, a transition's actor)
+        # are not part of what a user reads or writes through a form.
+        # `editable=False` is Django's own marker for them.
+        if not field.editable and not field.primary_key and field.name not in shown:
             continue
         names.append(field.name)
     return names
@@ -463,6 +467,8 @@ def build_schema(model, user, mode=None):
         },
         'fields': fields,
         'related_lists': related_lists(model, user),
+        # States and the transitions this user holds a grant for (none others).
+        'workflow': workflow.schema_for(user, model),
         'actions': {
             'view': True,
             'create': may_create,
