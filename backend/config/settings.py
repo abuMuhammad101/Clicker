@@ -141,6 +141,11 @@ INSTALLED_APPS = [
     'userstate',
 ]
 
+# S-3's throwaway model, for tests only: never installed for a real run, so
+# its table never reaches Neon and it never appears in anyone's navigation.
+if len(sys.argv) > 1 and sys.argv[1] == 'test':
+    INSTALLED_APPS.append('workflowlab')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
