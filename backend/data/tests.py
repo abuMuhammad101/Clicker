@@ -76,7 +76,8 @@ class ModelPermissionTests(Fixtures):
     def test_schema_actions_follow_the_grants(self):
         user = make_user('viewer', 'core.view_contact', 'core.change_contact')
         actions = build_schema(Contact, user)['actions']
-        self.assertEqual(actions, {'view': True, 'create': False, 'update': True, 'delete': False})
+        # No archive: changing `active` needs its own field grant.
+        self.assertEqual(actions, {'view': True, 'create': False, 'update': True, 'archive': False, 'delete': False})
 
     def test_registry_lists_only_viewable_models(self):
         user = make_user('viewer', 'core.view_contact')

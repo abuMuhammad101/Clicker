@@ -76,13 +76,11 @@ def _envelopes(user, model, schema, records):
     visible = visible_related_ids(user, model, schema, records)
     envelopes = [serialize_record(record, schema, visible) for record in records]
     if schema.get('workflow'):
-        # Per record: which transitions this user may run on it now, and
-        # whether its state refuses edits. The form shows exactly these.
+        # Per record: which transitions this user may run on it now, whether
+        # its state refuses edits, and who it's waiting for. The header shows
+        # exactly these.
         for envelope, record in zip(envelopes, records):
-            envelope['workflow'] = {
-                'available': workflow.available(user, record),
-                'locked': workflow.is_locked(record),
-            }
+            envelope['workflow'] = workflow.record_status(user, record)
     return envelopes
 
 
@@ -257,12 +255,25 @@ def _ordering(model, schema, param):
     return [*expressions, 'pk']
 
 
+def _unarchived(queryset, schema, filters):
+    """
+    Archived records stay out of lists and pickers unless the request asks
+    about the archive field itself (`?active=false` lists the archived ones)
+    or names a record by id (a link's label must resolve even if archived).
+    """
+    field = schema.get('archive_field')
+    if not field or field in filters or 'id' in filters:
+        return queryset
+    return queryset.filter(**{field: True})
+
+
 class ModelRecordListView(APIView):
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
         queryset = _with_relations(scoped_queryset(request.user, model, 'view'), schema, model)
-        queryset = queryset.filter(**_field_filters(request, model, schema))
+        filters = _field_filters(request, model, schema)
+        queryset = _unarchived(queryset.filter(**filters), schema, filters)
         queryset = _search(queryset, schema, request.GET.get('q', ''))
         queryset = queryset.order_by(*_ordering(model, schema, request.GET.get('ordering')))
 
@@ -388,7 +399,8 @@ class ModelSearchView(APIView):
         # Domain filters (e.g. ?type=company for the parent picker, or
         # ?is_vendor=true for a boolean one): the same readable-fields-only
         # exact match as the list.
-        queryset = queryset.filter(**_field_filters(request, model, schema))
+        filters = _field_filters(request, model, schema)
+        queryset = _unarchived(queryset.filter(**filters), schema, filters)
 
         limit = _int_param(request, 'limit', DEFAULT_LIMIT, MAX_LIMIT)
 

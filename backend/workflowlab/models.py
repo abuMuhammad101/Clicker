@@ -4,29 +4,75 @@ from django.db import models
 from foundation.models import ClickerModel
 
 
-class LabDocument(ClickerModel):
+class LabBill(ClickerModel):
     """
-    One document that exercises every S-3 rule: a number assigned on create,
-    a state only transitions move, a posted state that refuses edits, and a
-    reduction-style request that its requester can't approve.
+    The shape of S-5's bills: numbered on create, posted by a Clerk, cancelled
+    only by a Manager, and never edited once it's out of draft.
     """
 
-    DRAFT, REQUESTED, APPROVED, REJECTED, POSTED, CANCELLED = (
-        'draft', 'requested', 'approved', 'rejected', 'posted', 'cancelled'
-    )
+    STATE_CHOICES = [('draft', 'Draft'), ('posted', 'Posted'), ('cancelled', 'Cancelled')]
+
+    number = models.CharField(max_length=32, blank=True, editable=False)
+    customer = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    state = models.CharField(max_length=16, choices=STATE_CHOICES, default='draft', editable=False)
+
+    class Meta:
+        ordering = ['-id']
+        verbose_name = 'lab bill'
+
+    class Schema:
+        icon = 'receipt'
+        display_field = 'customer'
+        field_types = {'amount': 'currency'}
+        list_display = ['number', 'customer', 'amount', 'state']
+        numbering = {'field': 'number', 'prefix': 'BILL', 'digits': 5}
+        workflow = {
+            'field': 'state',
+            'path': ['draft', 'posted'],
+            'tones': {'posted': 'positive'},
+            # Out of draft, a bill is a record of what happened: reversed, never edited.
+            'locked': ['posted', 'cancelled'],
+            'transitions': {
+                'post': {
+                    'label': 'Post',
+                    'from': ['draft'],
+                    'to': 'posted',
+                    'hint': 'Once posted, it can’t be edited, only reversed.',
+                },
+                'cancel': {
+                    'label': 'Cancel',
+                    'from': ['draft'],
+                    'to': 'cancelled',
+                    'confirm': 'It keeps its number and can’t be posted afterwards.',
+                },
+            },
+        }
+        default_grants = {
+            'Clerk': ['view_labbill', 'add_labbill', 'change_labbill', 'post_labbill'],
+        }
+
+    def __str__(self):
+        return self.customer
+
+
+class LabAdjustment(ClickerModel):
+    """
+    The shape of S-5's reductions (credit notes, write-offs, discounts): a
+    Clerk requests one, a Manager who isn't the requester approves or rejects.
+    """
+
     STATE_CHOICES = [
-        (DRAFT, 'Draft'),
-        (REQUESTED, 'Requested'),
-        (APPROVED, 'Approved'),
-        (REJECTED, 'Rejected'),
-        (POSTED, 'Posted'),
-        (CANCELLED, 'Cancelled'),
+        ('draft', 'Draft'),
+        ('requested', 'Requested'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
     ]
 
     number = models.CharField(max_length=32, blank=True, editable=False)
-    title = models.CharField(max_length=255)
+    reason = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    state = models.CharField(max_length=16, choices=STATE_CHOICES, default=DRAFT, editable=False)
+    state = models.CharField(max_length=16, choices=STATE_CHOICES, default='draft', editable=False)
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -39,24 +85,21 @@ class LabDocument(ClickerModel):
 
     class Meta:
         ordering = ['-id']
+        verbose_name = 'lab adjustment'
 
     class Schema:
-        icon = 'flask-conical'
-        display_field = 'title'
+        icon = 'receipt-text'
+        display_field = 'reason'
         field_types = {'amount': 'currency'}
-        numbering = {'field': 'number', 'prefix': 'LAB', 'digits': 5}
+        list_display = ['number', 'reason', 'amount', 'state']
+        numbering = {'field': 'number', 'prefix': 'ADJ', 'digits': 5}
         workflow = {
             'field': 'state',
-            # Anything past draft is a record of what happened: reversed, never edited.
-            'locked': ['requested', 'approved', 'rejected', 'posted', 'cancelled'],
+            'path': ['draft', 'requested', 'approved'],
+            'tones': {'requested': 'warning', 'approved': 'positive', 'rejected': 'danger'},
+            'locked': ['requested', 'approved', 'rejected'],
             'transitions': {
-                'post': {'label': 'Post', 'from': ['draft'], 'to': 'posted'},
-                'cancel': {
-                    'label': 'Cancel',
-                    'from': ['draft'],
-                    'to': 'cancelled',
-                    'confirm': 'Cancel this document? It can’t be posted afterwards.',
-                },
+                # Its hint is written for it: "This goes to a Manager for approval."
                 'request': {
                     'label': 'Request approval',
                     'from': ['draft'],
@@ -64,21 +107,20 @@ class LabDocument(ClickerModel):
                     'records_actor': 'requested_by',
                 },
                 'approve': {'label': 'Approve', 'from': ['requested'], 'to': 'approved', 'not_by': 'requested_by'},
-                'reject': {'label': 'Reject', 'from': ['requested'], 'to': 'rejected', 'not_by': 'requested_by'},
+                'reject': {
+                    'label': 'Reject',
+                    'from': ['requested'],
+                    'to': 'rejected',
+                    'not_by': 'requested_by',
+                    'confirm': 'The requester will see it was rejected. It can’t be requested again.',
+                },
             },
         }
-        # The proposed defaults for Hassan's S-3 questions, drafted here:
-        # a Clerk drafts, posts and requests; only a Manager cancels, approves
-        # or rejects (and never their own request: not_by above).
+        # Drafted answers to the S-3 questions: a Clerk drafts and requests;
+        # only a Manager approves or rejects, and never their own request.
         default_grants = {
-            'Clerk': [
-                'view_labdocument',
-                'add_labdocument',
-                'change_labdocument',
-                'post_labdocument',
-                'request_labdocument',
-            ],
+            'Clerk': ['view_labadjustment', 'add_labadjustment', 'change_labadjustment', 'request_labadjustment'],
         }
 
     def __str__(self):
-        return self.title
+        return self.reason

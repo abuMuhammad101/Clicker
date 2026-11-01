@@ -42,6 +42,7 @@ class Product(ClickerModel):
     class Schema:
         icon = 'package'
         display_field = 'name'
+        archive_field = 'active'
 
         groups = [
             {'label': 'Identity', 'fields': ['name', 'sku', 'type', 'description']},

@@ -132,6 +132,8 @@ class Contact(ClickerModel):
         # permissions are created automatically after migrate.
         # `active` is restricted because changing it is archiving.
         restricted_fields = ['tax_id', 'active', 'credit_limit']
+        # Archived contacts leave lists and pickers; history keeps pointing at them.
+        archive_field = 'active'
 
         # What each role may do here (Managers may do everything). A Clerk
         # creates contacts and keeps them current, but can't archive one or

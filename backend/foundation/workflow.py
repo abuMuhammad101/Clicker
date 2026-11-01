@@ -34,8 +34,23 @@ Rules that follow from it, with no per-model code:
   `not_by` has something to compare against.
 - **`locked`** states refuse edits: a posted document is reversed, never
   changed.
+
+And for how it reads on screen, all optional:
+
+- **`path`**: the main line of states, in order, which the record header draws
+  as a stepper (Draft → Requested → Approved). States off it (Cancelled,
+  Rejected) are exits. Default: every state, in the field's choice order.
+- **`tones`**: `{state: 'positive' | 'warning' | 'danger' | 'info' | 'neutral'}`,
+  the colour of the state's chip. Default neutral.
+- **`hint`** on a transition: what it does, in words, shown beside its button
+  before anyone presses it ("Once posted, it can't be edited, only reversed.").
+  A transition that hands the record to an approver (it `records_actor`s a
+  field another transition is `not_by`) gets its hint written for it: "This
+  goes to a Manager for approval."
 """
 from django.core.exceptions import ImproperlyConfigured
+
+TONES = ('positive', 'warning', 'danger', 'info', 'neutral')
 
 
 def declaration(model):
@@ -67,6 +82,12 @@ def _check(model, decl):
     unknown = [s for s in decl.get('locked', ()) if s not in states]
     if unknown:
         raise ImproperlyConfigured(f'{model.__name__}.Schema.workflow locks unknown state(s) {unknown}.')
+    unknown = [s for s in [*decl.get('path', ()), *decl.get('tones', {})] if s not in states]
+    if unknown:
+        raise ImproperlyConfigured(f'{model.__name__}.Schema.workflow path or tones name unknown state(s) {unknown}.')
+    bad = {s: t for s, t in decl.get('tones', {}).items() if t not in TONES}
+    if bad:
+        raise ImproperlyConfigured(f'{model.__name__}.Schema.workflow tones must be one of {TONES}, not {bad}.')
 
 
 def transition_codename(model, name):
@@ -128,32 +149,126 @@ def available(user, obj):
     return [name for name in granted(user, type(obj)) if blocked_reason(user, obj, name) is None]
 
 
+def roles_that_may_run(model, name):
+    """The groups holding a transition's grant, for "Waiting for a Manager…"."""
+    from django.contrib.auth.models import Group
+
+    return list(
+        Group.objects.filter(
+            permissions__content_type__app_label=model._meta.app_label,
+            permissions__codename=transition_codename(model, name),
+        )
+        .order_by('name')
+        .values_list('name', flat=True)
+    )
+
+
+def _a(roles):
+    """'a Manager', 'an Accountant or Manager'."""
+    if not roles:
+        return 'someone with access'
+    article = 'an' if roles[0][:1].lower() in 'aeiou' else 'a'
+    return f'{article} {" or ".join(roles)}'
+
+
+def _either(labels):
+    """['Approve', 'Reject'] → 'approve or reject'."""
+    labels = [label.lower() for label in labels]
+    return labels[0] if len(labels) == 1 else f'{", ".join(labels[:-1])} or {labels[-1]}'
+
+
+def _hint(model, decl, spec):
+    if spec.get('hint'):
+        return spec['hint']
+    actor = spec.get('records_actor')
+    if not actor:
+        return None
+    # It hands the record to whoever may run the transitions its actor is barred from.
+    approvals = [n for n, s in decl['transitions'].items() if s.get('not_by') == actor]
+    if not approvals:
+        return None
+    roles = sorted({role for n in approvals for role in roles_that_may_run(model, n)})
+    return f'This goes to {_a(roles)} for approval.'
+
+
 def schema_for(user, model):
     """
     What the schema says about the workflow for this user: the states (for
-    the badge), and only the transitions they hold a grant for. A transition
-    they lack is not in it at all.
+    the stepper and chips), and only the transitions they hold a grant for.
+    A transition they lack is not in it at all.
     """
     decl = declaration(model)
     if not decl:
         return None
     field = model._meta.get_field(decl['field'])
+    tones = decl.get('tones', {})
+    transitions = []
+    for name, spec in decl['transitions'].items():
+        if not may_run(user, model, name):
+            continue
+        entry = {'name': name, 'label': spec['label'], 'from': list(spec['from']), 'to': spec['to']}
+        if spec.get('confirm'):
+            entry['confirm'] = spec['confirm']
+        hint = _hint(model, decl, spec)
+        if hint:
+            entry['hint'] = hint
+        transitions.append(entry)
     return {
         'field': decl['field'],
-        'states': [{'value': value, 'label': str(label)} for value, label in field.choices],
-        'locked': list(decl.get('locked', ())),
-        'transitions': [
-            {
-                'name': name,
-                'label': spec['label'],
-                'from': list(spec['from']),
-                'to': spec['to'],
-                **({'confirm': spec['confirm']} if spec.get('confirm') else {}),
-            }
-            for name, spec in decl['transitions'].items()
-            if may_run(user, model, name)
+        'states': [
+            {'value': value, 'label': str(label), 'tone': tones.get(value, 'neutral')}
+            for value, label in field.choices
         ],
+        'path': list(decl.get('path') or [value for value, _ in field.choices]),
+        'locked': list(decl.get('locked', ())),
+        'transitions': transitions,
     }
+
+
+def record_status(user, obj):
+    """
+    What a record's header needs to say about its workflow for this user:
+
+    - `available`: the transitions they may run on it now;
+    - `locked` and `locked_reason`: whether its state refuses edits, and why;
+    - `waiting`: when they can do nothing, who can and what ("Waiting for a
+      Manager to approve or reject it."). Never a disabled button with no
+      explanation: if a step is someone else's, the sentence says whose.
+    """
+    model = type(obj)
+    decl = declaration(model)
+    meta = model._meta
+    state = state_of(obj)
+    available_now = available(user, obj)
+    locked = state in decl.get('locked', ())
+    status = {
+        'available': available_now,
+        'locked': locked,
+        'locked_reason': (
+            f'This {meta.verbose_name} is {state_label(model, state)}, so it can’t be edited.' if locked else None
+        ),
+        'waiting': None,
+    }
+    if available_now:
+        return status
+    pending = [(n, s) for n, s in decl['transitions'].items() if state in s['from']]
+    if not pending:
+        return status
+    actions = _either([s['label'] for _, s in pending])
+    roles = sorted({role for n, _ in pending for role in roles_that_may_run(model, n)})
+    barred = next(
+        (s['not_by'] for n, s in pending if s.get('not_by') and may_run(user, model, n)
+         and getattr(obj, meta.get_field(s['not_by']).attname) == user.pk),
+        None,
+    )
+    if barred:
+        status['waiting'] = (
+            f'You’re the {meta.get_field(barred).verbose_name} of this {meta.verbose_name}, '
+            f'so {_a(roles)} other than you has to {actions} it.'
+        )
+    else:
+        status['waiting'] = f'Waiting for {_a(roles)} to {actions} it.'
+    return status
 
 
 def ensure_transition_permissions(models):

@@ -141,9 +141,14 @@ INSTALLED_APPS = [
     'userstate',
 ]
 
-# S-3's throwaway model, for tests only: never installed for a real run, so
-# its table never reaches Neon and it never appears in anyone's navigation.
-if len(sys.argv) > 1 and sys.argv[1] == 'test':
+# S-3's throwaway models (a bill and an adjustment, the shapes S-5 needs).
+# Always installed for tests. In development only with CLICKER_LAB=1, to see
+# the workflow screens before a real module has a workflow; never in
+# production.
+CLICKER_LAB = env.bool('CLICKER_LAB', default=False)
+if IS_PRODUCTION and CLICKER_LAB:
+    raise ImproperlyConfigured('CLICKER_LAB is for development only.')
+if CLICKER_LAB or (len(sys.argv) > 1 and sys.argv[1] == 'test'):
     INSTALLED_APPS.append('workflowlab')
 
 MIDDLEWARE = [

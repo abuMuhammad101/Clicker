@@ -434,6 +434,18 @@ def build_schema(model, user, mode=None):
             entry['currency'] = settings.CLICKER_CURRENCY['code']
         fields[name] = entry
 
+    # A document number is empty until the record is saved; the form says so
+    # rather than showing a blank that looks like something to fill in.
+    numbered = numbering.declaration(model)
+    if numbered and numbered['field'] in fields:
+        fields[numbered['field']]['assigned'] = 'Assigned when saved'
+
+    # Archiving: a boolean field where False means archived. Archived records
+    # leave lists and pickers until asked for; archiving is an edit of that
+    # one field, so it's allowed exactly when the user may write it.
+    archive_field = getattr(schema_cls, 'archive_field', None)
+    may_archive = bool(archive_field) and archive_field in fields and not fields[archive_field]['read_only'] and may_update
+
     # An auto-created primary key is the record's identity, not something a
     # user fills in — the form shows it in its header, not as a field. It
     # stays in `fields` (a list column may still want it); it just never
@@ -469,10 +481,12 @@ def build_schema(model, user, mode=None):
         'related_lists': related_lists(model, user),
         # States and the transitions this user holds a grant for (none others).
         'workflow': workflow.schema_for(user, model),
+        'archive_field': archive_field if archive_field in fields else None,
         'actions': {
             'view': True,
             'create': may_create,
             'update': may_update,
+            'archive': may_archive,
             'delete': can(user, model, 'delete'),
         },
     }
