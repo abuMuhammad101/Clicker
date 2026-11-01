@@ -187,13 +187,22 @@ DATABASES = {
     'default': env.db('DATABASE_URL'),
 }
 
-# Tests create and drop a scratch database. Neon's pooled endpoint (PgBouncer)
-# keeps connections to it open, so the DROP at teardown fails with "being
-# accessed by other users". Tests therefore use the direct endpoint: the same
-# host without `-pooler`, which is how Neon names the two. The app itself
-# keeps the pooled one.
+# Tests create and drop a scratch database. With TEST_DATABASE_URL set (a
+# local Postgres; see the README) they run there: the suite is dominated by
+# round trips, and Neon is an ocean away. The app itself never reads it.
+#
+# Without it, tests fall back to Neon's direct endpoint: the pooled one
+# (PgBouncer) keeps connections open, so the DROP at teardown fails with
+# "being accessed by other users". The direct host is the same name without
+# `-pooler`, which is how Neon names the two.
 if len(sys.argv) > 1 and sys.argv[1] == 'test':
-    DATABASES['default']['HOST'] = DATABASES['default']['HOST'].replace('-pooler.', '.')
+    if env('TEST_DATABASE_URL', default=''):
+        DATABASES['default'] = env.db('TEST_DATABASE_URL')
+    else:
+        DATABASES['default']['HOST'] = DATABASES['default']['HOST'].replace('-pooler.', '.')
+    # Test users' passwords protect nothing; hashing each one properly is
+    # most of a local run. Never outside tests.
+    PASSWORD_HASHERS = ['django.contrib.auth.hashers.MD5PasswordHasher']
 
 
 # Password validation
