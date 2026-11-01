@@ -1522,3 +1522,78 @@ Three fixes from Hassan's review of S-2, one commit each, with tests.
 - Decisions for the Notion Decision Log: write-once as a third field-grant
   level (`add_` on the field), reusable for bill, connection and
   bill-of-lading numbers in S-5/S-6.
+
+## 2026-11-01 | second machine | S-3 (backend): workflow states, numbering, approvals
+
+The engine for S-3, drafted on a throwaway model. No UI yet: that's the
+second half of S-3.
+
+- **Hassan hasn't answered the five S-3 questions,** so these are my drafted
+  answers, built into the lab model. Correct any of them and the change is
+  data in `Schema`, not code:
+  1. **States:** Draft → Posted, plus Cancelled. Paid, Partially paid and
+     Overdue are *computed* from payments and the due date, never stored.
+  2. **Who:** a Clerk drafts and posts; only a Manager cancels.
+  3. **Reductions** (credit notes, write-offs, discounts): Draft → Requested
+     → Approved / Rejected. The approver needs the grant **and** must not be
+     the requester, whatever their role.
+  4. **Posted documents are never edited, only reversed** (a credit note
+     against them).
+  5. **Overdue is computed**, in the organisation's time zone (Karachi).
+
+- **Workflow, declared in the Schema** (`foundation/workflow.py`):
+  `Schema.workflow = {'field', 'locked', 'transitions': {name: {label, from,
+  to, confirm?, records_actor?, not_by?}}}`. The state field must be
+  `editable=False` (checked at startup), so nothing but a transition moves
+  it. Each transition is its own permission, `<transition>_<model>` ("Can
+  post invoice"), created after migrate and handed out through
+  `default_grants` like any other.
+- **The schema** carries `workflow: {field, states, locked, transitions}`,
+  with **only the transitions this user holds**: one they lack isn't in it at
+  all. Each record's envelope carries `workflow: {available, locked}`, which
+  is what this user can do to *this* record now (granted, right state, not
+  barred). The state field and document number are now in the schema as
+  read-only fields; other server-owned fields (audit stamps, the requester)
+  stay out.
+- **Running one:** `POST /api/data/<app>/<model>/<pk>/transitions/<name>/`
+  (`data/transitions.py`). It answers in a fixed order, so each answer means
+  one thing: **404** for an invisible record or unknown transition; **403**
+  for no grant; **409** for the wrong state ("this lab document is
+  Posted"); **403** for `not_by` ("You are this lab document's requester, so
+  someone else has to do this."). The state change, the actor stamp and the
+  audit entry (new action `transition`, shown as "Moved") commit together
+  under a row lock.
+- **Locked states refuse edits:** a PATCH to a posted record is a 409, "This
+  … is Posted, so it can't be edited."
+- **Document numbers** (`foundation/numbering.py`): `Schema.numbering =
+  {'field', 'prefix', 'digits'}` gives `INV-2026-00001`, restarting each year.
+  One `Sequence` row per model and year, locked with `SELECT … FOR UPDATE`
+  inside the creating transaction: a second create waits for the first to
+  commit, and a refused create gives its number back (no gaps from
+  validation errors).
+- **The lab:** `backend/workflowlab/`, `LabDocument`, installed **only while
+  tests run**. It has a migration because the test database is built by
+  migrating; Neon never sees the table and nobody's sidebar shows it.
+- **Applied on Neon:** `foundation.0003` (the sequence table).
+
+- Gate, all tested (`backend/workflowlab/tests.py`, 21 tests):
+  - a transition the user lacks is refused by the API (403) and absent from
+    their schema: the Clerk can't cancel or approve;
+  - two concurrent creates never get the same number: 8 threads with their
+    own connections, released together, 24 creates, 24 distinct numbers with
+    no gaps;
+  - a requester approving (or rejecting) their own reduction is refused, and
+    another Manager's approval goes through and is audited.
+- Verification: full backend suite (see below).
+
+- Half-finished: S-3's UI. The renderer doesn't show a state badge,
+  transition buttons or a locked form yet.
+- **Next single action:** S-3 UI, generically from `schema.workflow` and the
+  envelope's `available`: a state badge in the record header, the available
+  transitions as buttons in the save-bar area (with `confirm` as a dialog),
+  and a locked record drawn read-only with the reason. Then the create /
+  archive / empty / error states the sprint lists.
+
+- Decisions for the Notion Decision Log: workflow transitions are
+  per-transition grants declared in the Schema; posted documents are
+  reversed, never edited; numbering by a locked per-year sequence row.
