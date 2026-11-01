@@ -12,10 +12,15 @@ The rules, deny by default:
   `<app>.view_<model>`, `add_`, `change_`, `delete_`. No grant, no access.
 - **Fields.** A field follows its model's grant unless the model's Schema
   lists it in `restricted_fields`. A restricted field needs its own grant on
-  top: `<app>.view_<model>_<field>` to read it and `<app>.change_<model>_<field>`
-  to write it. Those permissions are created automatically for every
-  restricted field (see `ensure_field_permissions`), so a module declares a
-  sensitive field once, by name, and never repeats a codename.
+  top, one of three levels:
+    - `<app>.view_<model>_<field>`: read it;
+    - `<app>.add_<model>_<field>`: set it when creating a record, read-only
+      afterwards (write-once: a tax ID, a bill number, a bill-of-lading
+      number). Mirrors Django's own `add_` model permission;
+    - `<app>.change_<model>_<field>`: write it at any time.
+  Those permissions are created automatically for every restricted field
+  (see `ensure_field_permissions`), so a module declares a sensitive field
+  once, by name, and never repeats a codename.
 - **Relations.** A many_to_one's value (the linked id) is part of the record
   and readable with it. Its *label* is shown only if the user can see the
   linked record (data.access.visible_related_ids); otherwise it comes back
@@ -33,6 +38,11 @@ from django.db import models as djm
 ACTIONS = ('view', 'add', 'change', 'delete')
 READ = 'read'
 WRITE = 'write'
+# Writable when creating a record, read-only on every record that exists.
+CREATE_ONLY = 'create_only'
+
+# The field-level grants a restricted field gets, as (codename action, verb).
+FIELD_GRANTS = (('view', 'view'), ('add', 'set on new'), ('change', 'change'))
 
 
 def model_permission(model, action):
@@ -68,13 +78,15 @@ def _has_field_grant(user, model, field_name, action):
 
 def field_access(user, model, field_names):
     """
-    For each of `field_names` the user may see, READ or WRITE. A name missing
-    from the result is hidden from this user: not readable, not writable, not
-    filterable, not sortable, not searchable.
+    For each of `field_names` the user may see, READ, CREATE_ONLY or WRITE. A
+    name missing from the result is hidden from this user: not readable, not
+    writable, not filterable, not sortable, not searchable.
 
-    WRITE here means "may change it on a record they may change"; whether the
-    user may change records at all is the model-level `change`/`add` grant,
-    which the caller checks for the action at hand.
+    WRITE means "may write it on a record they may create or change";
+    CREATE_ONLY means "may set it on a record they're creating, never change
+    it after". Whether the user may create or change records at all is the
+    model-level `add`/`change` grant, which the caller checks for the action
+    at hand.
     """
     if not can(user, model, 'view'):
         return {}
@@ -92,20 +104,19 @@ def field_access(user, model, field_names):
             user, field.related_model, 'view'
         )
 
-        writable = (
-            may_change_model
-            and not links_to_unviewable
-            and field.editable
-            and not field.primary_key
-            and (name not in restricted or _has_field_grant(user, model, name, 'change'))
-        )
-        access[name] = WRITE if writable else READ
+        could_write = may_change_model and not links_to_unviewable and field.editable and not field.primary_key
+        if could_write and (name not in restricted or _has_field_grant(user, model, name, 'change')):
+            access[name] = WRITE
+        elif could_write and name in restricted and _has_field_grant(user, model, name, 'add'):
+            access[name] = CREATE_ONLY
+        else:
+            access[name] = READ
     return access
 
 
 def ensure_field_permissions(models):
     """
-    Create the two permission rows for every restricted field of `models`.
+    Create the three permission rows for every restricted field of `models`.
     Idempotent; run after migrate (see foundation.signals) and in tests.
     Rows for fields no longer restricted are left alone (Django's own
     behaviour for model permissions too): removing a grant is a decision.
@@ -120,9 +131,26 @@ def ensure_field_permissions(models):
         content_type = ContentType.objects.get_for_model(model)
         for name in names:
             label = model._meta.get_field(name).verbose_name
-            for action, verb in (('view', 'view'), ('change', 'change')):
+            for action, verb in FIELD_GRANTS:
                 Permission.objects.get_or_create(
                     content_type=content_type,
                     codename=field_permission_codename(model, name, action),
                     defaults={'name': f'Can {verb} {model._meta.verbose_name} {label}'},
                 )
+
+
+def roles_that_can_change(model, field_name):
+    """
+    The names of the groups holding the full write grant on a restricted
+    field, for telling someone who to ask ("Ask a Manager to change it").
+    """
+    from django.contrib.auth.models import Group
+
+    codename = field_permission_codename(model, field_name, 'change')
+    return list(
+        Group.objects.filter(
+            permissions__content_type__app_label=model._meta.app_label, permissions__codename=codename
+        )
+        .order_by('name')
+        .values_list('name', flat=True)
+    )

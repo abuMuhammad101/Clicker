@@ -25,7 +25,7 @@ from django.http import Http404
 from rest_framework.exceptions import PermissionDenied
 
 from foundation import computed
-from foundation.permissions import READ, WRITE, can, field_access
+from foundation.permissions import CREATE_ONLY, READ, WRITE, can, field_access
 
 
 def _schema_field_names(model):
@@ -107,13 +107,18 @@ def writable_fields(user, model, action):
     """
     Field names `user` may send in a write. `action` is `add` (create) or
     `change` (update): a user with neither gets an empty set.
+
+    A write-once field (CREATE_ONLY) is writable on `add` and not on `change`,
+    so an update that names it is refused by name like any other read-only
+    field.
     """
     if not can(user, model, action):
         return set()
+    allowed = {WRITE, CREATE_ONLY} if action == 'add' else {WRITE}
     return {
         name
         for name, access in field_access(user, model, _schema_field_names(model)).items()
-        if access == WRITE
+        if access in allowed
     }
 
 

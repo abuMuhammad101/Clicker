@@ -1,7 +1,8 @@
-import { CircleAlert, Sigma } from 'lucide-react'
+import { CircleAlert, LockKeyhole, Sigma, type LucideIcon } from 'lucide-react'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
-import type { ReactNode } from 'react'
+import { useContext, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import { WriteOnceNoteContext } from './fieldNotes'
 import './FieldShell.css'
 
 interface FieldShellProps {
@@ -38,6 +39,9 @@ export function FieldShell({
 }: FieldShellProps) {
   // A computed field is never editable, whatever the caller says.
   readOnly = readOnly || computed != null
+  // A write-once field says its rule while it's still editable (creating)
+  // and after it isn't: feedforward, so nobody meets the lock by surprise.
+  const writeOnce = useContext(WriteOnceNoteContext)
   return (
     <div className="field-shell">
       <label
@@ -48,6 +52,7 @@ export function FieldShell({
         {label}
         {required && !readOnly && <span className="field-shell__required">*</span>}
         {computed && <CalculatedMark description={computed.description} />}
+        {writeOnce && <FieldMark icon={LockKeyhole} label={writeOnce} />}
       </label>
       <div className="field-shell__body">
         {readOnly ? (
@@ -75,15 +80,23 @@ export function FieldShell({
   )
 }
 
-/** The small Σ beside a computed field's label, explained on hover or focus. */
-export function CalculatedMark({ description }: { description: string }) {
+/**
+ * A small mark beside a field's label that explains itself on hover or
+ * keyboard focus: why this field behaves differently from its neighbours.
+ */
+export function FieldMark({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
   return (
     <TooltipProvider>
-      <Tooltip label={`Calculated: ${description}`} side="top">
-        <span className="calculated-mark" tabIndex={0} aria-label={`Calculated: ${description}`}>
-          <Sigma aria-hidden />
+      <Tooltip label={label} side="top">
+        <span className="field-mark" tabIndex={0} aria-label={label}>
+          <Icon aria-hidden />
         </span>
       </Tooltip>
     </TooltipProvider>
   )
+}
+
+/** The small Σ beside a computed field's label. */
+export function CalculatedMark({ description }: { description: string }) {
+  return <FieldMark icon={Sigma} label={`Calculated: ${description}`} />
 }

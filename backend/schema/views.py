@@ -1,8 +1,9 @@
 from django.http import Http404
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .engine import build_registry, build_schema, get_exposed_model
+from .engine import SCHEMA_MODES, build_registry, build_schema, get_exposed_model
 
 
 class ModelSchemaView(APIView):
@@ -13,7 +14,10 @@ class ModelSchemaView(APIView):
             model = get_exposed_model(app_label, model_name)
         except LookupError:
             raise Http404('Not found.')
-        schema = build_schema(model, request.user)
+        mode = request.query_params.get('mode') or None
+        if mode is not None and mode not in SCHEMA_MODES:
+            raise ValidationError({'mode': [f'Use one of: {", ".join(SCHEMA_MODES)}.']})
+        schema = build_schema(model, request.user, mode)
         if schema is None:
             raise Http404('Not found.')
         return Response(schema)

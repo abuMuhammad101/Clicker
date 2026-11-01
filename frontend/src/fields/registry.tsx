@@ -12,6 +12,7 @@ import { ManyToOneField } from './many-to-one/ManyToOneField'
 import { PhoneField } from './phone/PhoneField'
 import { SelectionField } from './selection/SelectionField'
 import { FieldShell } from './shared/FieldShell'
+import { WriteOnceNoteContext } from './shared/fieldNotes'
 import { TextField } from './text/TextField'
 import { UrlField } from './url/UrlField'
 
@@ -138,5 +139,7 @@ function Unsupported({ name, schema }: FormFieldArgs) {
 
 export function renderFormField(args: FormFieldArgs): ReactNode {
   const render = FORM_COMPONENTS[args.schema.type] ?? Unsupported
-  return render(args)
+  const note = args.schema.write_once?.note
+  if (!note) return render(args)
+  return <WriteOnceNoteContext.Provider value={note}>{render(args)}</WriteOnceNoteContext.Provider>
 }

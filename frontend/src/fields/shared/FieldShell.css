@@ -114,7 +114,8 @@
 }
 
 /* A computed field's mark: quiet until you ask, then it says what it's made of. */
-.calculated-mark {
+/* A field's explanatory mark (calculated, write-once): quiet until asked. */
+.field-mark {
   display: inline-grid;
   place-items: center;
   width: 14px;
@@ -126,12 +127,12 @@
   cursor: help;
 }
 
-.calculated-mark svg {
+.field-mark svg {
   width: 10px;
   height: 10px;
 }
 
-.calculated-mark:focus-visible {
+.field-mark:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }

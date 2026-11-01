@@ -127,20 +127,23 @@ class Contact(ClickerModel):
         display_field = 'display_name'
 
         # Readable and writable only with their own grant, on top of the
-        # model's: core.view_contact_tax_id and core.change_contact_tax_id.
-        # The two permissions are created automatically after migrate.
+        # model's: view_ (read), add_ (set on create only, write-once) and
+        # change_ (write any time), e.g. core.add_contact_tax_id. The three
+        # permissions are created automatically after migrate.
         # `active` is restricted because changing it is archiving.
         restricted_fields = ['tax_id', 'active', 'credit_limit']
 
         # What each role may do here (Managers may do everything). A Clerk
         # creates contacts and keeps them current, but can't archive one or
-        # change its tax ID or credit limit; they read all three.
+        # change its credit limit; they read all three. A Clerk adding a
+        # company enters its tax ID, and only a Manager can change it after.
         default_grants = {
             'Clerk': [
                 'view_contact',
                 'add_contact',
                 'change_contact',
                 'view_contact_tax_id',
+                'add_contact_tax_id',
                 'view_contact_active',
                 'view_contact_credit_limit',
             ],

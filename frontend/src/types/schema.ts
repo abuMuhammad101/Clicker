@@ -61,6 +61,11 @@ export interface FieldSchema {
   currency?: string
   /** Present on computed fields: what it's calculated from, for the "calculated" mark. */
   computed?: { from: string[]; description: string }
+  /**
+   * Present when this user may set the field only while creating a record
+   * (read-only afterwards). `note` is the rule in words, shown in both forms.
+   */
+  write_once?: { note: string }
 }
 
 /** A reverse relation shown under a record's form (Schema.related_lists). */

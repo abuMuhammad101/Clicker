@@ -19,7 +19,7 @@ from django.core import validators as djv
 from django.db import models as djm
 
 from foundation import computed as computed_fields
-from foundation.permissions import WRITE, can, field_access
+from foundation.permissions import CREATE_ONLY, WRITE, can, field_access, roles_that_can_change
 
 
 def json_safe(value):
@@ -341,7 +341,19 @@ def related_lists(model, user):
     return entries
 
 
-def build_schema(model, user):
+def _write_once_note(model, field_name):
+    """What a write-once field tells the person, before and after they set it."""
+    roles = roles_that_can_change(model, field_name)
+    if not roles:
+        return 'Set when the record is created. It can’t be changed afterwards.'
+    article = 'an' if roles[0][:1].lower() in 'aeiou' else 'a'
+    return f'Set when the record is created. Ask {article} {" or ".join(roles)} to change it.'
+
+
+SCHEMA_MODES = ('create', 'edit')
+
+
+def build_schema(model, user, mode=None):
     """
     The schema `user` receives for `model`, or None if they can't see it.
 
@@ -351,7 +363,17 @@ def build_schema(model, user):
     filters); fields the user may read but not write come back `read_only`
     (for editing an existing record) and `read_only_on_create` (for a new
     one); `actions` says which writes the user may attempt at all.
+
+    A write-once field (writable on create only) is writable in the create
+    flags and read-only in the edit ones, and carries `write_once.note`, the
+    rule in words, so the form can say it before and after.
+
+    `mode` narrows the answer to one form: `create` or `edit` makes
+    `read_only` mean that mode's answer. Without it both flags are sent, which
+    is what a form that may be either uses.
     """
+    if mode is not None and mode not in SCHEMA_MODES:
+        raise ValueError(f'Unknown schema mode {mode!r}')
     if not can(user, model, 'view'):
         return None
 
@@ -375,8 +397,13 @@ def build_schema(model, user):
             continue
         entry = _field_schema(meta.get_field(name), overrides)
         writable = access[name] == WRITE
-        entry['read_only_on_create'] = entry['read_only'] or not (writable and may_create)
+        create_only = access[name] == CREATE_ONLY
+        entry['read_only_on_create'] = entry['read_only'] or not ((writable or create_only) and may_create)
         entry['read_only'] = entry['read_only'] or not (writable and may_update)
+        if create_only and may_create:
+            entry['write_once'] = {'note': _write_once_note(model, name)}
+        if mode == 'create':
+            entry['read_only'] = entry['read_only_on_create']
         fields[name] = entry
 
     # Computed fields: read-only for everyone, and visible only to someone
