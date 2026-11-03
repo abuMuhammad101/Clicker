@@ -129,6 +129,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Trigram indexes for search (pg_trgm) and their migration operation.
+    'django.contrib.postgres',
     'rest_framework',
     'corsheaders',
     'axes',

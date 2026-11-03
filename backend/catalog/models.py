@@ -1,5 +1,7 @@
+from django.contrib.postgres.indexes import GinIndex, OpClass
 from django.db import models
 from django.db.models import F
+from django.db.models.functions import Upper
 
 from core.models import Contact
 from foundation.models import ClickerModel
@@ -38,6 +40,16 @@ class Product(ClickerModel):
 
     class Meta:
         ordering = ['name']
+        # What the Schema below sorts, filters, groups and searches by.
+        indexes = [
+            models.Index(fields=['name'], name='product_name'),
+            models.Index(fields=['type'], name='product_type'),
+            models.Index(fields=['active'], name='product_active'),
+            models.Index(fields=['sales_price'], name='product_sales_price'),
+            GinIndex(OpClass(Upper('name'), name='gin_trgm_ops'), name='product_name_trgm'),
+            GinIndex(OpClass(Upper('sku'), name='gin_trgm_ops'), name='product_sku_trgm'),
+            GinIndex(OpClass(Upper('barcode'), name='gin_trgm_ops'), name='product_barcode_trgm'),
+        ]
 
     class Schema:
         icon = 'package'
@@ -64,6 +76,14 @@ class Product(ClickerModel):
         }
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         search_fields = ['name', 'sku', 'barcode']
+        summaries = [
+            {'label': 'Products', 'aggregate': 'count'},
+            {'label': 'Average margin', 'aggregate': 'avg', 'field': 'margin'},
+        ]
+        views = [
+            {'key': 'by_type', 'label': 'By type', 'group_by': 'type'},
+            {'key': 'by_supplier', 'label': 'By supplier', 'group_by': 'supplier'},
+        ]
 
         # Restricts the supplier picker to vendors only — same pattern as
         # Contact.Schema's parent-must-be-company domain, just on a boolean

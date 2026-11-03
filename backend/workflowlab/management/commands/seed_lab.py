@@ -1,28 +1,39 @@
 """
 Lab bills and adjustments in every workflow state, for looking at the S-3
 screens (CLICKER_LAB=1). Idempotent: a record that already exists (by
-customer or reason) is left as it is.
+customer or reason) is left as it is, except that a bill without dates gets
+its issue and due dates (S-4's aging needs them).
 
     python manage.py seed_lab --manager dev-verify --clerk dev-clerk-home
 
 The requester of each request is the user given, so "you're the requester"
 and "waiting for a Manager" both have a record to show.
 """
+import datetime
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
-from foundation import numbering
+from foundation import computed, numbering
 from workflowlab.models import LabAdjustment, LabBill
 
+# (customer, amount, state, issued this many days ago); due 30 days after issue.
+# Posted bills land in every aging bucket.
 BILLS = [
-    ('Indus Traders', '9500.00', 'draft'),
-    ('Karachi Port Logistics', '245000.00', 'draft'),
-    ('Mehran Textiles', '38000.00', 'posted'),
-    ('Karachi Cold Storage', '14500.00', 'cancelled'),
+    ('Indus Traders', '9500.00', 'draft', 2),
+    ('Karachi Port Logistics', '245000.00', 'draft', 1),
+    ('Mehran Textiles', '38000.00', 'posted', 40),
+    ('Karachi Cold Storage', '14500.00', 'cancelled', 20),
+    ('Sindh Agro Exports', '1250000.00', 'posted', 150),
+    ('Hyderabad Cotton Mills', '2150000.00', 'posted', 200),
+    ('Lahore Steel Works', '860000.00', 'posted', 110),
+    ('Quetta Fruit Company', '410000.00', 'posted', 75),
+    ('Gwadar Fisheries', '95000.00', 'posted', 10),
+    ('Peshawar Marble House', '530000.00', 'posted', 1),
 ]
+PAYMENT_DAYS = 30
 
 # (reason, amount, state, requested by: 'clerk' | 'manager' | None)
 ADJUSTMENTS = [
@@ -51,13 +62,20 @@ class Command(BaseCommand):
                 raise CommandError(f'No user "{username}".')
 
         created = 0
-        for customer, amount, state in BILLS:
-            if LabBill.objects.filter(customer=customer).exists():
+        today = computed.today()
+        for customer, amount, state, days_ago in BILLS:
+            issued = today - datetime.timedelta(days=days_ago)
+            dates = {'issued_on': issued, 'due_date': issued + datetime.timedelta(days=PAYMENT_DAYS)}
+            existing = LabBill.objects.filter(customer=customer).first()
+            if existing:
+                if existing.due_date is None:
+                    LabBill.objects.filter(pk=existing.pk).update(**dates)
                 continue
             LabBill.objects.create(
                 customer=customer,
                 amount=Decimal(amount),
                 state=state,
+                **dates,
                 created_by=users['clerk'],
                 updated_by=users['clerk'],
                 **numbering.assigned_values(LabBill),

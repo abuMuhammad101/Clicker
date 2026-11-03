@@ -1,8 +1,10 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.contrib.postgres.indexes import GinIndex, OpClass
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.functions import Upper
 
 from foundation.models import ClickerModel
 
@@ -121,6 +123,19 @@ class Contact(ClickerModel):
 
     class Meta:
         ordering = ['name']
+        # What the Schema below sorts, filters, groups and searches by
+        # (foreign keys carry their own index).
+        indexes = [
+            models.Index(fields=['name'], name='contact_name'),
+            models.Index(fields=['type'], name='contact_type'),
+            models.Index(fields=['active'], name='contact_active'),
+            models.Index(fields=['is_customer'], name='contact_is_customer'),
+            models.Index(fields=['customer_since'], name='contact_customer_since'),
+            GinIndex(OpClass(Upper('name'), name='gin_trgm_ops'), name='contact_name_trgm'),
+            GinIndex(OpClass(Upper('email'), name='gin_trgm_ops'), name='contact_email_trgm'),
+            GinIndex(OpClass(Upper('phone'), name='gin_trgm_ops'), name='contact_phone_trgm'),
+            GinIndex(OpClass(Upper('tax_id'), name='gin_trgm_ops'), name='contact_tax_id_trgm'),
+        ]
 
     class Schema:
         icon = 'users'
@@ -180,6 +195,16 @@ class Contact(ClickerModel):
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         list_filter_defaults = {'active': True}
         search_fields = ['name', 'email', 'phone', 'tax_id']
+        summaries = [
+            {'label': 'Contacts', 'aggregate': 'count'},
+            {'label': 'Customers', 'aggregate': 'count', 'filter': ['is_customer:is:true']},
+            {'label': 'Credit extended', 'aggregate': 'sum', 'field': 'credit_limit', 'filter': ['is_customer:is:true']},
+        ]
+        views = [
+            {'key': 'customers', 'label': 'Customers', 'filters': ['is_customer:is:true']},
+            {'key': 'companies', 'label': 'Companies', 'filters': ['type:in:company']},
+            {'key': 'by_country', 'label': 'By country', 'group_by': 'country'},
+        ]
 
         # Django has no distinct field class for these — CharField is all it
         # sees. The registry type has to be stated explicitly.
