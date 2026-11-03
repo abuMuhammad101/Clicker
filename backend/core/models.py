@@ -6,7 +6,11 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.functions import Upper
 
+from django.conf import settings
+
+from billing.expressions import customer_advance, customer_oldest_overdue_days, customer_outstanding
 from foundation.models import ClickerModel
+from foundation.rules import USER
 
 
 class Country(ClickerModel):
@@ -22,7 +26,12 @@ class Country(ClickerModel):
         display_field = 'name'
         # Countries are seeded reference data: a Clerk reads them (a contact's
         # country) and changes nothing.
-        default_grants = {'Clerk': ['view_country']}
+        default_grants = {
+            'Clerk': ['view_country'],
+            'Billing officer': ['view_country'],
+            'Cashier': ['view_country'],
+            'Recovery officer': ['view_country'],
+        }
         list_display = ['name', 'code']
         list_sort = [{'field': 'name', 'direction': 'asc'}]
         search_fields = ['name', 'code']
@@ -164,6 +173,48 @@ class Contact(ClickerModel):
                 'view_contact_active',
                 'view_contact_credit_limit',
             ],
+            # A Billing officer keeps consumers current and sets a tax ID on a new one.
+            'Billing officer': [
+                'view_contact',
+                'add_contact',
+                'change_contact',
+                'view_contact_tax_id',
+                'add_contact_tax_id',
+                'view_contact_active',
+                'view_contact_credit_limit',
+            ],
+            'Cashier': ['view_contact'],
+            'Recovery officer': ['view_contact'],
+        }
+
+        # A Recovery officer sees only the consumers whose case they own.
+        record_rules = [{'role': 'Recovery officer', 'filter': {'recovery_cases__owner__user_id': USER}}]
+
+        # What a customer owes, from their bills, in the database: it sorts,
+        # filters and sums like a column, and only someone who may view the
+        # bills sees it.
+        computed = {
+            'outstanding': {
+                'label': 'Outstanding',
+                'type': 'currency',
+                'description': 'Everything this customer owes on posted bills',
+                'expression': customer_outstanding('pk'),
+                'requires': ['billing.bill'],
+            },
+            'oldest_overdue_days': {
+                'label': 'Oldest overdue (days)',
+                'type': 'integer',
+                'description': 'Days since the oldest unpaid bill fell due',
+                'expression': customer_oldest_overdue_days('pk'),
+                'requires': ['billing.bill'],
+            },
+            'advance': {
+                'label': 'Advance held',
+                'type': 'currency',
+                'description': 'Payments received that are not yet applied to any bill',
+                'expression': customer_advance('pk'),
+                'requires': ['billing.paymentallocation'],
+            },
         }
 
         # Order here is form layout, not Django's declaration order — group
@@ -176,6 +227,7 @@ class Contact(ClickerModel):
                 'label': 'Commercial',
                 'fields': ['is_customer', 'is_vendor', 'customer_since', 'payment_terms_days', 'credit_limit'],
             },
+            {'label': 'Account', 'fields': ['outstanding', 'oldest_overdue_days', 'advance']},
             {'label': 'Classification', 'fields': ['active', 'notes']},
         ]
 
@@ -188,6 +240,28 @@ class Contact(ClickerModel):
                 'relation': 'supplied_products',
                 'label': 'Products supplied',
                 'columns': ['name', 'sku', 'sales_price', 'active'],
+            },
+            # The statement: what was billed, what was paid, what was reduced.
+            {
+                'relation': 'bills',
+                'label': 'Bills',
+                'columns': ['number', 'issue_date', 'due_date', 'amount_total', 'balance', 'payment_status'],
+            },
+            {
+                'relation': 'payments',
+                'label': 'Payments',
+                'columns': ['number', 'payment_date', 'method', 'reference', 'amount', 'advance'],
+            },
+            {'relation': 'adjustments', 'label': 'Adjustments', 'columns': ['number', 'kind', 'amount', 'state']},
+            {
+                'relation': 'connections',
+                'label': 'Connections',
+                'columns': ['number', 'district', 'billing_basis', 'status'],
+            },
+            {
+                'relation': 'recovery_cases',
+                'label': 'Recovery cases',
+                'columns': ['number', 'state', 'owner', 'next_action_date'],
             },
         ]
 
@@ -204,6 +278,13 @@ class Contact(ClickerModel):
             {'key': 'customers', 'label': 'Customers', 'filters': ['is_customer:is:true']},
             {'key': 'companies', 'label': 'Companies', 'filters': ['type:in:company']},
             {'key': 'by_country', 'label': 'By country', 'group_by': 'country'},
+            {
+                'key': 'owing',
+                'label': 'Owing money',
+                'filters': ['is_customer:is:true', 'outstanding:gte:0.01'],
+                'ordering': '-outstanding',
+                'columns': ['name', 'type', 'outstanding', 'oldest_overdue_days', 'country'],
+            },
         ]
 
         # Django has no distinct field class for these — CharField is all it
@@ -256,6 +337,48 @@ class Contact(ClickerModel):
         if self.parent_id:
             return f'{self.name} ({self.parent.name})'
         return self.name
+
+    def __str__(self):
+        return self.display_name
+
+
+class Staff(ClickerModel):
+    """
+    A person who works here, as records see them: the account officer on a
+    connection, the owner of a recovery case. Linked to the one user they sign
+    in as (the link is server-owned: the team page, not a form, makes it), so
+    a record names a person and never a username. Shared by every journey.
+    """
+
+    display_name = models.CharField(max_length=150)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        editable=False,
+        on_delete=models.PROTECT,
+        related_name='staff',
+    )
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['display_name']
+        verbose_name = 'staff member'
+        verbose_name_plural = 'staff'
+
+    class Schema:
+        icon = 'id-card'
+        display_field = 'display_name'
+        archive_field = 'active'
+        list_display = ['display_name', 'active']
+        list_sort = [{'field': 'display_name', 'direction': 'asc'}]
+        search_fields = ['display_name']
+        default_grants = {
+            'Clerk': ['view_staff'],
+            'Billing officer': ['view_staff'],
+            'Cashier': ['view_staff'],
+            'Recovery officer': ['view_staff'],
+        }
 
     def __str__(self):
         return self.display_name

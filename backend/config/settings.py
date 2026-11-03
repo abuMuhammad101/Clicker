@@ -138,6 +138,8 @@ INSTALLED_APPS = [
     'accounts',
     'core',
     'catalog',
+    'billing',
+    'water',
     'schema',
     'data',
     'userstate',
