@@ -1,7 +1,8 @@
 """
 Generic record API for every model that declares a `Schema` class:
 
-    GET   /api/data/<app>/<model>/              list (?field=value filters, exact match)
+    GET   /api/data/<app>/<model>/              list (?filter=field:op:value, see data.query)
+    GET   /api/data/<app>/<model>/aggregate/    group headers and summaries for the same filters
     POST  /api/data/<app>/<model>/              create
     GET   /api/data/<app>/<model>/<pk>/         retrieve
     PATCH /api/data/<app>/<model>/<pk>/         update (partial)
@@ -34,7 +35,8 @@ from foundation.models import AuditEntry, ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model, schema_field_names
 from userstate.services import record_view
 
-from .access import get_record, readable_fields, scoped_queryset, visible_related_ids, writable_fields
+from . import query
+from .access import get_record, readable_fields, scoped_queryset, visible_labels, visible_related_ids, writable_fields
 from .serializers import serialize_record, serializer_for
 from .transitions import Conflict, run_transition
 
@@ -214,7 +216,7 @@ def _sort_expressions(model, name, desc):
 
 # Query parameters the endpoints read themselves; everything else in a search
 # request's query string is a field filter.
-RESERVED_PARAMS = {'q', 'limit', 'offset', 'ordering'}
+RESERVED_PARAMS = {'q', 'limit', 'offset', 'ordering', 'filter', 'group_by'}
 
 # One message for a field that doesn't exist and one the user can't read:
 # telling them apart would confirm a hidden field exists.
@@ -268,14 +270,27 @@ def _unarchived(queryset, schema, filters):
     return queryset.filter(**{field: True})
 
 
+def _list_queryset(request, model, schema):
+    """
+    The scoped rows a list asks for: its `?filter=` grammar (data.query), the
+    older exact `?field=value` filters a related list uses, archived records
+    left out unless asked about, and the search box. The list and its
+    aggregates share it, so a count, a group total and a summary always
+    describe exactly the rows on screen.
+    """
+    fields = schema['fields']
+    exact = _field_filters(request, model, schema)
+    parsed = query.parse_filters(request.GET.getlist('filter'), fields)
+    queryset = query.apply_filters(scoped_queryset(request.user, model, 'view').filter(**exact), parsed, fields)
+    queryset = _unarchived(queryset, schema, set(exact) | {item.field for item in parsed})
+    return _search(queryset, schema, request.GET.get('q', ''))
+
+
 class ModelRecordListView(APIView):
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
-        queryset = _with_relations(scoped_queryset(request.user, model, 'view'), schema, model)
-        filters = _field_filters(request, model, schema)
-        queryset = _unarchived(queryset.filter(**filters), schema, filters)
-        queryset = _search(queryset, schema, request.GET.get('q', ''))
+        queryset = _with_relations(_list_queryset(request, model, schema), schema, model)
         queryset = queryset.order_by(*_ordering(model, schema, request.GET.get('ordering')))
 
         limit = _int_param(request, 'limit', LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT)
@@ -309,6 +324,29 @@ class ModelRecordListView(APIView):
             _envelope(request.user, model, schema, get_record(request.user, model, obj.pk)),
             status=status.HTTP_201_CREATED,
         )
+
+
+class ModelAggregateView(APIView):
+    """
+    GET /api/data/<app>/<model>/aggregate/?filter=…&q=…&group_by=…
+
+    For the same rows the list shows: the model's summaries (Schema.summaries)
+    and, with `group_by`, one header per group with its count and money sums.
+    Each is one aggregate query in the database, however many groups.
+    """
+
+    def get(self, request, app_label, model_name):
+        model = _resolve(app_label, model_name)
+        schema = _user_schema(request.user, model)
+        fields = schema['fields']
+        queryset = _list_queryset(request, model, schema)
+        result = {'summaries': query.summaries(queryset, model, fields), 'groups': None}
+        group_by = request.GET.get('group_by')
+        if group_by:
+            result['groups'] = query.groups(
+                queryset, model, fields, group_by, labels_for=lambda name, ids: visible_labels(request.user, model, name, ids)
+            )
+        return Response(result)
 
 
 class ModelRecordDetailView(APIView):
@@ -395,13 +433,10 @@ class ModelSearchView(APIView):
     def get(self, request, app_label, model_name):
         model = _resolve(app_label, model_name)
         schema = _user_schema(request.user, model)
-        queryset = _search(scoped_queryset(request.user, model, 'view'), schema, request.GET.get('q', ''))
-
         # Domain filters (e.g. ?type=company for the parent picker, or
         # ?is_vendor=true for a boolean one): the same readable-fields-only
-        # exact match as the list.
-        filters = _field_filters(request, model, schema)
-        queryset = _unarchived(queryset.filter(**filters), schema, filters)
+        # filters as the list.
+        queryset = _list_queryset(request, model, schema)
 
         limit = _int_param(request, 'limit', DEFAULT_LIMIT, MAX_LIMIT)
 

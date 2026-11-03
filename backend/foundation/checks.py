@@ -22,3 +22,19 @@ def restricted_fields_exist(app_configs=None, **kwargs):
                     )
                 )
     return errors
+
+
+@checks.register()
+def list_declarations_are_valid(app_configs=None, **kwargs):
+    """Schema.views and Schema.summaries must parse against the model's own fields."""
+    from data import query
+    from schema.engine import all_fields, is_exposed
+
+    errors = []
+    for model in apps.get_models():
+        if not is_exposed(model):
+            continue
+        fields = all_fields(model)
+        for problem in [*query.check_views(model, fields), *query.check_summaries(model, fields)]:
+            errors.append(checks.Error(f'Schema {problem}', obj=model, id='foundation.E002'))
+    return errors

@@ -345,6 +345,71 @@ def related_lists(model, user):
     return entries
 
 
+def _computed_entry(model, spec):
+    entry = {
+        'type': spec['type'],
+        'label': spec['label'],
+        'required': False,
+        'read_only': True,
+        'read_only_on_create': True,
+        'visible_when': None,
+        'computed': {
+            'from': computed_fields.dependencies(spec),
+            'description': computed_fields.describe(model, spec),
+        },
+    }
+    if spec['type'] in ('currency', 'decimal'):
+        entry['decimal_places'] = (
+            settings.CLICKER_CURRENCY['decimal_places'] if spec['type'] == 'currency' else spec.get('decimal_places', 2)
+        )
+    if spec['type'] == 'currency':
+        entry['currency'] = settings.CLICKER_CURRENCY['code']
+    if spec.get('buckets'):
+        # Ranges a list can be grouped into ("0–30 days", "31–60 days"…),
+        # each {label, min?, max?}, inclusive.
+        entry['buckets'] = [dict(bucket) for bucket in spec['buckets']]
+    return entry
+
+
+def all_fields(model):
+    """
+    Every field a schema could show for `model`, typed, with no user in mind.
+    For checking a model's own declarations at startup (a view's filters, a
+    summary's field), never for answering a request.
+    """
+    schema_cls = getattr(model, 'Schema', None)
+    overrides = {
+        'field_types': getattr(schema_cls, 'field_types', {}),
+        'visible_when': getattr(schema_cls, 'visible_when', {}),
+        'domains': getattr(schema_cls, 'domains', {}),
+    }
+    fields = {name: _field_schema(model._meta.get_field(name), overrides) for name in schema_field_names(model)}
+    for name, spec in computed_fields.declarations(model).items():
+        fields[name] = _computed_entry(model, spec)
+    return fields
+
+
+def _list_tools(model, fields):
+    """
+    What a list can do with this user's fields: which they can group by, and
+    the model's summaries (labels only; the values come from the aggregate
+    endpoint). Saved views, module and personal, come from /api/views/.
+    """
+    from data import query
+
+    summaries = []
+    for index, spec in enumerate(query.declared_summaries(model)):
+        if spec.get('field') is not None and spec['field'] not in fields:
+            continue
+        if query._filter_problems(spec.get('filter', []), fields, ''):
+            continue
+        summaries.append({'key': str(index), 'label': spec['label'], 'aggregate': spec['aggregate']})
+    return {
+        'groupable': [name for name, entry in fields.items() if query.groupable(entry)],
+        'summaries': summaries,
+    }
+
+
 def _write_once_note(model, field_name):
     """What a write-once field tells the person, before and after they set it."""
     roles = roles_that_can_change(model, field_name)
@@ -413,26 +478,7 @@ def build_schema(model, user, mode=None):
     # Computed fields: read-only for everyone, and visible only to someone
     # who can read everything they're calculated from.
     for name in readable_computed(model, set(access)):
-        spec = computed_specs[name]
-        entry = {
-            'type': spec['type'],
-            'label': spec['label'],
-            'required': False,
-            'read_only': True,
-            'read_only_on_create': True,
-            'visible_when': None,
-            'computed': {
-                'from': computed_fields.dependencies(spec),
-                'description': computed_fields.describe(model, spec),
-            },
-        }
-        if spec['type'] in ('currency', 'decimal'):
-            entry['decimal_places'] = (
-                settings.CLICKER_CURRENCY['decimal_places'] if spec['type'] == 'currency' else spec.get('decimal_places', 2)
-            )
-        if spec['type'] == 'currency':
-            entry['currency'] = settings.CLICKER_CURRENCY['code']
-        fields[name] = entry
+        fields[name] = _computed_entry(model, computed_specs[name])
 
     # A document number is empty until the record is saved; the form says so
     # rather than showing a blank that looks like something to fill in.
@@ -476,6 +522,7 @@ def build_schema(model, user, mode=None):
                 k: v for k, v in getattr(schema_cls, 'list_filter_defaults', {}).items() if k in fields
             },
             'search_fields': [f for f in getattr(schema_cls, 'search_fields', []) if f in fields],
+            **_list_tools(model, fields),
         },
         'fields': fields,
         'related_lists': related_lists(model, user),

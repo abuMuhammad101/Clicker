@@ -103,6 +103,20 @@ def visible_related_ids(user, model, schema, records):
     return visible
 
 
+def visible_labels(user, model, name, ids):
+    """
+    {id: label} for the records a many_to_one `name` links to, only those
+    `user` may see, asked through the target's own scope. A group header
+    names a linked record only if its reader could open it.
+    """
+    from schema.engine import display_label
+
+    target = model._meta.get_field(name).related_model
+    if not ids or not can(user, target, 'view'):
+        return {}
+    return {obj.pk: display_label(obj) for obj in scoped_queryset(user, target, 'view').filter(pk__in=ids)}
+
+
 def writable_fields(user, model, action):
     """
     Field names `user` may send in a write. `action` is `add` (create) or
@@ -128,6 +142,7 @@ __all__ = [
     'get_record',
     'readable_fields',
     'scoped_queryset',
+    'visible_labels',
     'visible_related_ids',
     'writable_fields',
 ]

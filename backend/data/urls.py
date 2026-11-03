@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    ModelAggregateView,
     ModelRecordDetailView,
     ModelRecordHistoryView,
     ModelRecordListView,
@@ -11,6 +12,7 @@ from .views import (
 urlpatterns = [
     path('<str:app_label>/<str:model_name>/', ModelRecordListView.as_view(), name='model-records'),
     path('<str:app_label>/<str:model_name>/search/', ModelSearchView.as_view(), name='model-search'),
+    path('<str:app_label>/<str:model_name>/aggregate/', ModelAggregateView.as_view(), name='model-aggregate'),
     path(
         '<str:app_label>/<str:model_name>/<int:pk>/',
         ModelRecordDetailView.as_view(),
