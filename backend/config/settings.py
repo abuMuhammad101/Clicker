@@ -195,6 +195,17 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': env.db('DATABASE_URL'),
 }
+# Keep a database connection open between requests instead of opening one for
+# each. Over the internet to Neon, opening one costs more than the request
+# itself (about 1.5 s from the office). It only helps a server that reuses its
+# threads (gunicorn, the production server); Django's own dev server starts a
+# thread per request, so it sees no change there. Set DB_CONN_MAX_AGE=0 to turn
+# it off. CONN_HEALTH_CHECKS drops a connection the server has already closed
+# (Neon pauses idle databases) instead of failing a request on it, and server
+# side cursors are off because Neon's pooled endpoint (PgBouncer) can't keep them.
+DATABASES['default']['CONN_MAX_AGE'] = env.int('DB_CONN_MAX_AGE', default=60)
+DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
 
 # Tests create and drop a scratch database. With TEST_DATABASE_URL set (a
 # local Postgres; see the README) they run there: the suite is dominated by
