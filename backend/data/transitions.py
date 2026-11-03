@@ -14,59 +14,34 @@ Answers, in this order, so each says exactly one thing:
 The state change, the actor stamp and the audit entry commit together, under
 a row lock, so two people pressing "Approve" at once can't both succeed.
 """
-from django.db import transaction
 from django.http import Http404
-from rest_framework.exceptions import APIException, PermissionDenied
+from rest_framework.exceptions import PermissionDenied
 
-from foundation import workflow
-from foundation.audit import record_change, snapshot
-from foundation.models import AuditEntry, ClickerModel
+from foundation import actions, workflow
 
-from .access import get_record, scoped_queryset
+from .access import get_record
 
 NO_GRANT = 'You don’t have permission to do this.'
 
-
-class Conflict(APIException):
-    status_code = 409
-    default_detail = 'This can’t be done in the record’s current state.'
-    default_code = 'conflict'
+# The same refusal the rest of the data layer raises: a 409 with a sentence.
+Conflict = actions.Refused
 
 
-def run_transition(user, model, pk, name, *, ip_address, audited_fields):
+def run_transition(user, model, pk, name, *, ip_address, audited_fields=None):
     decl = workflow.declaration(model)
-    get_record(user, model, pk)  # 404 if the record isn't visible
+    obj = get_record(user, model, pk)  # 404 if the record isn't visible
     if not decl or name not in decl['transitions']:
         raise Http404('Not found.')
     if not workflow.may_run(user, model, name):
         raise PermissionDenied(NO_GRANT)
 
+    # The state, `when` and `not_by` answer here, in the order the docstring
+    # promises; the transition's own `check`, its side effects and the audit
+    # entry follow, in one transaction (foundation.actions.perform_transition).
     spec = decl['transitions'][name]
-    with transaction.atomic():
-        obj = scoped_queryset(user, model, 'view').select_for_update().get(pk=pk)
-        before = snapshot(obj, audited_fields)
-        state = workflow.state_of(obj)
-        if state not in spec['from']:
-            raise Conflict(workflow.blocked_reason(user, obj, name))
-        reason = workflow.blocked_reason(user, obj, name)
-        if reason:
-            raise PermissionDenied(reason)
-
-        setattr(obj, decl['field'], spec['to'])
-        changed = [decl['field']]
-        if spec.get('records_actor'):
-            setattr(obj, spec['records_actor'], user)
-            changed.append(spec['records_actor'])
-        if isinstance(obj, ClickerModel):
-            obj.updated_by = user
-            changed += ['updated_by', 'updated_at']
-        obj.save(update_fields=changed)
-        record_change(
-            actor=user,
-            ip_address=ip_address,
-            obj=obj,
-            action=AuditEntry.ACTION_TRANSITION,
-            before=before,
-            after=snapshot(obj, audited_fields),
-        )
-    return obj
+    if workflow.state_of(obj) not in spec['from'] or not workflow.applies(obj, spec):
+        raise Conflict(workflow.blocked_reason(user, obj, name, check=False))
+    barred = workflow.barred_reason(user, obj, spec)
+    if barred:
+        raise PermissionDenied(barred)
+    return actions.perform_transition(actions.Context(user, ip_address), obj, name)

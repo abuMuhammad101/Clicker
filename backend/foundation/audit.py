@@ -8,6 +8,7 @@ import json
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .models import AuditEntry
@@ -16,6 +17,14 @@ from .models import AuditEntry
 def _json_safe(value):
     # Decimals become strings, dates ISO strings: exact, and stable to compare.
     return json.loads(json.dumps(value, cls=DjangoJSONEncoder))
+
+
+def _is_link(obj, name):
+    try:
+        field = obj._meta.get_field(name)
+    except FieldDoesNotExist:
+        return False
+    return bool(field.is_relation and field.many_to_one)
 
 
 def snapshot(obj, field_names):
@@ -44,11 +53,12 @@ def client_ip(request):
     return request.META.get('REMOTE_ADDR') or None
 
 
-def record_change(*, actor, ip_address, obj, action, before, after):
+def record_change(*, actor, ip_address, obj, action, before, after, summary=''):
     """
     Append one entry. `before` is None on create. Only fields whose value
     changed are kept; a save that changed nothing still leaves an entry,
-    because someone did save.
+    because someone did save. `summary` says what happened in words when the
+    changes alone don't.
     """
     if before is None:
         changes = {name: {'before': None, 'after': value} for name, value in after.items()}
@@ -66,30 +76,53 @@ def record_change(*, actor, ip_address, obj, action, before, after):
         record_id=str(obj.pk),
         action=action,
         changes=changes,
+        summary=summary,
     )
 
 
-def history_for(obj, readable_fields):
+def history_for(obj, readable_fields, labels_for=None):
     """
     One record's entries, newest first, with every change to a field the
     reader can't read removed: history must not leak what the schema hides.
     The IP address stays out of the API; Django admin shows it.
+
+    `labels_for(field_name, ids)` names the records a link changed from and
+    to, through the target's own scope: an id the reader can't see stays an
+    id, never a name.
     """
     entries = AuditEntry.objects.filter(
         content_type=ContentType.objects.get_for_model(type(obj)), record_id=str(obj.pk)
     ).select_related('actor')
+    entries = list(entries)
+    shown = [
+        {name: dict(change) for name, change in entry.changes.items() if name in readable_fields}
+        for entry in entries
+    ]
+    if labels_for:
+        links = {}
+        for changes in shown:
+            for name, change in changes.items():
+                if _is_link(obj, name):
+                    links.setdefault(name, set()).update(v for v in (change['before'], change['after']) if v is not None)
+        names = {name: labels_for(name, sorted(ids)) for name, ids in links.items()}
+        for changes in shown:
+            for name, change in changes.items():
+                if name in names:
+                    change['before_label'] = names[name].get(change['before'])
+                    change['after_label'] = names[name].get(change['after'])
     results = []
-    for entry in entries:
+    for entry, changes in zip(entries, shown):
         actor = entry.actor
         results.append({
             'id': entry.pk,
             'timestamp': entry.timestamp,
             'action': entry.action,
+            'summary': entry.summary,
             'actor': (
                 {'id': actor.pk, 'display_name': actor.get_full_name() or actor.get_username()}
                 if actor
                 else None
             ),
-            'changes': {name: change for name, change in entry.changes.items() if name in readable_fields},
+            'changes': changes,
         })
     return results

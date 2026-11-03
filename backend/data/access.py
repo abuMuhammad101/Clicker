@@ -24,7 +24,9 @@ Later sessions plug in here, and only here:
 from django.http import Http404
 from rest_framework.exceptions import PermissionDenied
 
-from foundation import computed
+from django.contrib.auth import get_user_model
+
+from foundation import computed, rules
 from foundation.permissions import CREATE_ONLY, READ, WRITE, can, field_access
 
 
@@ -50,7 +52,8 @@ def scoped_queryset(user, model, action='view'):
         raise PermissionDenied('You don’t have permission to do this.')
 
     queryset = model._default_manager.all()
-    # S-6+: tenancy, then record rules, narrow `queryset` here.
+    # Tenancy (S-6+) narrows here, then the model's record rules.
+    queryset = rules.narrow(user, model, queryset)
 
     # Computed fields ride on every scoped queryset, so they sort, filter and
     # sum in the database like stored columns.
@@ -78,7 +81,7 @@ def readable_fields(user, model):
     from schema.engine import readable_computed
 
     readable = set(field_access(user, model, _schema_field_names(model)))
-    return readable | set(readable_computed(model, readable))
+    return readable | set(readable_computed(model, readable, user))
 
 
 def visible_related_ids(user, model, schema, records):
@@ -96,6 +99,10 @@ def visible_related_ids(user, model, schema, records):
         field = meta.get_field(name)
         ids = {getattr(record, field.attname) for record in records} - {None}
         target = field.related_model
+        if target is get_user_model():
+            # A person is named wherever they act: who requested, who approved.
+            visible[name] = ids
+            continue
         if not ids or not can(user, target, 'view'):
             visible[name] = set()
             continue
@@ -112,6 +119,8 @@ def visible_labels(user, model, name, ids):
     from schema.engine import display_label
 
     target = model._meta.get_field(name).related_model
+    if target is get_user_model():
+        return {obj.pk: display_label(obj) for obj in target._default_manager.filter(pk__in=ids)}
     if not ids or not can(user, target, 'view'):
         return {}
     return {obj.pk: display_label(obj) for obj in scoped_queryset(user, target, 'view').filter(pk__in=ids)}

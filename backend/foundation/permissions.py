@@ -33,6 +33,7 @@ The rules, deny by default:
 Record rules ("this officer sees only his towns") and tenancy are not here:
 they narrow *which rows*, so they live in `data.access.scoped_queryset`.
 """
+from django.contrib.auth import get_user_model
 from django.db import models as djm
 
 ACTIONS = ('view', 'add', 'change', 'delete')
@@ -62,7 +63,18 @@ def can(user, model, action):
         raise ValueError(f'Unknown action {action!r}')
     if user is None or not user.is_active:
         return False
+    if action != 'view' and is_system_managed(model):
+        return False
     return user.has_perm(model_permission(model, action))
+
+
+def is_system_managed(model):
+    """
+    A model only the data layer writes (a payment allocation, a run's bill
+    link): readable by whoever may view it, never writable through the API,
+    by anyone, a Manager included.
+    """
+    return bool(getattr(getattr(model, 'Schema', None), 'system_managed', False))
 
 
 def restricted_fields(model):
@@ -100,8 +112,11 @@ def field_access(user, model, field_names):
 
         if name in restricted and not _has_field_grant(user, model, name, 'view'):
             continue
-        links_to_unviewable = isinstance(field, (djm.ForeignKey, djm.ManyToManyField)) and not can(
-            user, field.related_model, 'view'
+        # A person (the user model) is always nameable; any other target must be viewable.
+        links_to_unviewable = (
+            isinstance(field, (djm.ForeignKey, djm.ManyToManyField))
+            and field.related_model is not get_user_model()
+            and not can(user, field.related_model, 'view')
         )
 
         could_write = may_change_model and not links_to_unviewable and field.editable and not field.primary_key

@@ -303,7 +303,7 @@ def apply_filters(queryset, filters, fields, today=None):
 def groupable(entry):
     """Can a list be grouped by this schema field?"""
     if entry.get('computed'):
-        return bool(entry.get('buckets')) or entry['type'] == 'date'
+        return bool(entry.get('buckets')) or entry['type'] in ('date', 'selection')
     return entry['type'] in GROUPABLE
 
 

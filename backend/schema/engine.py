@@ -14,8 +14,12 @@ import datetime
 import decimal
 import re
 
+from django.apps import apps
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core import validators as djv
+from django.core.exceptions import FieldDoesNotExist
 from django.db import models as djm
 
 from foundation import computed as computed_fields
@@ -135,6 +139,8 @@ def _field_schema(field, overrides):
     if base_type in ('many_to_one', 'many_to_many'):
         related_meta = field.related_model._meta
         entry['target'] = {'app_label': related_meta.app_label, 'model': related_meta.model_name}
+        if field.related_model is get_user_model():
+            entry['person'] = True
         domain = overrides['domains'].get(name)
         if domain:
             entry['domain'] = domain
@@ -149,6 +155,9 @@ def display_label(obj):
     shared by the search endpoint, the record endpoint's FK labels, and the
     record envelope's own title.
     """
+    if isinstance(obj, get_user_model()):
+        # A person is named, never shown by their login.
+        return obj.get_full_name() or obj.get_username()
     display_field = getattr(getattr(type(obj), 'Schema', None), 'display_field', None)
     return str(getattr(obj, display_field)) if display_field else str(obj)
 
@@ -284,6 +293,9 @@ def schema_field_names(model):
     # Server-owned, but the point of the record: its workflow state and its
     # document number are read by everyone who can see it, written by no one.
     shown = {decl['field'] for decl in (workflow.declaration(model), numbering.declaration(model)) if decl}
+    # Schema.read_only_fields: server-owned values a reader should see (a bill's
+    # paid amount, who requested a reduction): shown, never writable.
+    shown |= set(getattr(getattr(model, 'Schema', None), 'read_only_fields', ()) or ())
     names = []
     for field in model._meta.get_fields():
         if field.auto_created and not field.concrete:
@@ -297,13 +309,20 @@ def schema_field_names(model):
     return names
 
 
-def readable_computed(model, readable):
-    """Computed field names whose every dependency is in `readable`."""
-    return [
-        name
-        for name, spec in computed_fields.declarations(model).items()
-        if all(dependency in readable for dependency in computed_fields.dependencies(spec))
-    ]
+def readable_computed(model, readable, user=None):
+    """
+    Computed field names whose every dependency is in `readable`, and (when it
+    reads other models' rows) whose `requires` models `user` may all view.
+    """
+    names = []
+    for name, spec in computed_fields.declarations(model).items():
+        if not all(dependency in readable for dependency in computed_fields.dependencies(spec)):
+            continue
+        required = spec.get('requires', ())
+        if required and (user is None or not all(can(user, apps.get_model(label), 'view') for label in required)):
+            continue
+        names.append(name)
+    return names
 
 
 def related_lists(model, user):
@@ -325,7 +344,10 @@ def related_lists(model, user):
     schema_cls = getattr(model, 'Schema', None)
     entries = []
     for declared in getattr(schema_cls, 'related_lists', []) or []:
-        relation = model._meta.get_field(declared['relation'])
+        try:
+            relation = model._meta.get_field(declared['relation'])
+        except FieldDoesNotExist:
+            continue  # the module that adds this relation isn't installed
         target = relation.related_model
         link = relation.field.name
         if not is_exposed(target) or not can(user, target, 'view'):
@@ -364,6 +386,10 @@ def _computed_entry(model, spec):
         )
     if spec['type'] == 'currency':
         entry['currency'] = settings.CLICKER_CURRENCY['code']
+    if spec['type'] == 'selection':
+        entry['choices'] = [{'value': value, 'label': label} for value, label in spec['choices']]
+        if spec.get('tones'):
+            entry['tones'] = dict(spec['tones'])
     if spec.get('buckets'):
         # Ranges a list can be grouped into ("0–30 days", "31–60 days"…),
         # each {label, min?, max?}, inclusive.
@@ -477,7 +503,7 @@ def build_schema(model, user, mode=None):
 
     # Computed fields: read-only for everyone, and visible only to someone
     # who can read everything they're calculated from.
-    for name in readable_computed(model, set(access)):
+    for name in readable_computed(model, set(access), user):
         fields[name] = _computed_entry(model, computed_specs[name])
 
     # A document number is empty until the record is saved; the form says so
@@ -498,7 +524,9 @@ def build_schema(model, user, mode=None):
     # lands in a form group by default. A model can still place it in a
     # group explicitly if it ever has a reason to.
     auto_pk = meta.pk.name if isinstance(meta.pk, (djm.AutoField, djm.BigAutoField)) else None
-    form_field_names = [name for name in all_names if name != auto_pk] + list(computed_specs)
+    form_field_names = [name for name in all_names if name != auto_pk] + [
+        name for name, spec in computed_specs.items() if spec.get('form', True)
+    ]
 
     # Groups are laid out from every field (so "Ungrouped" still catches an
     # author's oversight), then narrowed to what this user may see.

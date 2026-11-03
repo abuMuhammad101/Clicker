@@ -28,12 +28,29 @@ Rules that follow from it, with no per-model code:
   absent from their schema and refused by the API.
 - **`from`** lists the states a transition may start from; anything else is a
   conflict (409), not a permission problem.
-- **`not_by`** names a user field the actor must not be: whoever requested a
-  reduction can't approve it, whatever their role.
+- **`not_by`** names a user field (or a list of them) the actor must not be:
+  whoever requested a reduction can't approve it, whatever their role; a
+  second approver is neither the requester nor the first approver.
 - **`records_actor`** names a user field set to whoever ran the transition, so
   `not_by` has something to compare against.
 - **`locked`** states refuse edits: a posted document is reversed, never
   changed.
+
+Behaviour a model supplies as methods, named in the transition (all optional):
+
+- **`run`**: a method `run(self, ctx)` called inside the transition's
+  transaction, after the state has moved and before it is audited. Its side
+  effects (allocating a payment, generating a run's bills, reducing a bill)
+  commit with the transition or not at all; raise `actions.Refused('why')`
+  to undo it all with a sentence. It writes other records with
+  `foundation.actions`, so every effect is audited under the actor.
+- **`check`**: a method `check(self, user)` returning a sentence when the
+  transition can't be done now ("Cancelling needs nothing allocated"), or
+  None. The button stays; clicking it explains.
+- **`when`**: a method returning whether this transition applies to the
+  record at all, for two transitions that share a verb ("Approve" by one
+  person, or by two above a threshold). One that doesn't apply is simply not
+  offered; `unavailable` is the sentence if someone asks for it anyway.
 
 And for how it reads on screen, all optional:
 
@@ -78,7 +95,13 @@ def _check(model, decl):
             raise ImproperlyConfigured(f'{model.__name__} transition "{name}" names unknown state(s) {unknown}.')
         for key in ('not_by', 'records_actor'):
             if key in spec:
-                meta.get_field(spec[key])  # raises FieldDoesNotExist on a typo
+                for field_name in ([spec[key]] if isinstance(spec[key], str) else spec[key]):
+                    meta.get_field(field_name)  # raises FieldDoesNotExist on a typo
+        for key in ('run', 'check', 'when'):
+            if spec.get(key) and not callable(getattr(model, spec[key], None)):
+                raise ImproperlyConfigured(
+                    f'{model.__name__} transition "{name}" names {key}="{spec[key]}", which is not a method.'
+                )
     unknown = [s for s in decl.get('locked', ()) if s not in states]
     if unknown:
         raise ImproperlyConfigured(f'{model.__name__}.Schema.workflow locks unknown state(s) {unknown}.')
@@ -118,7 +141,7 @@ def is_locked(obj):
     return bool(decl) and state_of(obj) in decl.get('locked', ())
 
 
-def blocked_reason(user, obj, name):
+def blocked_reason(user, obj, name, check=True):
     """
     Why `user` can't run transition `name` on `obj` right now, or None if
     they can. The grant is checked separately (see `may_run`): this answers
@@ -129,11 +152,35 @@ def blocked_reason(user, obj, name):
     state = state_of(obj)
     if state not in spec['from']:
         return f'“{spec["label"]}” isn’t possible: this {model._meta.verbose_name} is {state_label(model, state)}.'
-    not_by = spec.get('not_by')
-    if not_by and getattr(obj, model._meta.get_field(not_by).attname) == user.pk:
-        field_label = model._meta.get_field(not_by).verbose_name
-        return f'You are this {model._meta.verbose_name}’s {field_label}, so someone else has to do this.'
+    if not applies(obj, spec):
+        return spec.get('unavailable') or f'“{spec["label"]}” doesn’t apply to this {model._meta.verbose_name}.'
+    barred = barred_reason(user, obj, spec)
+    if barred:
+        return barred
+    if check and spec.get('check'):
+        return getattr(obj, spec['check'])(user)
     return None
+
+
+def barred_reason(user, obj, spec):
+    """Why this user is barred from the transition by `not_by` (they made the request), or None."""
+    model = type(obj)
+    for not_by in not_by_fields(spec):
+        if getattr(obj, model._meta.get_field(not_by).attname) == user.pk:
+            field_label = model._meta.get_field(not_by).verbose_name
+            return f'You are this {model._meta.verbose_name}’s {field_label}, so someone else has to do this.'
+    return None
+
+
+def not_by_fields(spec):
+    """The user fields a transition bars, always as a list."""
+    value = spec.get('not_by')
+    return [] if not value else [value] if isinstance(value, str) else list(value)
+
+
+def applies(obj, spec):
+    """Does this transition apply to this record at all (its `when`, if it has one)?"""
+    return not spec.get('when') or bool(getattr(obj, spec['when'])())
 
 
 def granted(user, model):
@@ -146,7 +193,7 @@ def granted(user, model):
 
 def available(user, obj):
     """The transitions `user` may run on `obj` now: granted, from this state, not barred by not_by."""
-    return [name for name in granted(user, type(obj)) if blocked_reason(user, obj, name) is None]
+    return [name for name in granted(user, type(obj)) if blocked_reason(user, obj, name, check=False) is None]
 
 
 def roles_that_may_run(model, name):
@@ -184,7 +231,7 @@ def _hint(model, decl, spec):
     if not actor:
         return None
     # It hands the record to whoever may run the transitions its actor is barred from.
-    approvals = [n for n, s in decl['transitions'].items() if s.get('not_by') == actor]
+    approvals = [n for n, s in decl['transitions'].items() if actor in not_by_fields(s)]
     if not approvals:
         return None
     roles = sorted({role for n in approvals for role in roles_that_may_run(model, n)})
@@ -263,18 +310,18 @@ def record_status(user, obj, roles_cache=None):
     }
     if available_now:
         return status
-    pending = [(n, s) for n, s in decl['transitions'].items() if state in s['from']]
+    pending = [(n, s) for n, s in decl['transitions'].items() if state in s['from'] and applies(obj, s)]
     if not pending:
         return status
-    actions = _either([s['label'] for _, s in pending])
+    actions = _either(list(dict.fromkeys(s['label'] for _, s in pending)))
     cache = roles_cache if roles_cache is not None else {}
     for n, _ in pending:
         if (model, n) not in cache:
             cache[(model, n)] = roles_that_may_run(model, n)
     roles = sorted({role for n, _ in pending for role in cache[(model, n)]})
     barred = next(
-        (s['not_by'] for n, s in pending if s.get('not_by') and may_run(user, model, n)
-         and getattr(obj, meta.get_field(s['not_by']).attname) == user.pk),
+        (field for n, s in pending if may_run(user, model, n)
+         for field in not_by_fields(s) if getattr(obj, meta.get_field(field).attname) == user.pk),
         None,
     )
     if barred:

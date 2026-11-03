@@ -2,6 +2,9 @@
 The built-in roles, as Django Groups.
 
 - **Manager**: every permission on every exposed model, field grants included.
+- **Auditor**: every `view_` permission on every exposed model, field-level
+  reads included, and nothing else: it reads everything, activity trail and
+  all, and changes nothing.
 - **Clerk** (and any later role): exactly what each model's Schema grants it in
   `default_grants`, e.g. `{'Clerk': ['view_contact', 'change_contact']}`.
   A model that grants a role nothing is invisible to it.
@@ -18,7 +21,8 @@ from django.apps import apps
 
 MANAGER = 'Manager'
 CLERK = 'Clerk'
-BUILT_IN_ROLES = (MANAGER, CLERK)
+AUDITOR = 'Auditor'
+BUILT_IN_ROLES = (MANAGER, CLERK, AUDITOR)
 
 
 def _exposed_models():
@@ -45,11 +49,18 @@ def seed_roles(using='default'):
         Permission.objects.using(using).filter(content_type__in=content_types.values())
     )
 
-    grants = {role: [] for role in BUILT_IN_ROLES if role != MANAGER}
+    auditor, _ = Group.objects.using(using).get_or_create(name=AUDITOR)
+    auditor.permissions.set(
+        Permission.objects.using(using).filter(
+            content_type__in=content_types.values(), codename__startswith='view_'
+        )
+    )
+
+    grants = {role: [] for role in BUILT_IN_ROLES if role not in (MANAGER, AUDITOR)}
     for model in models:
         for role, codenames in declared_grants(model).items():
-            if role == MANAGER:
-                continue  # Managers have everything; declaring it would be noise.
+            if role in (MANAGER, AUDITOR):
+                continue  # Managers have everything and Auditors read everything; declaring it would be noise.
             content_type = content_types[model]
             for codename in codenames:
                 try:

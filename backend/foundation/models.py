@@ -101,6 +101,11 @@ class AuditEntry(models.Model):
     action = models.CharField(max_length=16, choices=ACTION_CHOICES, editable=False)
     # {field_name: {"before": value, "after": value}}; before is null on create.
     changes = models.JSONField(default=dict, editable=False)
+    # What happened, in a sentence, when the field changes alone don't say it
+    # ("Payment PAY-2026-00012 allocated {money:420000.00}"). Amounts are
+    # written as {money:<decimal>} so the reader formats them in its own
+    # currency style. Empty for an ordinary edit.
+    summary = models.CharField(max_length=300, blank=True, default='', db_default='', editable=False)
 
     objects = AuditEntryQuerySet.as_manager()
 

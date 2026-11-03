@@ -200,6 +200,7 @@ class ComputedFieldTests(Base):
         }
         with (
             mock.patch.object(Contact.Schema, 'computed', declared, create=True),
+            mock.patch.object(Contact.Schema, 'groups', [{'label': 'All', 'fields': ['name', 'days_as_customer']}]),
             mock.patch.object(computed, 'today', lambda: datetime.date(2026, 10, 30)),
         ):
             field = build_schema(Contact, self.manager)['fields']['days_as_customer']
@@ -221,8 +222,15 @@ class RelatedListTests(Base):
 
     def test_a_company_lists_people_and_products_supplied(self):
         lists = build_schema(Contact, self.manager)['related_lists']
-        self.assertEqual([(rl['label'], rl['field'], rl['can_add']) for rl in lists],
-                         [('People', 'parent', True), ('Products supplied', 'supplier', True)])
+        # The statement (bills, payments, adjustments) follows, then what a water utility adds.
+        self.assertEqual(
+            [(rl['label'], rl['field'], rl['can_add']) for rl in lists][:3],
+            [('People', 'parent', True), ('Products supplied', 'supplier', True), ('Bills', 'customer', True)],
+        )
+        self.assertEqual(
+            [rl['label'] for rl in lists],
+            ['People', 'Products supplied', 'Bills', 'Payments', 'Adjustments', 'Connections', 'Recovery cases'],
+        )
 
     def test_a_clerk_sees_people_but_not_products_supplied(self):
         clerk = make_user('clerk')

@@ -19,7 +19,7 @@ its field set from the schema built for the requesting user. Nothing here
 reaches for a model's manager directly.
 """
 from django.db import models as djm
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F, Q, Value
 from django.db.models.functions import Lower, NullIf
 from django.http import Http404
@@ -29,7 +29,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from foundation import computed as computed_fields
-from foundation import numbering, workflow
+from foundation import actions, numbering, workflow
 from foundation.audit import client_ip, history_for, record_change, snapshot
 from foundation.models import AuditEntry, ClickerModel
 from schema.engine import build_schema, display_label, get_exposed_model, schema_field_names
@@ -71,6 +71,21 @@ def _with_relations(queryset, schema, model):
     if issubclass(model, ClickerModel):
         relations += ['created_by', 'updated_by']
     return queryset.select_related(*relations)
+
+
+class _unique_as_conflict:
+    """
+    A uniqueness rule the database enforces (two people saving the same bank
+    reference at the same instant) is a refusal with a sentence, not a 500.
+    """
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, kind, error, trace):
+        if kind is IntegrityError:
+            raise actions.Refused('Someone else just saved the same value. Reload and check.') from error
+        return False
 
 
 def _envelopes(user, model, schema, records):
@@ -310,8 +325,13 @@ class ModelRecordListView(APIView):
         # The record and its audit entry commit together or not at all. Its
         # document number, if it has one, is taken inside the same
         # transaction, so a failed create never uses one up.
-        with transaction.atomic():
+        ctx = actions.Context(request.user, client_ip(request))
+        with _unique_as_conflict(), transaction.atomic():
             obj = serializer.save(**_server_owned(request.user, model, creating=True), **numbering.assigned_values(model))
+            # The model's own follow-up (a bill's due date, its parent's total),
+            # in the same transaction, before the entry says what the record is.
+            actions.after_save(obj, ctx, created=True)
+            obj.refresh_from_db()
             record_change(
                 actor=request.user,
                 ip_address=client_ip(request),
@@ -372,17 +392,27 @@ class ModelRecordDetailView(APIView):
                 'so it can’t be edited.'
             )
         writable = writable_fields(request.user, model, 'change')
+        archive_field = schema.get('archive_field')
+        if archive_field and getattr(obj, archive_field) is False:
+            # Archived means read-only until restored: the only write is the restore.
+            if not (set(request.data) == {archive_field} and request.data[archive_field] is True):
+                raise actions.Refused(
+                    f'This {model._meta.verbose_name} is archived, so it can’t be edited. Restore it first.'
+                )
         serializer = serializer_for(model, writable, request.user)(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         fields = _audited_fields(model)
         # The change and its audit entry commit together or not at all. The
         # row is locked while it's read and written, so two saves at once
         # can't record the same "before".
-        with transaction.atomic():
+        ctx = actions.Context(request.user, client_ip(request))
+        with _unique_as_conflict(), transaction.atomic():
             locked = scoped_queryset(request.user, model, 'change').select_for_update().get(pk=obj.pk)
             before = snapshot(locked, fields)
             serializer.instance = locked
             obj = serializer.save(**_server_owned(request.user, model, creating=False))
+            actions.after_save(obj, ctx, created=False)
+            obj.refresh_from_db()
             record_change(
                 actor=request.user,
                 ip_address=client_ip(request),
@@ -419,7 +449,13 @@ class ModelRecordHistoryView(APIView):
     def get(self, request, app_label, model_name, pk):
         model = _resolve(app_label, model_name)
         obj = get_record(request.user, model, pk)
-        return Response({'results': history_for(obj, readable_fields(request.user, model))})
+        return Response({
+            'results': history_for(
+                obj,
+                readable_fields(request.user, model),
+                labels_for=lambda name, ids: visible_labels(request.user, model, name, ids),
+            )
+        })
 
 
 class ModelSearchView(APIView):

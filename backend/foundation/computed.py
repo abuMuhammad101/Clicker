@@ -22,6 +22,17 @@ Computed fields are always read-only, never in a write allowlist, never
 audited (nothing is stored), and readable only by someone who can read every
 field they're calculated from: a value derived from a hidden field is hidden
 too.
+
+A value calculated from another model's rows (a customer's outstanding balance
+is the sum of their bills) says so with `requires`, the models it reads:
+
+    'outstanding': {'label': 'Outstanding', 'type': 'currency',
+                    'expression': customer_outstanding('pk'),
+                    'requires': ['billing.bill']}
+
+and is readable only by someone who may view all of them. A computed value of
+type `selection` (a payment status) carries `choices`, and optionally `tones`
+(positive / warning / danger / info / neutral per value) for its chip.
 """
 import datetime
 from dataclasses import dataclass
@@ -33,7 +44,7 @@ from django.db.models.expressions import CombinedExpression, F
 from django.db.models.functions import ExtractDay
 from django.utils import timezone
 
-TYPES = ('currency', 'decimal', 'integer', 'date')
+TYPES = ('currency', 'decimal', 'integer', 'date', 'selection')
 
 CONNECTORS = {'+': '+', '-': '−', '*': '×', '/': '÷'}
 
@@ -74,6 +85,8 @@ def output_field(spec):
         return djm.IntegerField()
     if kind == 'date':
         return djm.DateField()
+    if kind == 'selection':
+        return djm.CharField(max_length=32)
     raise ValueError(f'Unknown computed type {kind!r}')
 
 
@@ -139,6 +152,21 @@ def annotate(queryset, model, context=None):
         name: djm.ExpressionWrapper(expression_for(spec, context), output_field=output_field(spec))
         for name, spec in specs.items()
     })
+
+
+def over(*field_names):
+    """
+    Marks an expression builder (a callable taking the context) with the
+    model fields it reads, for the "hidden if derived from a hidden field"
+    rule. A builder that reads other models' rows reads no field of its own:
+    `@over()`, and the spec's `requires` says which models it needs.
+    """
+
+    def mark(builder):
+        builder.depends_on = list(field_names)
+        return builder
+
+    return mark
 
 
 def days_since(field_name):
