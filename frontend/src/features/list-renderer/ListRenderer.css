@@ -779,3 +779,126 @@
   background: var(--accent-subtle);
   color: var(--accent);
 }
+
+/* ---------- Filters, under the toolbar ---------- */
+.list-filterline {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  margin: 0 0 var(--space-5);
+}
+
+.list-filterline .list-filters {
+  margin: 0;
+}
+
+/* A view's part this user can't read: said once, quietly. */
+.list-filterline__note {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* ---------- Group-by choice, in the table controls ---------- */
+.list-group-option {
+  width: 100%;
+  text-align: left;
+}
+
+.list-group-option__check {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+/* ---------- Group header rows ---------- */
+.list-group {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: background-color var(--duration-instant) var(--ease);
+}
+
+.list-group--static {
+  position: relative;
+  cursor: default;
+}
+
+.list-group:hover {
+  background: var(--surface-hover);
+}
+
+.list-group:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.list-group--closed {
+  cursor: default;
+}
+
+.list-group__lead {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: 0 var(--cell-padding-x, var(--space-5));
+}
+
+.list-group__chevron {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--text-muted);
+  transform: rotate(90deg);
+  transition: transform var(--duration-instant) var(--ease);
+}
+
+.list-group--collapsed .list-group__chevron {
+  transform: rotate(0deg);
+}
+
+.list-group__label {
+  overflow: hidden;
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-group__count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.list-group__cell {
+  flex: none;
+  min-width: 0;
+  padding: 0 var(--cell-padding-x, var(--space-5));
+  text-align: right;
+}
+
+.list-group__sum {
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .list-group__chevron {
+    transition: none;
+  }
+}

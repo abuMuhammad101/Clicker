@@ -8,6 +8,7 @@ import { DesignTokens } from '@/gallery/DesignTokens'
 import { FieldGallery } from '@/gallery/FieldGallery'
 import type { FormState } from '@/features/form-renderer/FormRenderer'
 import { PeekHost } from '@/surfaces/PeekHost'
+import { LIST_STATE_KEYS, listStateFromSearch, listStateToSearch } from '@/lib/listQuery'
 import { navigate, useLocation } from '@/lib/router'
 import { parseListPath, parseRecordPath, recordPath, sameTarget, useSurface } from '@/records'
 import { Toaster } from '@/components/Toaster'
@@ -208,13 +209,18 @@ function Page({
   // loaded, render optimistically: the renderers have their own errors.)
   if (apps && !findInRegistry(apps, appLabel, model)) return <NotFound />
 
-  // Everything in the query except the peek stack: a list's exact-match
+  // Everything in the query except the peek stack and a list's own state
+  // (filters, sort, grouping, view: `listState…`): a list's exact-match
   // filters (`?parent=5`, from a related list's "View all"), or a new
   // record's prefilled values. Nothing here knows any field name.
-  const query = Object.fromEntries([...new URLSearchParams(search)].filter(([key]) => key !== 'peek'))
+  const params = new URLSearchParams(search)
+  const owned = new Set<string>(['peek', ...(record ? [] : LIST_STATE_KEYS)])
+  const query = Object.fromEntries([...params].filter(([key]) => !owned.has(key)))
   const hasQuery = Object.keys(query).length > 0
 
   if (!record) {
+    // The list's state lives in the URL, so a filtered, grouped list can be
+    // shared as a link and comes back on reload. The list only reports it.
     return (
       <ListRenderer
         key={`${appLabel}/${model}?${new URLSearchParams(query).toString()}`}
@@ -222,7 +228,12 @@ function Page({
         model={model}
         onLabelChange={onLabelChange}
         filter={hasQuery ? query : undefined}
-        onClearFilter={hasQuery ? () => navigate(pathname) : undefined}
+        onClearFilter={hasQuery ? () => navigate(`${pathname}?${listStateToSearch(listStateFromSearch(params))}`) : undefined}
+        state={listStateFromSearch(params)}
+        onStateChange={(next) => {
+          const query = listStateToSearch(next, new URLSearchParams(window.location.search)).toString()
+          navigate(`${pathname}${query ? `?${query}` : ''}`, { replace: true })
+        }}
       />
     )
   }

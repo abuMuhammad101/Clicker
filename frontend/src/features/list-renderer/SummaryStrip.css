@@ -1,0 +1,65 @@
+/* ---------- Summary strip: a few figures over the rows on screen ---------- */
+.summary-strip {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 220px));
+  gap: 0;
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  overflow: hidden;
+  transition: opacity var(--duration-base) var(--ease);
+}
+
+/* A new answer is on its way: the old one stays, quieter, rather than blinking out. */
+.summary-strip--updating {
+  opacity: 0.6;
+}
+
+.summary-strip__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-4) var(--space-6);
+  border-right: 1px solid var(--border-subtle);
+  text-align: left;
+  transition: background-color var(--duration-instant) var(--ease);
+}
+
+.summary-strip__item:last-child {
+  border-right: 0;
+}
+
+button.summary-strip__item:hover {
+  background: var(--surface-hover);
+}
+
+button.summary-strip__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.summary-strip__label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.summary-strip__value {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Zero is a real answer, shown as one, just quieter. */
+.summary-strip__value--zero {
+  color: var(--text-muted);
+}

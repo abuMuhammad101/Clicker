@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiGet, ApiError } from '@/lib/api'
 import type { RecordEnvelope } from '@/types/record'
 
-const PAGE_SIZE = 100
+export const PAGE_SIZE = 100
 
-interface ListResponse {
+export interface ListResponse {
   count: number
   results: RecordEnvelope[]
 }
@@ -13,6 +13,11 @@ type State =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'ready'; total: number; pages: Record<number, RecordEnvelope[]> }
+
+export function errorMessage(error: unknown) {
+  if (error instanceof ApiError) return error.validation ? Object.values(error.validation).flat().join(' ') : error.message
+  return 'Could not reach the API.'
+}
 
 /**
  * Windowed access to a server-side list. The first page establishes the
@@ -28,9 +33,9 @@ export function useRecordWindow(
   appLabel: string,
   model: string,
   ordering: string,
+  /** Filters and search, as a query string (`filter=…&q=…`); see `baseParams`. */
   query: string,
-  /** Exact-match field filters (?field=value), applied by the API on readable fields only. */
-  filterKey = '',
+  enabled = true,
 ) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
@@ -41,23 +46,17 @@ export function useRecordWindow(
   const basePath = `/data/${appLabel}/${model}/`
   const params = useCallback(
     (page: number) => {
-      const search = new URLSearchParams({
-        ordering,
-        limit: String(PAGE_SIZE),
-        offset: String(page * PAGE_SIZE),
-      })
-      if (query) search.set('q', query)
-      if (filterKey) {
-        for (const [field, value] of Object.entries(JSON.parse(filterKey) as Record<string, string>)) {
-          search.set(field, value)
-        }
-      }
+      const search = new URLSearchParams(query)
+      search.set('ordering', ordering)
+      search.set('limit', String(PAGE_SIZE))
+      search.set('offset', String(page * PAGE_SIZE))
       return `${basePath}?${search.toString()}`
     },
-    [basePath, ordering, query, filterKey],
+    [basePath, ordering, query],
   )
 
   useEffect(() => {
+    if (!enabled) return
     const gen = ++generation.current
     inFlight.current = new Set([0])
     setState({ status: 'loading' })
@@ -70,10 +69,9 @@ export function useRecordWindow(
       })
       .catch((error: unknown) => {
         if (generation.current !== gen) return
-        const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
-        setState({ status: 'error', message })
+        setState({ status: 'error', message: errorMessage(error) })
       })
-  }, [params, attempt])
+  }, [params, attempt, enabled])
 
   /** Fetch whatever pages cover rows [start, end] that aren't loaded yet. */
   const ensureRange = useCallback(
@@ -98,8 +96,7 @@ export function useRecordWindow(
           })
           .catch((error: unknown) => {
             if (generation.current !== gen) return
-            const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
-            setState({ status: 'error', message })
+            setState({ status: 'error', message: errorMessage(error) })
           })
       }
     },
@@ -142,7 +139,12 @@ export function useRecordWindow(
     })
   }, [])
 
+  const hasRecord = useCallback(
+    (id: number) => state.status === 'ready' && Object.values(state.pages).some((rows) => rows.some((row) => row.id === id)),
+    [state],
+  )
+
   const retry = useCallback(() => setAttempt((n) => n + 1), [])
 
-  return { state, getRow, ensureRange, updateRow, replaceRecord, retry }
+  return { state, getRow, ensureRange, updateRow, replaceRecord, hasRecord, retry }
 }

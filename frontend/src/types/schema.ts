@@ -68,6 +68,8 @@ export interface FieldSchema {
   write_once?: { note: string }
   /** Server-assigned on create (a document number): what an empty one says instead. */
   assigned?: string
+  /** Computed fields a list can group into ranges ("0–30 days"), inclusive at both ends. */
+  buckets?: { label: string; min?: number; max?: number }[]
 }
 
 /** A reverse relation shown under a record's form (Schema.related_lists). */
@@ -102,6 +104,10 @@ export interface ListSchema {
   sort: ListSort[]
   default_filters: Record<string, unknown>
   search_fields: string[]
+  /** Fields this user can group the list by. */
+  groupable?: string[]
+  /** The model's summaries this user may see (values come from the aggregate endpoint). */
+  summaries?: { key: string; label: string; aggregate: 'sum' | 'count' | 'avg' }[]
 }
 
 /** What this user may do with the model, from the same check the API enforces. */

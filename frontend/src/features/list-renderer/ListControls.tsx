@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import { Columns3, RefreshCw, Rows2, Rows3, Rows4, Search, X } from 'lucide-react'
+import { Check, Columns3, Group, RefreshCw, Rows2, Rows3, Rows4, Search, X } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipProvider } from '@/components/ui/tooltip'
@@ -72,7 +72,7 @@ const DENSITIES: { value: Density; label: string; Icon: typeof Rows3 }[] = [
   { value: 'comfortable', label: 'Comfortable rows', Icon: Rows2 },
 ]
 
-/** The table's own controls: row density, which columns show, reload. */
+/** The table's own controls: row density, grouping, which columns show, reload. */
 export function ListControls({
   density,
   onDensity,
@@ -83,6 +83,9 @@ export function ListControls({
   customised,
   onRefresh,
   refreshing,
+  groupable = [],
+  groupBy = null,
+  onGroupBy,
 }: {
   density: Density
   onDensity: (density: Density) => void
@@ -94,6 +97,10 @@ export function ListControls({
   customised: boolean
   onRefresh: () => void
   refreshing: boolean
+  /** Fields the list can be grouped by; none hides the control. */
+  groupable?: { id: string; label: string }[]
+  groupBy?: string | null
+  onGroupBy?: (field: string | null) => void
 }) {
   const visibleCount = columns.length - hidden.length
   return (
@@ -114,6 +121,44 @@ export function ListControls({
             </Tooltip>
           ))}
         </div>
+
+        {groupable.length > 0 && onGroupBy && (
+          <Popover>
+            <Tooltip label={groupBy ? `Grouped by ${groupable.find((g) => g.id === groupBy)?.label.toLowerCase() ?? groupBy}` : 'Group'} side="bottom">
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn('list-controls__button', groupBy && 'list-controls__button--on')}
+                  aria-label="Group rows"
+                  aria-pressed={!!groupBy}
+                >
+                  <Group aria-hidden />
+                </button>
+              </PopoverTrigger>
+            </Tooltip>
+            <PopoverContent align="end" className="list-columns">
+              <p className="list-columns__title">Group by</p>
+              <ul className="list-columns__list">
+                {[{ id: '', label: 'No grouping' }, ...groupable].map((option) => {
+                  const on = (groupBy ?? '') === option.id
+                  return (
+                    <li key={option.id || 'none'}>
+                      <button
+                        type="button"
+                        className="list-columns__item list-group-option"
+                        aria-pressed={on}
+                        onClick={() => onGroupBy(option.id || null)}
+                      >
+                        <Check className={cn('list-group-option__check', !on && 'invisible')} aria-hidden />
+                        <span>{option.label}</span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </PopoverContent>
+          </Popover>
+        )}
 
         <Popover>
           <Tooltip label="Columns" side="bottom">

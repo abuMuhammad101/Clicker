@@ -19,6 +19,7 @@ import { UrlField } from '@/fields/url/UrlField'
 import { UrlListCell } from '@/fields/url/UrlListCell'
 import { S2Sections } from './S2Sections'
 import { S3Sections } from './S3Sections'
+import { S4Sections } from './S4Sections'
 import './FieldGallery.css'
 
 const TYPE_CHOICES = [
@@ -86,6 +87,7 @@ export function FieldGallery() {
         </p>
       </div>
 
+      <S4Sections />
       <S3Sections />
 
       <TypeSection type="text" source="Contact.name">

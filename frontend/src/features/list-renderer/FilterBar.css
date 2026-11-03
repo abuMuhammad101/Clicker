@@ -1,0 +1,305 @@
+/* ---------- Filter bar: chips that read as sentences ---------- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 360px;
+  height: var(--control-height-sm);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  font-size: var(--text-sm);
+  transition:
+    border-color var(--duration-instant) var(--ease),
+    background-color var(--duration-instant) var(--ease);
+}
+
+.filter-chip:hover {
+  border-color: var(--border-control-hover);
+}
+
+.filter-chip--editing {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.filter-chip__body {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-radius: var(--radius-full) 0 0 var(--radius-full);
+  color: var(--text);
+}
+
+.filter-chip__body:focus-visible,
+.filter-chip__remove:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.filter-chip__subject {
+  flex: none;
+  color: var(--text-secondary);
+}
+
+.filter-chip__predicate {
+  overflow: hidden;
+  font-weight: var(--weight-medium);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-chip__remove {
+  display: grid;
+  width: 22px;
+  place-items: center;
+  border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  color: var(--text-muted);
+}
+
+.filter-chip__remove svg {
+  width: 12px;
+  height: 12px;
+}
+
+.filter-chip__remove:hover {
+  color: var(--text);
+}
+
+/* Can't be applied for this user: shown, never sent, one click to remove. */
+.filter-chip--invalid {
+  border-color: var(--danger-border);
+  background: var(--danger-subtle);
+}
+
+.filter-chip--invalid .filter-chip__predicate,
+.filter-chip--invalid .filter-chip__subject {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.filter-chip__alert {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--danger);
+}
+
+.filter-bar__add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition:
+    border-color var(--duration-instant) var(--ease),
+    color var(--duration-instant) var(--ease);
+}
+
+.filter-bar__add svg {
+  width: 13px;
+  height: 13px;
+}
+
+.filter-bar__add:hover {
+  border-color: var(--border-control-hover);
+  color: var(--text);
+}
+
+.filter-bar__clear {
+  padding: 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.filter-bar__clear:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* ---------- The editor, in a popover ---------- */
+.filter-popover {
+  width: 300px;
+  padding: 0;
+}
+
+.filter-fields [cmdk-list] {
+  max-height: 280px;
+}
+
+.filter-fields__icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.filter-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.filter-editor__title {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+}
+
+.filter-editor__ops,
+.filter-editor__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.filter-editor__op {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition:
+    background-color var(--duration-instant) var(--ease),
+    border-color var(--duration-instant) var(--ease);
+}
+
+.filter-editor__op:hover {
+  border-color: var(--border-control-hover);
+  color: var(--text);
+}
+
+.filter-editor__op--on,
+.filter-editor__op--on:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
+.filter-editor__choices {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.filter-editor__choice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--row-height-compact);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.filter-editor__inputs {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.filter-editor__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: var(--control-height);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.filter-editor__field:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--focus-halo);
+}
+
+.filter-editor__affix {
+  padding-left: var(--control-padding-x);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.filter-editor__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 var(--control-padding-x);
+  border: 0;
+  background: transparent;
+  font-size: var(--text-base);
+  color: var(--text);
+  outline: none;
+}
+
+.filter-editor__input--numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.filter-editor__hint {
+  padding-right: var(--control-padding-x);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.filter-editor__error {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+
+.filter-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.filter-editor .filter-editor__footer {
+  margin: 0 calc(-1 * var(--space-5)) calc(-1 * var(--space-5));
+}
+
+.filter-editor__button {
+  height: var(--control-height-sm);
+  gap: var(--space-2);
+  padding: 0 var(--control-padding-x-sm);
+  font-size: var(--text-sm);
+}
+
+.filter-link {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.filter-link [cmdk-list] {
+  max-height: 200px;
+}
+
+.filter-link__selected {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}

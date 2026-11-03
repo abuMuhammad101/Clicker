@@ -214,3 +214,19 @@
 .gallery__records--grid .gallery__record-sheet {
   height: calc(100% - var(--space-8));
 }
+
+/* S-4: list tools shown on a list's own background, at their real size. */
+.gallery__s4-stage {
+  padding: var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--ground);
+}
+
+.gallery__s4-group {
+  position: relative;
+  height: var(--row-height);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   columnResizingFeature,
   columnSizingFeature,
@@ -15,8 +15,10 @@ import {
   ArrowUp,
   ArrowUpRight,
   Check,
+  ChevronRight,
   CloudOff,
   FileQuestion,
+  Filter,
   Inbox,
   Pencil,
   Plus,
@@ -30,7 +32,21 @@ import { isNumericType, renderListCell } from '@/fields/listRegistry'
 import { typeIcon } from '@/fields/typeIcons'
 import { ListCell } from '@/fields/shared/ListCell'
 import { emitRecordChanged, isRecordHeld, openRecord, RecordRef, useRecordChanged } from '@/records'
-import { apiSend, ApiError } from '@/lib/api'
+import { apiGet, apiSend, ApiError } from '@/lib/api'
+import {
+  baseParams,
+  differsFromView,
+  EMPTY_LIST_STATE,
+  filterProblem,
+  fromViewState,
+  parseFilter,
+  toViewState,
+  type FilterLabels,
+  type GroupHeader,
+  type ListState,
+  type SavedView,
+} from '@/lib/listQuery'
+import { formatMoney } from '@/lib/money'
 import { useLocation } from '@/lib/router'
 import { usePreference } from '@/lib/usePreference'
 import { toast } from '@/lib/toast'
@@ -40,11 +56,16 @@ import { isVisible } from '@/lib/visibility'
 import { cn } from '@/lib/utils'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
+import { FilterBar } from './FilterBar'
 import { InlineEditor } from './InlineEditor'
 import { ListControls, SearchBox } from './ListControls'
-import { DEFAULT_LIST_PREFS, DENSITY_TOKEN, type ListPrefs } from './listPrefs'
+import { DEFAULT_LIST_PREFS, DENSITY_TOKEN, type Density, type ListPrefs } from './listPrefs'
 import { isInlineEditable } from './inlineEditable'
+import { SummaryStrip } from './SummaryStrip'
+import { useAggregate } from './useAggregate'
+import { useGroupedWindow } from './useGroupedWindow'
 import { useRecordWindow } from './useRecordWindow'
+import { ViewMenu } from './ViewMenu'
 import './ListRenderer.css'
 
 /**
@@ -75,9 +96,9 @@ interface ListRendererProps {
   /** Show these columns instead of the schema's (a related list's own choice). */
   columns?: string[]
   /**
-   * `page` (default): toolbar, search, controls, fills its container and
-   * scrolls. `embedded`: just the table, as tall as its rows, at most
-   * `maxRows` of them, for sitting inside something else (a form section).
+   * `page` (default): toolbar, search, filters, views, summaries, groups;
+   * fills its container and scrolls. `embedded`: just the table, as tall as
+   * its rows, at most `maxRows` of them, for sitting inside something else.
    */
   variant?: 'page' | 'embedded'
   maxRows?: number
@@ -85,13 +106,21 @@ interface ListRendererProps {
   onTotal?: (total: number) => void
   /** Offered beside the filter it clears (a page list opened filtered). */
   onClearFilter?: () => void
+  /**
+   * What the person chose (filters, sort, grouping, view…), when the
+   * container keeps it (a page keeps it in the URL, so a filtered list can be
+   * shared and survives a reload). Without it the list keeps its own.
+   */
+  state?: ListState
+  onStateChange?: (state: ListState) => void
 }
 
 const features = tableFeatures({ rowSortingFeature, columnSizingFeature, columnResizingFeature })
 
-/** A slot in the list: the record once its page has loaded, null until then. */
+/** A line in the list: a record (null until its page loads), or a group's header. */
 interface Slot {
   record: RecordEnvelope | null
+  group?: GroupHeader
 }
 
 const SEARCH_DEBOUNCE_MS = 250
@@ -194,6 +223,15 @@ function initialSorting(schema: ModelSchema): SortingState {
     .map((sort) => ({ id: sort.field, desc: sort.direction === 'desc' }))
 }
 
+function sortingFrom(ordering: string, schema: ModelSchema): SortingState {
+  if (!ordering) return initialSorting(schema)
+  return ordering
+    .split(',')
+    .filter(Boolean)
+    .map((part) => ({ id: part.replace(/^-/, ''), desc: part.startsWith('-') }))
+    .filter((sort) => sort.id in schema.fields)
+}
+
 function ListView({
   schema,
   appLabel,
@@ -205,25 +243,45 @@ function ListView({
   maxRows,
   onTotal,
   onClearFilter,
+  state: controlled,
+  onStateChange,
 }: {
   schema: ModelSchema
   appLabel: string
   model: string
   onLabelChange?: (label: string | null) => void
-} & Pick<ListRendererProps, 'filter' | 'columns' | 'variant' | 'maxRows' | 'onTotal' | 'onClearFilter'>) {
+} & Omit<ListRendererProps, 'appLabel' | 'model' | 'onLabelChange'>) {
   const embedded = variant === 'embedded'
-  const [sorting, setSorting] = useState<SortingState>(() => initialSorting(schema))
+  const modelRef = useMemo(() => ({ app_label: appLabel, model }), [appLabel, model])
+
+  // The list's state: the container's (a page keeps it in the URL) or its own.
+  const [ownState, setOwnState] = useState<ListState>(EMPTY_LIST_STATE)
+  const listState = controlled ?? ownState
+  const latest = useRef(listState)
+  latest.current = listState
+  const setListState = useCallback(
+    (next: Partial<ListState>) => {
+      const merged = { ...latest.current, ...next }
+      latest.current = merged
+      if (onStateChange) onStateChange(merged)
+      else setOwnState(merged)
+    },
+    [onStateChange],
+  )
+
+  const sorting = useMemo(() => sortingFrom(listState.ordering, schema), [listState.ordering, schema])
+  const setSorting = (updater: SortingState | ((old: SortingState) => SortingState)) => {
+    const next = typeof updater === 'function' ? updater(sorting) : updater
+    setListState({ ordering: next.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',') })
+  }
 
   // This person's choices for this list (row density, hidden columns), kept
-  // on the server so they follow them between machines.
+  // on the server so they follow them between machines. A view's own columns
+  // and density win while it's open.
   const prefs = usePreference<ListPrefs>(`list.${appLabel}.${model}`, DEFAULT_LIST_PREFS)
-  const { density, hidden, extra = [] } = { ...DEFAULT_LIST_PREFS, ...prefs.value }
-  const visibleColumns = useMemo(() => {
-    // A container's own column choice wins, narrowed to what this user can read.
-    if (columnsOverride) {
-      const chosen = columnsOverride.filter((name) => name in schema.fields)
-      if (chosen.length > 0) return chosen
-    }
+  const { hidden, extra = [] } = { ...DEFAULT_LIST_PREFS, ...prefs.value }
+  const density: Density = listState.density ?? { ...DEFAULT_LIST_PREFS, ...prefs.value }.density
+  const prefColumns = useMemo(() => {
     const shown = schema.list.columns.filter((name) => !hidden.includes(name))
     // Fields the person added, after the declared ones, in schema order.
     const added = Object.keys(schema.fields).filter(
@@ -231,26 +289,51 @@ function ListView({
     )
     const all = [...shown, ...added]
     return all.length > 0 ? all : schema.list.columns
-  }, [schema.list.columns, schema.fields, hidden, extra, columnsOverride])
+  }, [schema.list.columns, schema.fields, hidden, extra])
+  const visibleColumns = useMemo(() => {
+    // A container's own column choice wins, narrowed to what this user can read.
+    if (columnsOverride) {
+      const chosen = columnsOverride.filter((name) => name in schema.fields)
+      if (chosen.length > 0) return chosen
+    }
+    const fromState = listState.columns?.filter((name) => name in schema.fields)
+    return fromState && fromState.length > 0 ? fromState : prefColumns
+  }, [columnsOverride, listState.columns, schema.fields, prefColumns])
+
   // Archived records are out of the list unless asked for: one switch in the
   // toolbar, which lists the archived ones instead.
   const archiveField = schema.archive_field ?? null
   const [showArchived, setShowArchived] = useState(false)
-  const filterKey = useMemo(() => {
-    const effective: Record<string, string | number> = { ...filter }
-    if (showArchived && archiveField) effective[archiveField] = 'false'
-    return Object.keys(effective).length > 0
-      ? JSON.stringify(Object.fromEntries(Object.entries(effective).map(([k, v]) => [k, String(v)])))
-      : ''
-  }, [filter, showArchived, archiveField])
-  const searchRef = useRef<HTMLInputElement>(null)
-  const [searchInput, setSearchInput] = useState('')
-  const [query, setQuery] = useState('')
 
+  // Filters this user can apply; the rest are shown on their chips, never sent.
+  const applicable = useMemo(
+    () => (embedded ? [] : listState.filters.filter((raw) => filterProblem(parseFilter(raw), schema) === null)),
+    [embedded, listState.filters, schema],
+  )
+  const unavailable = embedded ? 0 : listState.filters.length - applicable.length
+  const groupBy = !embedded && listState.groupBy && schema.list.groupable?.includes(listState.groupBy) ? listState.groupBy : null
+
+  const query = useMemo(() => {
+    const exact: Record<string, string> = Object.fromEntries(Object.entries(filter ?? {}).map(([k, v]) => [k, String(v)]))
+    if (showArchived && archiveField) exact[archiveField] = 'false'
+    return baseParams({ ...listState, filters: applicable }, exact).toString()
+  }, [filter, showArchived, archiveField, listState, applicable])
+
+  const searchRef = useRef<HTMLInputElement>(null)
+  const [searchInput, setSearchInput] = useState(listState.q)
+  const [lastQ, setLastQ] = useState(listState.q)
+  if (listState.q !== lastQ) {
+    // The state's search changed from outside (a view, the URL): show it.
+    setLastQ(listState.q)
+    if (listState.q !== searchInput.trim()) setSearchInput(listState.q)
+  }
   useEffect(() => {
-    const timeout = setTimeout(() => setQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS)
+    const timeout = setTimeout(() => {
+      const q = searchInput.trim()
+      if (q !== latest.current.q) setListState({ q })
+    }, SEARCH_DEBOUNCE_MS)
     return () => clearTimeout(timeout)
-  }, [searchInput])
+  }, [searchInput, setListState])
 
   useEffect(() => {
     if (embedded) return
@@ -258,35 +341,123 @@ function ListView({
     return () => onLabelChange?.(null)
   }, [schema.verbose_name_plural, onLabelChange, embedded])
 
+  // ---------- Views ----------
+  const [views, setViews] = useState<SavedView[] | null>(null)
+  const loadViews = useCallback(() => {
+    apiGet<{ views: SavedView[] }>(`/views/${appLabel}/${model}/`)
+      .then((response) => setViews(response.views))
+      .catch(() => setViews([]))
+  }, [appLabel, model])
+  useEffect(() => {
+    if (!embedded) loadViews()
+  }, [embedded, loadViews])
+  const activeView = views?.find((view) => view.id === listState.view) ?? null
+  // A link that names only a view (`?view=module:aging`) opens that view.
+  const bareView =
+    listState.view !== null && listState.filters.length === 0 && !listState.ordering && !listState.groupBy
+  useEffect(() => {
+    if (activeView && bareView && differsFromView({ ...listState, q: '' }, activeView.state)) {
+      setListState({ ...fromViewState(activeView.state, activeView.id), q: listState.q })
+    }
+    // Once, when the views arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeView?.id])
+  const changed = activeView ? differsFromView(listState, activeView.state) : false
+  const applyView = (view: SavedView | null) => {
+    setSearchInput('')
+    setListState(view ? fromViewState(view.state, view.id) : EMPTY_LIST_STATE)
+  }
+  const saveView = async (label: string, shared: boolean) => {
+    const saved = await apiSend<SavedView>('POST', `/views/${appLabel}/${model}/`, {
+      label,
+      shared,
+      state: toViewState(snapshotState()),
+    })
+    setViews((current) => [...(current ?? []), saved])
+    setListState({ view: saved.id, q: '' })
+    setSearchInput('')
+    toast({ message: `Saved view “${saved.label}”` })
+  }
+  const updateView = async () => {
+    if (!activeView) return
+    const saved = await apiSend<SavedView>('PATCH', `/views/${appLabel}/${model}/${activeView.id}/`, {
+      state: toViewState(snapshotState()),
+    })
+    setViews((current) => (current ?? []).map((view) => (view.id === saved.id ? saved : view)))
+    toast({ message: `Updated view “${saved.label}”` })
+  }
+  const deleteView = async (view: SavedView) => {
+    await apiSend('DELETE', `/views/${appLabel}/${model}/${view.id}/`)
+    setViews((current) => (current ?? []).filter((v) => v.id !== view.id))
+    if (listState.view === view.id) setListState({ view: null })
+    toast({ message: `Deleted view “${view.label}”` })
+  }
+  /** What a view saves: the state, with the columns and density on screen made explicit. */
+  const snapshotState = (): ListState => ({ ...listState, columns: visibleColumns, density })
+
+  // ---------- Data ----------
   const ordering = sorting.map((sort) => (sort.desc ? '-' : '') + sort.id).join(',')
-  const { state, getRow, ensureRange, updateRow, replaceRecord, retry } = useRecordWindow(
-    appLabel,
-    model,
-    ordering,
-    query,
-    filterKey,
-  )
+  const aggregate = useAggregate(appLabel, model, query, groupBy, !embedded)
+  const aggregateData =
+    aggregate.state.status === 'ready'
+      ? aggregate.state
+      : aggregate.state.status === 'loading'
+        ? aggregate.state.previous
+        : null
+  const groups = groupBy ? (aggregateData?.groups ?? null) : null
+  const grouped = groupBy !== null
+  const flat = useRecordWindow(appLabel, model, ordering, query, !grouped)
+  const groupedWindow = useGroupedWindow(appLabel, model, ordering, query, groups, listState.collapsed)
+
+  const status: 'loading' | 'error' | 'ready' = grouped
+    ? aggregate.state.status === 'error' || groupedWindow.error
+      ? 'error'
+      : groups
+        ? 'ready'
+        : 'loading'
+    : flat.state.status
+  const errorText = grouped
+    ? (aggregate.state.status === 'error' ? aggregate.state.message : groupedWindow.error) ?? ''
+    : flat.state.status === 'error'
+      ? flat.state.message
+      : ''
+  const total = grouped ? groupedWindow.total : flat.state.status === 'ready' ? flat.state.total : 0
+  const recordCount = grouped ? (groups ?? []).reduce((sum, g) => sum + g.count, 0) : total
+  const getRow = grouped ? groupedWindow.getRecord : flat.getRow
+  const updateRow = grouped ? groupedWindow.updateRow : flat.updateRow
+  const replaceRecord = grouped ? groupedWindow.replaceRecord : flat.replaceRecord
+  const ensureRange = grouped ? groupedWindow.ensureRange : flat.ensureRange
+  const retry = () => {
+    flat.retry()
+    aggregate.retry()
+  }
 
   useEffect(() => {
-    if (state.status === 'ready') onTotal?.(state.total)
-  }, [state, onTotal])
+    if (status === 'ready') onTotal?.(recordCount)
+  }, [status, recordCount, onTotal])
 
   // A record of this model was saved elsewhere (a peek, say): show it as saved.
   // A record this list doesn't have yet (just created, say a person added
-  // under this company) means the list itself changed: fetch it again.
+  // under this company) means the list itself changed: fetch it again. Either
+  // way, the totals may have moved.
   useRecordChanged((change) => {
     if (change.model.app_label !== appLabel || change.model.model !== model) return
-    const known =
-      state.status === 'ready' &&
-      Object.values(state.pages).some((rows) => rows.some((row) => row.id === change.record.id))
+    const known = grouped ? groupedWindow.hasRecord(change.record.id) : flat.hasRecord(change.record.id)
     // Archived or restored: it no longer belongs in this list (or now does).
     const belongs = !archiveField || (change.record.values[archiveField] === false) === showArchived
     if (known && belongs) replaceRecord(change.record)
-    else retry()
+    else flat.retry()
+    aggregate.retry()
   })
 
   // Re-render when a peek opens or closes, so the open record's row can say so.
   useLocation()
+
+  // Names for linked records in filter chips, as they become known.
+  const [filterLabels, setFilterLabels] = useState<FilterLabels>({})
+  const addFilterLabels = useCallback((field: string, labels: Record<string, string>) => {
+    setFilterLabels((current) => ({ ...current, [field]: { ...current[field], ...labels } }))
+  }, [])
 
   // Keyboard: one tab stop for the whole list, arrows inside it. `activeIndex`
   // is the row that tab stop sits on.
@@ -300,10 +471,14 @@ function ListView({
     return () => clearTimeout(timeout)
   }, [savedCell])
 
-  const total = state.status === 'ready' ? state.total : 0
   const data = useMemo<Slot[]>(
-    () => Array.from({ length: total }, (_, index) => ({ record: getRow(index) })),
-    [total, getRow],
+    () =>
+      Array.from({ length: total }, (_, index) => {
+        if (!grouped) return { record: getRow(index) }
+        const item = groupedWindow.itemAt(index)
+        return item?.kind === 'group' ? { record: null, group: item.group } : { record: item?.record ?? null }
+      }),
+    [total, getRow, grouped, groupedWindow],
   )
 
   const rowHeight = useMemo(() => tokenPx(DENSITY_TOKEN[density], 34), [density])
@@ -406,10 +581,10 @@ function ListView({
     if (total > 0) ensureRange(firstIndex, lastIndex)
   }, [firstIndex, lastIndex, total, ensureRange])
 
-  // A new sort or search is a new list — back to the top.
+  // A new sort, search, filter or grouping is a new list — back to the top.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 })
-  }, [ordering, query])
+  }, [ordering, query, groupBy])
 
   const rows = table.getRowModel().rows
   const headers = table.getHeaderGroups()[0]?.headers ?? []
@@ -440,7 +615,7 @@ function ListView({
     // A row opens a peek: you keep your place in the list. The row's own
     // "open as page" action, and modifier-click, are the other ways in.
     openRecord(
-      { app_label: appLabel, model },
+      modelRef,
       record.id,
       { surface: 'peek', newBrowserTab: 'metaKey' in event && (event.metaKey || event.ctrlKey) },
     )
@@ -460,7 +635,7 @@ function ListView({
         [fieldName]: value,
       })
       updateRow(index, saved)
-      emitRecordChanged({ app_label: appLabel, model }, saved)
+      emitRecordChanged(modelRef, saved)
       toast({
         message: `${field.label} updated`,
         action: {
@@ -472,7 +647,7 @@ function ListView({
             })
               .then((restored) => {
                 replaceRecord(restored)
-                emitRecordChanged({ app_label: appLabel, model }, restored)
+                emitRecordChanged(modelRef, restored)
               })
               .catch(() => toast({ kind: 'error', message: `Couldn’t undo that. Reload and try again.` }))
           },
@@ -502,13 +677,22 @@ function ListView({
     setTimeout(() => focusWhenMounted(2), 0)
   }
 
+  const toggleGroup = (key: string) =>
+    setListState({
+      collapsed: listState.collapsed.includes(key)
+        ? listState.collapsed.filter((k) => k !== key)
+        : [...listState.collapsed, key],
+    })
+
   const onRowKeyDown = (event: React.KeyboardEvent<HTMLDivElement>, index: number) => {
     // Keys typed into an inline editor never reach here (it stops them).
     if (event.target !== event.currentTarget) return
     const page = Math.max(1, Math.floor((scrollRef.current?.clientHeight ?? 400) / rowHeight) - 1)
+    const group = data[index]?.group
     switch (event.key) {
       case 'Enter':
-        openRow(index, event)
+        if (group) toggleGroup(group.key)
+        else openRow(index, event)
         break
       case 'ArrowDown':
         event.preventDefault()
@@ -537,7 +721,7 @@ function ListView({
       case 'F2': {
         // Edit the first cell in the row that can be edited.
         const first = visibleColumns.find((name) => isInlineEditable(schema.fields[name]))
-        if (first) {
+        if (first && !group) {
           event.preventDefault()
           setEditing({ index, field: first })
         }
@@ -547,7 +731,27 @@ function ListView({
   }
 
   const shownRows = embedded && maxRows != null ? Math.min(total, maxRows) : total
+  const filtered = applicable.length > 0
+  const dropped = (activeView?.dropped ?? 0) + unavailable
+  const groupable = (schema.list.groupable ?? []).map((id) => ({ id, label: schema.fields[id].label }))
+  const summaries = aggregateData?.summaries ?? null
 
+  const changeColumns = (next: { hidden: string[]; extra: string[] }) => {
+    if (listState.view) {
+      // Inside a view, columns are the view's: changing them edits it.
+      const shown = schema.list.columns.filter((name) => !next.hidden.includes(name))
+      const added = Object.keys(schema.fields).filter((name) => next.extra.includes(name) && !schema.list.columns.includes(name))
+      setListState({ columns: [...shown, ...added] })
+    } else {
+      prefs.set({ density, ...next })
+    }
+  }
+  const columnState = listState.columns
+    ? {
+        hidden: schema.list.columns.filter((name) => !visibleColumns.includes(name)),
+        extra: visibleColumns.filter((name) => !schema.list.columns.includes(name)),
+      }
+    : { hidden, extra }
 
   return (
     <div
@@ -560,9 +764,22 @@ function ListView({
       {!embedded && (
       <div className="list-toolbar">
         <h1 className="list-toolbar__title">
-          {showArchived ? `Archived ${plural}` : capitalize(plural)}
-          {state.status === 'ready' && (
-            <span className="list-toolbar__count">{total.toLocaleString()}</span>
+          {showArchived ? (
+            `Archived ${plural}`
+          ) : (
+            <ViewMenu
+              plural={plural}
+              views={views}
+              activeId={listState.view}
+              changed={changed}
+              onApply={applyView}
+              onSave={saveView}
+              onUpdate={updateView}
+              onDelete={deleteView}
+            />
+          )}
+          {status === 'ready' && (
+            <span className="list-toolbar__count">{recordCount.toLocaleString()}</span>
           )}
         </h1>
         <div className="list-toolbar__actions">
@@ -574,7 +791,7 @@ function ListView({
           />
           <ListControls
             density={density}
-            onDensity={(next) => prefs.set({ density: next, hidden, extra })}
+            onDensity={(next) => (listState.view ? setListState({ density: next }) : prefs.set({ density: next, hidden, extra }))}
             // Every field this user can read, declared columns first. Long
             // text and the record id don't make useful columns.
             columns={[
@@ -587,30 +804,26 @@ function ListView({
               ),
             ].map((id) => ({ id, label: schema.fields[id].label }))}
             hidden={[
-              ...hidden,
+              ...columnState.hidden,
               ...Object.keys(schema.fields).filter(
-                (id) => !schema.list.columns.includes(id) && !extra.includes(id),
+                (id) => !schema.list.columns.includes(id) && !columnState.extra.includes(id),
               ),
             ]}
             onToggleColumn={(id) => {
+              const { hidden: h, extra: e } = columnState
               if (schema.list.columns.includes(id)) {
-                prefs.set({
-                  density,
-                  extra,
-                  hidden: hidden.includes(id) ? hidden.filter((h) => h !== id) : [...hidden, id],
-                })
+                changeColumns({ extra: e, hidden: h.includes(id) ? h.filter((x) => x !== id) : [...h, id] })
               } else {
-                prefs.set({
-                  density,
-                  hidden,
-                  extra: extra.includes(id) ? extra.filter((e) => e !== id) : [...extra, id],
-                })
+                changeColumns({ hidden: h, extra: e.includes(id) ? e.filter((x) => x !== id) : [...e, id] })
               }
             }}
-            onResetColumns={() => prefs.set({ density, hidden: [], extra: [] })}
-            customised={hidden.length > 0 || extra.length > 0}
+            onResetColumns={() => (listState.view ? setListState({ columns: null }) : prefs.set({ density, hidden: [], extra: [] }))}
+            customised={columnState.hidden.length > 0 || columnState.extra.length > 0}
             onRefresh={retry}
-            refreshing={state.status === 'loading'}
+            refreshing={status === 'loading'}
+            groupable={groupable}
+            groupBy={groupBy}
+            onGroupBy={(field) => setListState({ groupBy: field, collapsed: [] })}
           />
           {archiveField && (
             <Button
@@ -626,7 +839,7 @@ function ListView({
           )}
           {schema.actions.create && !showArchived && (
             <Button asChild className="h-[var(--control-height)]">
-              <RecordRef model={{ app_label: appLabel, model }} id="new">
+              <RecordRef model={modelRef} id="new">
                 <Plus className="size-4" aria-hidden />
                 New {schema.verbose_name}
               </RecordRef>
@@ -637,25 +850,52 @@ function ListView({
 
       )}
 
-      {!embedded && filter && Object.keys(filter).length > 0 && (
-        <div className="list-filters" role="status">
-          {Object.entries(filter).map(([name, value]) => {
-            const field = schema.fields[name]
-            const first = getRow(0)
-            // A link's name, from the rows themselves; otherwise the value.
-            const shown = (field?.type === 'many_to_one' && first?.labels[name]) || String(value)
-            return (
-              <span key={name} className="list-filters__chip">
-                <span className="list-filters__label">{field?.label ?? name}</span> is <strong>{shown}</strong>
-              </span>
-            )
-          })}
-          {onClearFilter && (
-            <button type="button" className="list-filters__clear" onClick={onClearFilter}>
-              Show all
-            </button>
+      {!embedded && (
+        <div className="list-filterline">
+          {filter && Object.keys(filter).length > 0 && (
+            <div className="list-filters" role="status">
+              {Object.entries(filter).map(([name, value]) => {
+                const field = schema.fields[name]
+                const first = getRow(0)
+                // A link's name, from the rows themselves; otherwise the value.
+                const shown = (field?.type === 'many_to_one' && first?.labels[name]) || String(value)
+                return (
+                  <span key={name} className="list-filters__chip">
+                    <span className="list-filters__label">{field?.label ?? name}</span> is <strong>{shown}</strong>
+                  </span>
+                )
+              })}
+              {onClearFilter && (
+                <button type="button" className="list-filters__clear" onClick={onClearFilter}>
+                  Show all
+                </button>
+              )}
+            </div>
+          )}
+          <FilterBar
+            schema={schema}
+            filters={listState.filters}
+            labels={filterLabels}
+            onLabels={addFilterLabels}
+            onChange={(filters) => setListState({ filters })}
+          />
+          {dropped > 0 && (
+            <p className="list-filterline__note" role="status">
+              {dropped === 1 ? '1 filter isn’t available to you' : `${dropped} parts of this view aren’t available to you`}
+            </p>
           )}
         </div>
+      )}
+
+      {!embedded && (
+        <SummaryStrip
+          summaries={summaries}
+          loading={aggregate.state.status === 'loading'}
+          slots={schema.list.summaries?.length ?? 0}
+          onApply={(summary) =>
+            setListState({ filters: [...listState.filters, ...summary.filter.filter((f) => !listState.filters.includes(f))] })
+          }
+        />
       )}
 
       <div
@@ -716,29 +956,39 @@ function ListView({
             })}
           </div>
 
-          {state.status === 'loading' && <SkeletonRows columns={widths} />}
+          {status === 'loading' && (grouped ? <SkeletonGroups columns={widths} /> : <SkeletonRows columns={widths} />)}
 
-          {state.status === 'error' && (
-            <StatePanel icon={CloudOff} tone="danger" title={`Couldn’t load ${plural}`} message={state.message}>
+          {status === 'error' && (
+            <StatePanel icon={CloudOff} tone="danger" title={`Couldn’t load ${plural}`} message={errorText}>
               <Button variant="outline" onClick={retry} className="h-[var(--control-height)]">
                 Try again
               </Button>
             </StatePanel>
           )}
 
-          {embedded && state.status === 'ready' && total === 0 && (
+          {embedded && status === 'ready' && total === 0 && (
             <p className="list-embedded-empty">None yet.</p>
           )}
 
-          {!embedded && state.status === 'ready' && total === 0 && (
-            query ? (
+          {!embedded && status === 'ready' && total === 0 && (
+            listState.q ? (
               <StatePanel
                 icon={SearchX}
-                title={`No ${showArchived ? 'archived ' : ''}${plural} match “${query}”`}
+                title={`No ${showArchived ? 'archived ' : ''}${plural} match “${listState.q}”`}
                 message={`Search looks in ${schema.list.search_fields.map((f) => schema.fields[f]?.label ?? f).join(', ')}.`}
               >
                 <Button variant="outline" onClick={() => setSearchInput('')} className="h-[var(--control-height)]">
                   Clear search
+                </Button>
+              </StatePanel>
+            ) : filtered ? (
+              <StatePanel
+                icon={Filter}
+                title="No records match these filters"
+                message="Remove a filter, or clear them all to see every record."
+              >
+                <Button variant="outline" onClick={() => setListState({ filters: [] })} className="h-[var(--control-height)]">
+                  Clear filters
                 </Button>
               </StatePanel>
             ) : showArchived ? (
@@ -763,7 +1013,7 @@ function ListView({
               >
                 {schema.actions.create && (
                   <Button asChild className="h-[var(--control-height)]">
-                    <RecordRef model={{ app_label: appLabel, model }} id="new">
+                    <RecordRef model={modelRef} id="new">
                       <Plus className="size-4" aria-hidden />
                       New {schema.verbose_name}
                     </RecordRef>
@@ -773,14 +1023,31 @@ function ListView({
             )
           )}
 
-          {state.status === 'ready' && total > 0 && (
+          {status === 'ready' && total > 0 && (
             <div className="list-body" style={{ height: virtualizer.getTotalSize() }}>
               {virtualRows.map((virtualRow) => {
                 const row = rows[virtualRow.index]
                 if (!row) return null
+                const group = row.original.group
+                if (group) {
+                  return (
+                    <GroupRow
+                      key={virtualRow.key}
+                      group={group}
+                      index={virtualRow.index}
+                      start={virtualRow.start}
+                      collapsed={listState.collapsed.includes(group.key)}
+                      onToggle={() => toggleGroup(group.key)}
+                      columns={visibleColumns.map((name) => ({ name, width: widthOf(name), type: schema.fields[name].type }))}
+                      tabIndex={virtualRow.index === activeIndex ? 0 : -1}
+                      onFocus={() => setActiveIndex(virtualRow.index)}
+                      onKeyDown={(event) => onRowKeyDown(event, virtualRow.index)}
+                    />
+                  )
+                }
                 const record = row.original.record
                 const loaded = record != null
-                const open = loaded && isRecordHeld({ app_label: appLabel, model }, record.id)
+                const open = loaded && isRecordHeld(modelRef, record.id)
                 return (
                   <div
                     key={virtualRow.key}
@@ -868,7 +1135,7 @@ function ListView({
                     {loaded && (
                       <div className="list-row__actions">
                         <RecordRef
-                          model={{ app_label: appLabel, model }}
+                          model={modelRef}
                           id={record.id}
                           surface="page"
                           className="list-row__action"
@@ -891,6 +1158,75 @@ function ListView({
   )
 }
 
+/**
+ * A group's header row: its name, how many records, and the sum of every
+ * money column under that column. The label spans the columns before the
+ * first sum, so a long name isn't squeezed into one narrow cell.
+ */
+export function GroupRow({
+  group,
+  index,
+  start,
+  collapsed,
+  onToggle,
+  columns,
+  tabIndex,
+  onFocus,
+  onKeyDown,
+  loading,
+}: {
+  group: GroupHeader
+  index: number
+  start: number
+  collapsed: boolean
+  onToggle: () => void
+  columns: { name: string; width: number; type: string }[]
+  tabIndex?: number
+  onFocus?: () => void
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void
+  /** Gallery: the header before its counts arrive. */
+  loading?: boolean
+}) {
+  const firstSum = columns.findIndex((column) => column.type === 'currency' && column.name in group.sums)
+  const lead = firstSum === -1 ? columns.length : Math.max(1, firstSum)
+  const leadWidth = columns.slice(0, lead).reduce((sum, column) => sum + column.width, 0)
+  const openable = group.filter !== null
+  return (
+    <div
+      role="row"
+      aria-rowindex={index + 1}
+      aria-expanded={openable ? !collapsed : undefined}
+      data-row-index={index}
+      tabIndex={tabIndex}
+      className={cn('list-group', collapsed && 'list-group--collapsed', !openable && 'list-group--closed')}
+      style={{ transform: `translateY(${start}px)` }}
+      onClick={openable ? onToggle : undefined}
+      onFocus={(event) => event.target === event.currentTarget && onFocus?.()}
+      onKeyDown={onKeyDown}
+      title={openable ? undefined : 'These records fall outside every range, so they can’t be listed as one group.'}
+    >
+      <div role="cell" className="list-group__lead" style={{ width: leadWidth }}>
+        <ChevronRight className={cn('list-group__chevron', !openable && 'invisible')} aria-hidden />
+        <span className={cn('list-group__label', group.restricted && 'restricted-value')}>
+          {group.restricted ? 'Restricted' : group.label}
+        </span>
+        {loading ? (
+          <Skeleton className="h-3 w-8" />
+        ) : (
+          <span className="list-group__count">{group.count.toLocaleString()}</span>
+        )}
+      </div>
+      {columns.slice(lead).map((column) => (
+        <div key={column.name} role="cell" className="list-group__cell" style={{ width: column.width }}>
+          {column.type === 'currency' && column.name in group.sums && (
+            loading ? <Skeleton className="ml-auto h-3 w-16" /> : <span className="list-group__sum" title={formatMoney(group.sums[column.name])}>{formatMoney(group.sums[column.name])}</span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function SkeletonRows({ columns }: { columns: number[] }) {
   return (
     <div aria-busy="true">
@@ -899,6 +1235,32 @@ function SkeletonRows({ columns }: { columns: number[] }) {
           {columns.map((width, column) => (
             <div key={column} className="list-row__cell" style={{ width }}>
               <Skeleton className="h-3 w-3/5" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Group headers on their way: header-shaped, with a few rows under each. */
+function SkeletonGroups({ columns }: { columns: number[] }) {
+  return (
+    <div aria-busy="true">
+      {Array.from({ length: 3 }, (_, group) => (
+        <div key={group}>
+          <div className="list-group list-group--static">
+            <div className="list-group__lead" style={{ width: columns[0] }}>
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+          {Array.from({ length: 3 }, (_, row) => (
+            <div key={row} className="list-row list-row--static list-row--pending">
+              {columns.map((width, column) => (
+                <div key={column} className="list-row__cell" style={{ width }}>
+                  <Skeleton className="h-3 w-3/5" />
+                </div>
+              ))}
             </div>
           ))}
         </div>
