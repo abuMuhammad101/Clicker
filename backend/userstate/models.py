@@ -53,3 +53,37 @@ class UserPreference(models.Model):
 
     def __str__(self):
         return f'{self.user_id}:{self.key}'
+
+
+class SavedView(models.Model):
+    """
+    A list's state, saved under a name by one person: filters, sort, grouping
+    (with which groups are collapsed), columns and density. Module views are
+    declared in a model's Schema instead and never stored here.
+
+    `state` is the shape `data.query.narrow_view` reads. A view is narrowed to
+    the reader's fields every time it's served, so a shared view never shows
+    anyone more than their own role allows.
+    """
+
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_views')
+    app_label = models.CharField(max_length=100)
+    model_name = models.CharField(max_length=100)
+    label = models.CharField(max_length=80)
+    state = models.JSONField()
+    # Offered to everyone who can see the model, not just its owner.
+    shared = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['label']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['owner', 'app_label', 'model_name', 'label'], name='one_view_name_per_owner_and_list'
+            ),
+        ]
+        indexes = [models.Index(fields=['app_label', 'model_name'], name='savedview_list')]
+
+    def __str__(self):
+        return f'{self.app_label}.{self.model_name}: {self.label}'
