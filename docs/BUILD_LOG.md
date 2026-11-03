@@ -1632,3 +1632,21 @@ second half of S-3.
   adjustment requested by the Clerk (Approve/Reject), one the Manager
   requested (waiting), contact archive confirm, archived contact, and the
   dark versions of the Clerk screens. Then Hassan judges before S-4.
+
+## 2026-11-03 | office | S-3 screenshots: setup only
+
+- Pulled S-3 to the office machine; `npm install` (Vitest), `tsc -b` clean,
+  no unapplied migrations on Neon.
+- `CLICKER_LAB=1` added to this machine's `.env`, so the lab models show
+  here and a migrate from this machine no longer strips their permissions.
+- **`dev-verify`'s password was reset by Hassan** (it was never stored on
+  this machine). The other machine needs the new one from the password
+  manager. Tip learned: Ctrl+V into Django's hidden password prompt on
+  Windows saves a control character, not the text.
+- Screenshots not taken: the browser pane's controls dropped out after an
+  app restart.
+
+- Half-finished: the S-3 Manager and dark-mode screenshots (unchanged).
+- **Next single action:** in a fresh session, with the pane signed in as
+  `dev-verify` and widened, capture the list in the entry above. Then
+  Hassan judges S-3 before S-4.
