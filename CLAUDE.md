@@ -91,10 +91,11 @@ Hassan is a product designer, new to backend work. He is the design authority an
 
 ## Current state
 
-**Phase 1 is complete; Phase 2's 2a, 2b, the surfaces contract and 2c (permissions) are done. The demo sprint is under way: see `docs/DEMO_SPRINT.md` (sessions, gates, cut order). S-1 (security foundation) and S-2 (date, datetime, integer and currency types, computed fields, related lists) are done.** `docs/BUILD_LOG.md` is the history and its newest entry ends with the next single action; read that before starting work.
+**Phase 1 is complete; Phase 2's 2a, 2b, the surfaces contract and 2c (permissions) are done. The demo sprint is under way: see `docs/DEMO_SPRINT.md` (sessions, gates, cut order). S-1 (security foundation), S-2 (date, datetime, integer and currency types, computed fields, related lists), S-3 (workflows, numbering, approvals, archive and empty states) and S-4 (filters, saved views, group-by with sums, summary strip) are done.** `docs/BUILD_LOG.md` is the history and its newest entry ends with the next single action; read that before starting work.
 
 ### What exists
 - **Backend:** Django + DRF on Neon. `core` (Contact, Country), `catalog` (Product), `accounts` (session auth), `userstate` (per-user preferences, record views). The schema endpoint, generic record API (runs `Model.clean()`), search endpoint and registry endpoint are all derived from models that opt in with a `Schema` class.
+- **Lists:** one query grammar (`data/query.py`: `?filter=field:op:value`, `group_by`, summaries), `Schema.views`, `Schema.summaries`, computed `buckets`, personal and shared saved views (`/api/views/`). The page keeps a list's state in its URL.
 - **Frontend:** the registry field components (incl. date, datetime, integer, currency; decimals travel as strings, never floats), form and list renderers (related lists, `?field=value` filters, computed fields marked Σ), and an app shell (sidebar and breadcrumbs generated from the registry, Recents as home, contextual save bar, peek drawer). Product's screens appeared with zero frontend changes, which passed Phase 1's exit test.
 - **Auth and access:** every API endpoint requires a Django session (401 otherwise); sign-in is throttled (django-axes). Roles Manager and Clerk are Groups seeded after every migrate. Every model is a `foundation.ClickerModel` with server-owned audit fields, and every write is in the append-only `AuditEntry` log.
 

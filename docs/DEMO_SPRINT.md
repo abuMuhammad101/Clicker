@@ -16,6 +16,16 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | **S-6** | Journey B: Karachi port clearing agency (Jobs with stages and a demurrage countdown, Containers, Disbursements; the invoice drafts itself at gate-out); team and roles page with "View as role" | Gate-out drafts exactly one invoice (test); "View as role" shows exactly what that role's schema allows, using the same permission function as the API; Journey B runs end to end in the browser |
 | **S-7** | Freeze and rehearse | Two full rehearsals without a code change; `check --deploy`, `pip-audit`, `npm audit` clean; nothing new merged |
 
+## Status (3 Nov 2026)
+
+| # | Gate |
+| --- | --- |
+| S-1 | Passed (30 Oct) |
+| S-2 | Passed (30 Oct; review fixes 1 Nov) |
+| S-3 | Passed (1 Nov); screenshots completed 3 Nov |
+| S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
+| S-5 | Next |
+
 ## Cut order, if behind
 
 Cut **whole items, in this order**, never half-build one. Cut items go to the Notion Parking Lot.

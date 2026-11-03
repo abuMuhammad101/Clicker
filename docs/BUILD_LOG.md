@@ -1650,3 +1650,162 @@ second half of S-3.
 - **Next single action:** in a fresh session, with the pane signed in as
   `dev-verify` and widened, capture the list in the entry above. Then
   Hassan judges S-3 before S-4.
+
+## 2026-11-03 | office | S-4: lists that answer questions
+
+A manager can narrow 10,000 records to the ones that matter, see the totals
+that matter, and come back to that view tomorrow. All of it from each model's
+Schema; no model-specific code. Hassan accepted the drafted S-3 workflow
+answers as they stand. Proved on LabBill, LabAdjustment, Contact and Product.
+
+### What was built
+
+- **One query grammar** (`backend/data/query.py`, documented at the top):
+  `?filter=field:op:value`, repeatable, every one must hold. Operators by
+  type: text `contains/is/empty`; selection and workflow state `in`; boolean
+  `is`; date `on/before/after/between/older_than/preset/empty` (presets today,
+  yesterday, this month, last month, this year); integer, decimal, currency
+  `eq/gte/lte/between/empty`; many_to_one `in/empty`; computed fields use
+  their result type's. Values are coerced per type (Decimal for money, ISO
+  dates, choice values checked). Any bad field, operator or value is a 400
+  with a sentence, never a 500 (a 14-case test throws garbage at it). Only
+  readable fields; an unknown field and an unreadable one get the same
+  answer. Everything goes through `scoped_queryset`. The older
+  `?field=value` exact filter stays for related lists.
+- **Group-by with totals**: `GET …/aggregate/?group_by=` returns one header
+  per group (label, count, the sum of every readable currency field, and the
+  filter that selects its rows), in **one GROUP BY query** (tested).
+  Groupable: selection, workflow state, boolean, many_to_one (labels through
+  the target's own scope, so an unseen record's group reads "Restricted"),
+  date by month, and computed fields that declare `buckets`.
+  `LabBill.days_overdue = days_since('due_date')` with buckets Not yet due /
+  0–30 / 31–60 / 61–90 / 90+ days is the aging proof.
+- **Summary strip**: `Schema.summaries`, at most four (a startup check
+  enforces it), each `sum`, `count` or `avg` with an optional filter,
+  computed in one aggregate query over the current filtered, scoped set. A
+  summary over (or filtered by) a field the user can't read isn't returned
+  at all.
+- **Saved views**: module views in `Schema.views`; personal views in a new
+  `userstate.SavedView` table (owner, model, label, state JSON, `shared`).
+  `GET/POST /api/views/<app>/<model>/`, `PATCH/DELETE …/<id>/` (own views
+  only, else 404). Every view is narrowed to the reader's schema as it's
+  served (`narrow_view`): filters, sort, grouping and columns on unreadable
+  fields are dropped and counted. A view can't be saved with a filter its
+  owner can't read.
+- **Indexes the schema implies**: B-tree on sorted, filtered and grouped
+  fields, and `pg_trgm` GIN indexes on `UPPER(field)` for every search field
+  (Django's `icontains` compares upper-cased text, so that's the expression
+  an index must cover). `foundation.0004` enables `pg_trgm`.
+- **Frontend**, generic: `FilterBar` (chips that read as sentences: "Amount
+  at least Rs 1 lakh", "Due date before 1 Oct 2026", "Customer is any of 3";
+  an editor per type; Clear all; a chip the user can't apply is struck
+  through and never sent), `ViewMenu` (the page title is the active view;
+  "Edited" when changed; Save as view, with "Share with everyone who can see
+  …"; Update for your own; delete), group-by control, `GroupRow` headers
+  with sums under their money columns, collapsible, collapse kept in the
+  view, and `SummaryStrip` (lakh and crore, the exact figure on hover, click
+  to narrow). "No records match these filters" uses StatePanel with one-click
+  Clear filters. All in the gallery first (`#filters`, `#views`, `#groups`,
+  `#summaries`) with their states.
+- **URL holds the state**: `?view=…&filter=…&sort=…&group=…&collapsed=…&q=…`.
+  The page (AppShell) owns the URL; the list renderer gets `state` and emits
+  `onStateChange`, so it still knows nothing about where it lives (second
+  law). A link naming only a view (`?view=module:aging`) opens it whole.
+
+### Decisions, one line each
+
+- **The grammar is `field:op:value`, not JSON in the query string**: readable
+  in a URL, repeatable, and a chip's sentence maps one-to-one onto it.
+- **Groups are filters**: each header carries the filter that selects its
+  rows, so rows of a group come through the ordinary list endpoint and its
+  scope, with nothing new to secure.
+- **Grouped scrolling stays windowed**: `useGroupedWindow` lays out headers
+  (from one aggregate query) and fetches each expanded group's rows in pages
+  of 100 only as the viewport reaches them; a collapsed group fetches
+  nothing. `useRecordWindow` is unchanged for ungrouped lists.
+- **Saved views get a table, not the preferences store**: they're named,
+  shareable and need per-owner rules and a unique name; preferences are one
+  private value per key.
+- **Views are narrowed when served, and the list refuses again when
+  applied**: two locks, so a stale or shared view can never widen access.
+- **Columns and density live in the view while one is open**, the person's
+  preferences otherwise; changing them inside a view marks it Edited.
+- **Bucket boundaries are inclusive and declared in the Schema**; rows outside
+  every bucket form "Other", which can't be opened (no single filter
+  selects them) and says so on hover.
+- **Renderer capabilities added as props, per the second law**:
+  `ListRenderer` gets `state` and `onStateChange`; `GroupRow` is exported for
+  the gallery.
+
+### Definition of done
+
+1. **Pass.** Backend: 177 tests OK (28 new in `data/test_s4.py`): a filter on
+   an unreadable field is refused with the same answer as an unknown one; a
+   reader applying a Manager's shared view gets the view narrowed (2 parts
+   dropped) and only the fields they can read, and the Manager's raw filters
+   are refused; group sums and summaries equal a hand-computed nine-bill
+   fixture; a bad operator or value is a 400; group headers are one query.
+2. **Pass.** `npx tsc -b`; frontend tests 19 passed; `npm run build`.
+3. **Pass.** 10,000 bulk bills on the local Postgres 18 (`seed_lab_volume`,
+   which refuses any non-local host), measured with `manage.py measure_lists`
+   (median of 7 after a warm-up, signed in, through the full request stack):
+
+   | Request | Median | Queries |
+   | --- | --- | --- |
+   | List, two filters, sorted, first 100 rows | 29.8 ms | 9 |
+   | Aggregate: summaries + group by state | 15.8 ms | 9 |
+   | Aggregate: summaries + aging buckets | 24.2 ms | 9 |
+   | Rows of one group (90+ days) | 38.4 ms | 9 |
+   | Deep window (rows 9,000–9,100), no filter | 65.0 ms | 9 |
+   | Search "karachi" + one filter | 34.2 ms | 9 |
+   | Sort by computed days overdue | 32.7 ms | 9 |
+
+   Slowest 65 ms against a 300 ms budget. The 9 queries include the session,
+   the user and permission lookups; the work itself is 2–3.
+4. **Pass, on the local database** (the real API and frontend on 8200/5273,
+   10,005 bills, a local test Manager; the served password file deleted
+   after). "Overdue over 90 days" shows its aging group (5,427 bills, Rs
+   1,008,150,500.00) and the summary strip; "Aging" shows all five buckets
+   with totals; a personal view saved through the dialog came back after a
+   reload with its filters, sort, grouping and collapsed groups. The board
+   view was not built (below), so no drag check.
+5. **Pass.** `docs/design/s4/` (1440, light and dark: the overdue view, the
+   aging groups, the saved view after reload, the filter editor, and the four
+   gallery sections). The outstanding S-3 set is in `docs/design/s3/`: gallery
+   workflow and states sections, the Manager's Approve/Reject, the
+   Manager-requested "waiting", the archive confirmation and an archived
+   contact (both on the local database), and dark versions of the six Clerk
+   screens.
+
+Applied on Neon: `foundation.0004` (pg_trgm), `core.0008`, `catalog.0003`,
+`userstate.0002`, `workflowlab.0002`. `seed_lab` added six aging bills and
+dates to the existing ones there.
+
+### Not built: board view
+
+Cut, as the brief allows ("only if 1–4 pass first"); it is also the last
+item in the sprint's cut order. 1–4 pass, but the time went into making them
+right at volume. To the Notion Parking Lot.
+
+### Findings and gaps
+
+- **Neon from this office is slow enough to hurt the demo**: about 175 ms per
+  query and 1.5 s to connect, and the dev server reconnects on every request
+  (`CONN_MAX_AGE` is 0). The registry took 21 s once; some requests hung.
+  Before S-7: persistent connections, fewer permission queries per request,
+  and host the backend in Neon's region.
+- An archived record's form is still editable (the notice and Restore are
+  there, but nothing stops an edit). Decide whether archived means read-only.
+- A many_to_one filter chip asks for its names one request per id.
+- Reopening a number filter shows the raw value (100000), not 1,00,000.
+- Collapsing a group marks the view Edited; that's honest, but may annoy.
+- `SchemaViewer.tsx`'s hardcoded model list (the law) is still open.
+- This machine now has `CLICKER_LAB=1` and `TEST_DATABASE_URL` in `.env`, a
+  local Postgres from the installed binaries (`%LOCALAPPDATA%\clicker-pg`,
+  start it with `pg_ctl -D …\data start` after a restart), and a
+  `local-backend` launch config pointing 8200 at it.
+
+- Half-finished: nothing.
+- **Next single action:** S-5. Replace the lab with the real invoicing core:
+  a `Bill` model with the lab bill's workflow, numbering, aging buckets,
+  summaries and views, then Payments with oldest-first allocation.
