@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
@@ -5,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 // must stay at 4.5:1 on every surface a row sits on, and the identifier and amount columns must stay
 // brighter than the body cells.
 const css = readFileSync(new URL('../../../tokens.css', import.meta.url), 'utf8')
-const dark = css.slice(css.indexOf("\n:root[data-theme='dark']"))
+const dark = css.slice(css.search(/^:root\[data-theme=['"]dark['"]\]/m))
 
 function token(name: string): string {
   const own = dark.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`))
