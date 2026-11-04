@@ -20,6 +20,7 @@ import { UrlListCell } from '@/fields/url/UrlListCell'
 import { S2Sections } from './S2Sections'
 import { S3Sections } from './S3Sections'
 import { S4Sections } from './S4Sections'
+import { S5Sections } from './S5Sections'
 import './FieldGallery.css'
 
 const TYPE_CHOICES = [
@@ -87,6 +88,7 @@ export function FieldGallery() {
         </p>
       </div>
 
+      <S5Sections />
       <S4Sections />
       <S3Sections />
 

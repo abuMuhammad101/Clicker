@@ -27,6 +27,7 @@ import { isVisible } from '@/lib/visibility'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema, WorkflowTransition } from '@/types/schema'
 import { WorkflowBar } from '../workflow/WorkflowBar'
+import { ActivityTrail } from './ActivityTrail'
 import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
 
@@ -314,7 +315,11 @@ function EditableForm({
   // A record in a locked workflow state (posted, requested) reads like one
   // the user can't edit: the server would refuse the save anyway.
   const locked = record?.workflow?.locked === true
-  const viewing = mode === 'view' || (record != null && (!canUpdate || locked))
+  // An archived record is read-only until it is restored: the server refuses
+  // any other edit, so the form doesn't offer one.
+  const archiveField = schema.archive_field ?? null
+  const archived = record != null && archiveField != null && record.values[archiveField] === false
+  const viewing = mode === 'view' || (record != null && (!canUpdate || locked || archived))
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     initialValues(schema, initialRecord, prefillValues),
   )
@@ -521,8 +526,6 @@ function EditableForm({
   }
 
   // --- Archive: an edit of the schema's archive field -----------------------
-  const archiveField = schema.archive_field ?? null
-  const archived = record != null && archiveField != null && record.values[archiveField] === false
   const [confirmArchive, setConfirmArchive] = useState(false)
 
   const setArchived = async (archive: boolean) => {
@@ -665,7 +668,8 @@ function EditableForm({
         <div className="form-notice" role="status">
           <Archive className="form-notice__icon" aria-hidden />
           <p className="form-notice__text">
-            Archived. It’s out of the {schema.verbose_name_plural} list and pickers; anything that points at it still does.
+            Archived. It’s out of the {schema.verbose_name_plural} list and pickers, and read-only until it’s restored;
+            anything that points at it still does.
           </p>
           {schema.actions.archive && (
             <Button
@@ -705,6 +709,16 @@ function EditableForm({
         <RelatedLists
           parent={{ app_label: appLabel, model, id: record.id }}
           lists={schema.related_lists}
+        />
+      )}
+
+      {record && (
+        <ActivityTrail
+          appLabel={appLabel}
+          model={model}
+          recordId={record.id}
+          schema={schema}
+          version={record.meta?.updated_at}
         />
       )}
 
