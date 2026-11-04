@@ -619,6 +619,19 @@ function EditableForm({
               {record ? record.display : `New ${schema.verbose_name}`}
             </h1>
             {record && workflow && <StateChip schema={schema} value={values[workflow.field]} />}
+            {record &&
+              (schema.header_fields ?? []).map((name) => {
+                const field = schema.fields[name]
+                const choice = field?.choices?.find((c) => String(c.value) === String(values[name]))
+                if (!field || !choice) return null
+                return (
+                  <StatusChip
+                    key={name}
+                    label={`${field.label} · ${choice.label}`}
+                    tone={field.tones?.[String(choice.value)] ?? 'neutral'}
+                  />
+                )
+              })}
             {archived && <StatusChip label="Archived" />}
           </div>
           <p className="form-header__meta">

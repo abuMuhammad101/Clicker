@@ -664,6 +664,8 @@ def build_schema(model, user, mode=None):
         # Where the related lists sit among the groups: after the group with this label
         # (the statement of a customer leads with its bills, not its phone numbers).
         'related_lists_after': _related_lists_after(schema_cls, groups),
+        # Computed chips shown beside the state in the record's header (the countdown on a job).
+        'header_fields': [name for name in getattr(schema_cls, 'header_fields', []) or [] if name in fields],
         # Up to four figures under the title, scoped to the record (values ride on the record).
         'record_summaries': _record_summary_labels(model, fields),
         # States and the transitions this user holds a grant for (none others).

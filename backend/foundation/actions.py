@@ -110,8 +110,12 @@ def after_save(obj, ctx, created):
         getattr(obj, name)(ctx, created)
 
 
-def create(ctx, model, *, summary='', **values):
-    """Create one record, validated, numbered, saved and audited. Returns it."""
+def create(ctx, model, *, summary='', run_hooks=True, **values):
+    """
+    Create one record, validated, numbered, saved and audited. Returns it. `run_hooks=False` skips the
+    model's `on_save` for a caller that makes several records and settles what they feed once at the end
+    (a bill's lines, then its total).
+    """
     fields = audited_fields(model)
     with transaction.atomic():
         obj = model(**values, **_server_owned(ctx, model, creating=True), **numbering.assigned_values(model))
@@ -120,7 +124,8 @@ def create(ctx, model, *, summary='', **values):
         except DjangoValidationError as error:
             raise Refused(_sentence(error))
         obj.save()
-        after_save(obj, ctx, created=True)
+        if run_hooks:
+            after_save(obj, ctx, created=True)
         obj.refresh_from_db()
         record_change(
             actor=ctx.user,

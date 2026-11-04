@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from billing.models import Bill, BillLine
 from foundation import actions, computed
-from foundation.money import format_money, quantize
+from foundation.money import format_money, money_token, quantize
 
 
 def invoice_plan(job):
@@ -47,14 +47,16 @@ def draft_invoice(ctx, job):
     if plan['fee'] > 0:
         actions.create(
             ctx, BillLine, bill=bill, description=f'Clearing services · {locked.number}', quantity=1,
-            unit_price=plan['fee'], pass_through=False, summary=why,
+            unit_price=plan['fee'], pass_through=False, summary=why, run_hooks=False,
         )
     for disbursement in plan['lines']:
         actions.create(
             ctx, BillLine, bill=bill, description=_describe(disbursement), quantity=1,
-            unit_price=disbursement.amount, pass_through=True, summary=why,
+            unit_price=disbursement.amount, pass_through=True, summary=why, run_hooks=False,
         )
         actions.change(ctx, disbursement, state='billed', summary=f'Billed on the draft invoice from {locked.number}')
+    count = len(plan['lines']) + (1 if plan['fee'] > 0 else 0)
+    bill.recalculate(ctx, summary=f'Total worked out from the {count} lines: {money_token(plan["total"])}')
     actions.change(ctx, locked, invoice=bill, summary=why)
     return bill
 

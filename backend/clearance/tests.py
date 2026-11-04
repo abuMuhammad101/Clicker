@@ -271,7 +271,7 @@ class ContainerCountdownTests(ClearanceWorld, TestCase):
         self.assertEqual(record['demurrage_next_deadline'], '2026-11-01')
 
     def test_a_job_with_no_containers_says_so(self):
-        self.assertEqual(self.owner_client.get(f'{JOBS}{self.job.pk}/').json()['values']['demurrage_status'], 'none')
+        self.assertIsNone(self.owner_client.get(f'{JOBS}{self.job.pk}/').json()['values']['demurrage_status'])
 
     def test_a_container_number_is_validated(self):
         for bad in ('MSKU123456', 'msku1234567', '1234MSKU567', 'MSK1234567'):

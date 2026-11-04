@@ -37,15 +37,13 @@ ONE_DAY = Value(datetime.timedelta(days=1), output_field=DurationField())
 
 # What the countdown chip says, in the order it gets worse. Thresholds are days left.
 DEADLINE_CHOICES = [
-    ('none', 'No containers'),
     ('cleared', 'Cleared'),
-    ('comfortable', 'More than 5 days'),
-    ('soon', '3 to 5 days left'),
-    ('urgent', '0 to 2 days left'),
-    ('accruing', 'Accruing demurrage'),
+    ('comfortable', '5+ days'),
+    ('soon', '3–5 days'),
+    ('urgent', '0–2 days'),
+    ('accruing', 'Accruing'),
 ]
 DEADLINE_TONES = {
-    'none': 'neutral',
     'cleared': 'positive',
     'comfortable': 'neutral',
     'soon': 'warning',
@@ -150,8 +148,9 @@ def job_demurrage_status(context):
 
     anything = Container.objects.filter(job=OuterRef('pk')).values('pk')
     days = _job_min_days(context)
+    # No containers at all: nothing to count down, so no chip (empty), not a word that looks like data.
     return Case(
-        When(~Exists(anything), then=Value('none')),
+        When(~Exists(anything), then=Value(None, output_field=CharField())),
         default=status_from(days, 'cleared'),
         output_field=CharField(),
     )

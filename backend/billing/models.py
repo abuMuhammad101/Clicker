@@ -291,11 +291,11 @@ class Bill(ClickerModel):
 
     # ---- totals
 
-    def recalculate(self, ctx):
+    def recalculate(self, ctx, summary=''):
         """The total, from the lines, with each line rounded to the paisa. Only while the bill is open to edit."""
         total = sum((line.amount_value for line in self.lines.all()), Decimal('0.00'))
         if total != self.amount_total:
-            actions.change(ctx, self, amount_total=total)
+            actions.change(ctx, self, amount_total=total, summary=summary)
 
     # ---- transitions
 

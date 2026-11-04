@@ -27,13 +27,17 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--user', required=True)
         parser.add_argument('--runs', type=int, default=7)
+        parser.add_argument('--journey', choices=['water', 'clearance'], default='water')
 
-    def handle(self, *args, user, runs, **options):
+    def handle(self, *args, user, runs, journey='water', **options):
         host = settings.DATABASES['default'].get('HOST') or 'localhost'
         if host not in LOCAL_HOSTS:
             raise CommandError(f'Refusing to measure on {host}: local databases only.')
         client = Client(SERVER_NAME='localhost')
         client.force_login(get_user_model().objects.get(username=user))
+        if journey == 'clearance':
+            cases = self.clearance_cases()
+            return self.measure(client, cases, runs)
         biggest = (
             computed.annotate(Contact.objects.filter(is_customer=True), Contact).order_by('-outstanding').first()
         )
@@ -74,7 +78,38 @@ class Command(BaseCommand):
                 ['/api/data/core/contact/?filter=outstanding:gte:0.01&ordering=-outstanding&limit=100'],
             ),
         ]
-        self.stdout.write(f'{Contact.objects.count()} contacts; median of {runs} runs after a warm-up.\n')
+        return self.measure(client, cases, runs)
+
+    def clearance_cases(self):
+        from clearance.models import Job
+
+        job = Job.objects.filter(number='JOB-2026-0007').first() or Job.objects.first()
+        jobs = '/api/data/clearance/job/'
+        states = 'booked,documents_in,gd_filed,assessed,duty_paid,examined,released,gate_out'
+        return [
+            (
+                'Jobs by stage: first 100 rows, grouped, with sums',
+                [
+                    f'{jobs}?filter=state:in:{states}&ordering=number&limit=100',
+                    f'{jobs}aggregate/?filter=state:in:{states}&group_by=state',
+                ],
+            ),
+            (
+                'Demurrage at risk',
+                [f'{jobs}?filter=demurrage_status:in:soon,urgent,accruing&ordering=demurrage_next_deadline&limit=100'],
+            ),
+            (f'{job.number}: record, schema, activity', [f'{jobs}{job.pk}/', '/api/schema/clearance/job/', f'{jobs}{job.pk}/history/']),
+            (
+                f'{job.number}: its two related lists',
+                [
+                    f'/api/data/clearance/container/?job={job.pk}&limit=11',
+                    f'/api/data/clearance/disbursement/?job={job.pk}&limit=11',
+                ],
+            ),
+        ]
+
+    def measure(self, client, cases, runs):
+        self.stdout.write(f'median of {runs} runs after a warm-up.' + chr(10))
         worst = 0.0
         for label, urls in cases:
             for url in urls:

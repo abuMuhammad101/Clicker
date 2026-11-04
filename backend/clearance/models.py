@@ -92,7 +92,9 @@ class Job(ClickerModel):
         numbering = {'field': 'number', 'prefix': 'JOB', 'digits': 4}
         on_save = 'on_save'
         restricted_fields = ['service_fee', 'invoice']
-        read_only_fields = ['invoice']
+        read_only_fields = ['invoice', 'stage_since']
+        # Chips drawn beside the state in the record's header: what the person must see before anything else.
+        header_fields = ['demurrage_status']
         field_types = {'service_fee': 'currency'}
         domains = {'client': {'is_customer': True}, 'assigned_to': {'active': True, 'role': FIELD_AGENT}}
         empty_groups = ['state']
@@ -107,7 +109,7 @@ class Job(ClickerModel):
             {'label': 'The consignment', 'fields': ['bl_number', 'vessel', 'terminal', 'port_of_origin', 'eta']},
             {
                 'label': 'Where it stands',
-                'fields': ['demurrage_status', 'demurrage_next_deadline', 'containers_count', 'days_in_stage'],
+                'fields': ['demurrage_status', 'demurrage_next_deadline', 'containers_count', 'stage_since', 'days_in_stage'],
             },
             {'label': 'Money', 'fields': ['service_fee', 'disbursements_total', 'billable_total', 'invoice']},
             {'label': 'Notes', 'fields': ['notes']},
@@ -116,7 +118,7 @@ class Job(ClickerModel):
             {
                 'relation': 'containers',
                 'label': 'Containers',
-                'columns': ['number', 'size', 'state', 'deadline_status', 'days_left', 'free_until', 'demurrage_accrued'],
+                'columns': ['number', 'size', 'deadline_status', 'days_left', 'free_until', 'demurrage_accrued'],
             },
             {
                 'relation': 'disbursements',
@@ -134,7 +136,7 @@ class Job(ClickerModel):
                 'requires': ['clearance.container'],
             },
             'demurrage_next_deadline': {
-                'label': 'Next free-days deadline',
+                'label': 'Deadline',
                 'type': 'date',
                 'description': 'The earliest last free day among containers still inside the port',
                 'expression': ex.job_next_deadline,
@@ -183,6 +185,8 @@ class Job(ClickerModel):
                 'group_by': 'state',
                 'filters': ['state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released,gate_out'],
                 'columns': ['number', 'client', 'goods', 'demurrage_status', 'demurrage_next_deadline', 'assigned_to', 'days_in_stage', 'billable_total'],
+                # The early stages are just counts and sums; the stages where the money and the risk are stay open.
+                'collapsed': ['booked', 'documents_in', 'gd_filed', 'gate_out'],
                 'ordering': 'number',
             },
             {
@@ -278,8 +282,9 @@ class Job(ClickerModel):
     # ---- transitions
 
     def entered(self, ctx):
-        """Every move starts the stage clock again."""
-        actions.change(ctx, self, stage_since=_today())
+        """Every move starts the stage clock again. (A bookkeeping date, not an edit: it has no entry of its own in the trail.)"""
+        self.stage_since = _today()
+        type(self).objects.filter(pk=self.pk).update(stage_since=self.stage_since)
 
     def _billing_summary(self):
         from .services import invoice_plan
@@ -304,7 +309,7 @@ class Job(ClickerModel):
     def drafts_the_invoice(self, ctx):
         draft_invoice(ctx, self)
         self.refresh_from_db()
-        actions.change(ctx, self, stage_since=_today())
+        self.entered(ctx)
 
     def check_close(self, user):
         invoice = Bill.objects.filter(pk=self.invoice_id).first() if self.invoice_id else None
@@ -389,9 +394,9 @@ class Container(ClickerModel):
                 'expression': ex.over('discharged_on', 'free_days', 'gate_out_on')(lambda context: ex.days_left_expr(context.today)),
             },
             'deadline_status': {
-                'label': 'Free days',
+                'label': 'Countdown',
                 'type': 'selection',
-                'description': 'More than 5 days: quiet; 3 to 5: amber; 0 to 2: red; past: accruing, solid red',
+                'description': 'Days of free time left: more than 5 quiet, 3 to 5 amber, 0 to 2 red, past it accruing (solid red)',
                 'expression': ex.over('discharged_on', 'free_days', 'gate_out_on')(
                     lambda context: ex.status_from(ex.days_left_expr(context.today), 'cleared')
                 ),

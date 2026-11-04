@@ -179,6 +179,8 @@ export interface ModelSchema {
   related_lists?: RelatedListSchema[]
   /** Render the related lists after the group with this label, not at the end. */
   related_lists_after?: string | null
+  /** Fields (selections with tones) drawn as chips beside the state in the record's header. */
+  header_fields?: string[]
   /** Labels of the record's own figures this user may read; the values ride on the record. */
   record_summaries?: { key: string; label: string; type: string }[]
   /** Null when the model has no workflow. */

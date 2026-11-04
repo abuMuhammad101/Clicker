@@ -254,6 +254,11 @@ class Seeder:
             self.disbursements(job, index, target, rng)
             self.advance(job, target if target != 'closed' else 'gate_out', rng)
             job.refresh_from_db()
+            if target not in ('gate_out', 'closed'):
+                # How long it has been where it is: some jobs are stuck, which is what the column is for.
+                since = self.today - datetime.timedelta(days=1 if self._live(job) else random.Random(self.seed * 5000 + index).randint(0, 12))
+                if job.stage_since != since:
+                    Job.objects.filter(pk=job.pk).update(stage_since=since)
         for job in self.jobs:
             self.finish(job, self.targets[job.pk])
 
@@ -357,10 +362,13 @@ class Seeder:
         gate_out_jobs = [j.pk for j in self.jobs if self.targets[j.pk] == 'gate_out']
         rng = random.Random(self.seed * 9000 + ordinal)
         bill_ago = 6 + ordinal * 7 + rng.randint(0, 3)
+        if target == 'gate_out':
+            bill_ago = 2 + gate_out_jobs.index(job.pk) * 3  # just out of the gate
         issue = self.today - datetime.timedelta(days=bill_ago)
         bill = Bill.objects.get(pk=job.invoice_id)
         if bill.state == 'draft' and bill.issue_date != issue:
-            actions.change(self.coordinator, bill, issue_date=issue, due_date=issue + datetime.timedelta(days=30))
+            # Dating the story, not an edit anyone made: no trail entry.
+            Bill.objects.filter(pk=bill.pk).update(issue_date=issue, due_date=issue + datetime.timedelta(days=30))
         for container in job.containers.filter(gate_out_on__isnull=True):
             discharged = issue - datetime.timedelta(days=rng.randint(6, 12))
             actions.change(self.coordinator, container, discharged_on=discharged, free_days=14,
@@ -369,7 +377,7 @@ class Seeder:
             # Last, because every move starts the stage clock again: the story says when it really got here.
             job.refresh_from_db()
             if job.stage_since != issue:
-                actions.change(self.coordinator, job, stage_since=issue)
+                Job.objects.filter(pk=job.pk).update(stage_since=issue)
 
         if target == 'gate_out' and job.pk == gate_out_jobs[0]:
             backdate()
