@@ -11,6 +11,7 @@ from django.conf import settings
 from billing.expressions import customer_advance, customer_oldest_overdue_days, customer_outstanding
 from foundation.models import ClickerModel
 from foundation.rules import USER
+from water.expressions import consumer_open_cases
 
 
 class Country(ClickerModel):
@@ -215,14 +216,28 @@ class Contact(ClickerModel):
                 'expression': customer_advance('pk'),
                 'requires': ['billing.paymentallocation'],
             },
+            'open_recovery_cases': {
+                'label': 'Open recovery cases',
+                'type': 'integer',
+                'description': 'Recovery cases for this consumer that are not yet settled or written off',
+                'expression': consumer_open_cases('pk'),
+                'requires': ['water.recoverycase'],
+            },
         }
+
+        # A statement's figures, under the title; each is a computed field, so it obeys
+        # the same read rules (nobody sees a figure they could not read as a field).
+        record_summaries = [
+            {'label': 'Outstanding', 'aggregate': 'sum', 'field': 'outstanding'},
+            {'label': 'Oldest overdue (days)', 'aggregate': 'sum', 'field': 'oldest_overdue_days'},
+            {'label': 'Advance held', 'aggregate': 'sum', 'field': 'advance'},
+            {'label': 'Open recovery cases', 'aggregate': 'sum', 'field': 'open_recovery_cases'},
+        ]
 
         # Order here is form layout, not Django's declaration order — group
         # order and field order within a group are both explicit, on purpose.
         groups = [
             {'label': 'Identity', 'fields': ['name', 'type', 'parent', 'job_title', 'tax_id']},
-            # Right under the name: for a customer, this form is their statement.
-            {'label': 'Account', 'fields': ['outstanding', 'oldest_overdue_days', 'advance']},
             {
                 'label': 'Commercial',
                 'fields': ['is_customer', 'is_vendor', 'customer_since', 'payment_terms_days', 'credit_limit'],
@@ -235,14 +250,11 @@ class Contact(ClickerModel):
         # Shown under the form, in this order: the reverse relations a person
         # reading this record wants next to it. Opt-in; `relation` is the
         # related_name, `columns` the target's own fields.
+        # For a customer this form is their statement: the lists follow the identity
+        # group, ahead of commercial terms and phone numbers.
+        related_lists_after = 'Identity'
         related_lists = [
-            {'relation': 'children', 'label': 'People', 'columns': ['name', 'job_title', 'email', 'phone']},
-            {
-                'relation': 'supplied_products',
-                'label': 'Products supplied',
-                'columns': ['name', 'sku', 'sales_price', 'active'],
-            },
-            # The statement: what was billed, what was paid, what was reduced.
+            # The statement: what was billed, what was paid, what was reduced, what is being chased.
             {
                 'relation': 'bills',
                 'label': 'Bills',
@@ -255,14 +267,20 @@ class Contact(ClickerModel):
             },
             {'relation': 'adjustments', 'label': 'Adjustments', 'columns': ['number', 'kind', 'amount', 'state']},
             {
+                'relation': 'recovery_cases',
+                'label': 'Recovery cases',
+                'columns': ['number', 'state', 'owner', 'next_action_date'],
+            },
+            {
                 'relation': 'connections',
                 'label': 'Connections',
                 'columns': ['number', 'district', 'billing_basis', 'status'],
             },
+            {'relation': 'children', 'label': 'People', 'columns': ['name', 'job_title', 'email', 'phone']},
             {
-                'relation': 'recovery_cases',
-                'label': 'Recovery cases',
-                'columns': ['number', 'state', 'owner', 'next_action_date'],
+                'relation': 'supplied_products',
+                'label': 'Products supplied',
+                'columns': ['name', 'sku', 'sales_price', 'active'],
             },
         ]
 

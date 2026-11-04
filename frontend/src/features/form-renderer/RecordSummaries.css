@@ -1,0 +1,46 @@
+/* ---------- Record summaries: a record's own figures under its title ---------- */
+.record-summaries {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.record-summaries__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-5) var(--space-6);
+  border-right: 1px solid var(--border-subtle);
+}
+
+.record-summaries__item:first-child {
+  padding-left: var(--form-pad-x, var(--space-8));
+}
+
+.record-summaries__item:last-child {
+  border-right: 0;
+}
+
+.record-summaries__label {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.record-summaries__value {
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-xl, 18px);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-summaries__value--empty {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular, 400);
+}

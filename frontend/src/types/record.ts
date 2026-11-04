@@ -4,6 +4,15 @@
  * its human label lives in `labels` so the value's shape is the same on
  * read and on write.
  */
+/** One figure about a record; `value` is a decimal string, or null when there is nothing to show. */
+export interface RecordSummary {
+  key: string
+  label: string
+  aggregate: string
+  type: 'currency' | 'integer' | 'decimal'
+  value: string | null
+}
+
 export interface RecordEnvelope {
   id: number
   display: string
@@ -18,6 +27,8 @@ export interface RecordEnvelope {
     created_by: RecordPerson | null
     updated_by: RecordPerson | null
   }
+  /** The record's own figures (Schema.record_summaries) this user can read. */
+  summaries?: RecordSummary[]
   /** Present when the model has a workflow: what this user can do to this record now. */
   workflow?: RecordWorkflow
 }

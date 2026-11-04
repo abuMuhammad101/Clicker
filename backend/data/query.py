@@ -428,14 +428,29 @@ def declared_summaries(model):
     return list(getattr(schema, 'summaries', []) or [])
 
 
-def summaries(queryset, model, fields, today=None):
+def declared_record_summaries(model):
+    schema = getattr(model, 'Schema', None)
+    return list(getattr(schema, 'record_summaries', []) or [])
+
+
+def record_summaries(queryset, model, fields, today=None):
+    """
+    `Schema.record_summaries`: the same shape as list summaries, evaluated over
+    one record (`queryset` is already narrowed to it). A figure over a field the
+    user can't read is left out. An empty value stays empty (null): "no overdue
+    bill" must not read as 0 days.
+    """
+    return summaries(queryset, model, fields, today, specs=declared_record_summaries(model), keep_empty=True)
+
+
+def summaries(queryset, model, fields, today=None, specs=None, keep_empty=False):
     """
     The model's declared summaries over `queryset`, in one query. A summary
     over an unreadable field, or filtered by one, is left out entirely.
     """
     today = today or computed.today()
     usable = []
-    for index, spec in enumerate(declared_summaries(model)):
+    for index, spec in enumerate(declared_summaries(model) if specs is None else specs):
         field = spec.get('field')
         if field is not None and field not in fields:
             continue
@@ -466,26 +481,32 @@ def summaries(queryset, model, fields, today=None):
         value = values[f's{index}']
         kind = spec['aggregate']
         field_type = 'integer' if kind == 'count' else fields[spec['field']]['type']
-        if kind != 'count':
-            places = fields[spec['field']].get('decimal_places', 2)
+        if kind != 'count' and not (keep_empty and value is None):
+            places = 0 if fields[spec['field']]['type'] == 'integer' else fields[spec['field']].get('decimal_places', 2)
             value = decimal.Decimal(value or 0).quantize(decimal.Decimal(1).scaleb(-places))
         result.append({
             'key': str(index),
             'label': spec['label'],
             'aggregate': kind,
             'type': field_type,
-            'value': str(value if value is not None else 0),
+            'value': str(value if value is not None else 0) if not (keep_empty and value is None) else None,
             'filter': [item.as_text() for item in filters],
         })
     return result
 
 
 def check_summaries(model, fields):
-    """Startup check for Schema.summaries: problems as sentences (empty when fine)."""
+    """Startup check for Schema.summaries and Schema.record_summaries: problems as sentences (empty when fine)."""
     problems = []
-    specs = declared_summaries(model)
+    for name, specs in (('summaries', declared_summaries(model)), ('record_summaries', declared_record_summaries(model))):
+        problems.extend(_check_specs(name, specs, fields))
+    return problems
+
+
+def _check_specs(name, specs, fields):
+    problems = []
     if len(specs) > MAX_SUMMARIES:
-        problems.append(f'declares {len(specs)} summaries; at most {MAX_SUMMARIES} fit the strip.')
+        problems.append(f'declares {len(specs)} {name}; at most {MAX_SUMMARIES} fit the strip.')
     for spec in specs:
         if spec.get('aggregate') not in AGGREGATES:
             problems.append(f'summary “{spec.get("label")}” has aggregate {spec.get("aggregate")!r}; use one of {AGGREGATES}.')

@@ -168,6 +168,10 @@ export interface ModelSchema {
   list: ListSchema
   fields: Record<string, FieldSchema>
   related_lists?: RelatedListSchema[]
+  /** Render the related lists after the group with this label, not at the end. */
+  related_lists_after?: string | null
+  /** Labels of the record's own figures this user may read; the values ride on the record. */
+  record_summaries?: { key: string; label: string; type: string }[]
   /** Null when the model has no workflow. */
   workflow?: WorkflowSchema | null
   /** A boolean field where false means archived; null when the model can't be archived. */

@@ -64,7 +64,17 @@
   margin-top: var(--space-6);
 }
 
-.form-sheet--view .form-section__label {
+.form-sheet--view /* Related lists placed between groups by the schema (a customer's statement). */
+.form-body > .related-lists {
+  margin-top: var(--space-8);
+  padding: 0;
+}
+
+.form-body > .related-lists + .form-section {
+  margin-top: var(--space-8);
+}
+
+.form-section__label {
   margin: 0 0 var(--space-3);
   padding: 0 var(--space-1);
   border-bottom: 0;

@@ -441,6 +441,26 @@ def _list_tools(model, fields):
     }
 
 
+def _related_lists_after(schema_cls, groups):
+    after = getattr(schema_cls, 'related_lists_after', None)
+    return after if after in [group['label'] for group in groups] else None
+
+
+def _record_summary_labels(model, fields):
+    """The record's own figures this user can read (labels only; values come on the record)."""
+    from data import query
+
+    labels = []
+    for index, spec in enumerate(query.declared_record_summaries(model)):
+        if spec.get('field') is not None and spec['field'] not in fields:
+            continue
+        if query._filter_problems(spec.get('filter', []), fields, ''):
+            continue
+        field_type = 'integer' if spec['aggregate'] == 'count' else fields[spec['field']]['type']
+        labels.append({'key': str(index), 'label': spec['label'], 'type': field_type})
+    return labels
+
+
 def _write_once_note(model, field_name):
     """What a write-once field tells the person, before and after they set it."""
     roles = roles_that_can_change(model, field_name)
@@ -559,6 +579,11 @@ def build_schema(model, user, mode=None):
         },
         'fields': fields,
         'related_lists': related_lists(model, user),
+        # Where the related lists sit among the groups: after the group with this label
+        # (the statement of a customer leads with its bills, not its phone numbers).
+        'related_lists_after': _related_lists_after(schema_cls, groups),
+        # Up to four figures under the title, scoped to the record (values ride on the record).
+        'record_summaries': _record_summary_labels(model, fields),
         # States and the transitions this user holds a grant for (none others).
         'workflow': workflow.schema_for(user, model),
         'archive_field': archive_field if archive_field in fields else None,

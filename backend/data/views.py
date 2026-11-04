@@ -103,7 +103,12 @@ def _envelopes(user, model, schema, records):
 
 
 def _envelope(user, model, schema, record):
-    return _envelopes(user, model, schema, [record])[0]
+    envelope = _envelopes(user, model, schema, [record])[0]
+    if schema.get('record_summaries'):
+        # The record's own figures (Schema.record_summaries), one aggregate query.
+        queryset = scoped_queryset(user, model, 'view').filter(pk=record.pk)
+        envelope['summaries'] = query.record_summaries(queryset, model, schema['fields'])
+    return envelope
 
 
 def _server_owned(user, model, creating):

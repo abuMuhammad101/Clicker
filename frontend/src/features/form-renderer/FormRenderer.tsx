@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +28,7 @@ import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema, WorkflowTransition } from '@/types/schema'
 import { WorkflowBar } from '../workflow/WorkflowBar'
 import { ActivityTrail } from './ActivityTrail'
+import { RecordSummaries } from './RecordSummaries'
 import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
 
@@ -586,6 +587,17 @@ function EditableForm({
     if (destination) navigate(destination, { force: true })
   }
 
+  const relatedLists =
+    record && schema.related_lists && schema.related_lists.length > 0 ? (
+      <RelatedLists
+        // A transition or a save changes what the lists beside the record show (a posted
+        // payment's allocations): a new version of the record is a fresh fetch of them.
+        key={record.meta?.updated_at ?? record.id}
+        parent={{ app_label: appLabel, model, id: record.id }}
+        lists={schema.related_lists}
+      />
+    ) : null
+
   return (
     <form
       className={cn('form-sheet', viewing && 'form-sheet--view')}
@@ -652,6 +664,8 @@ function EditableForm({
         </div>
       </header>
 
+      {record && <RecordSummaries summaries={record.summaries} />}
+
       {workflow && (
         <WorkflowBar
           workflow={workflow}
@@ -703,17 +717,11 @@ function EditableForm({
         locked={prefilled}
         restricted={record?.restricted}
         onChange={setValue}
+        // Where the schema asks for them, the related lists sit between the groups.
+        between={schema.related_lists_after ? { after: schema.related_lists_after, node: relatedLists } : undefined}
       />
 
-      {record && schema.related_lists && schema.related_lists.length > 0 && (
-        <RelatedLists
-          // A transition or a save changes what the lists beside the record show (a posted
-          // payment's allocations): a new version of the record is a fresh fetch of them.
-          key={record.meta?.updated_at ?? record.id}
-          parent={{ app_label: appLabel, model, id: record.id }}
-          lists={schema.related_lists}
-        />
-      )}
+      {!schema.related_lists_after && relatedLists}
 
       {record && (
         <ActivityTrail
@@ -852,6 +860,7 @@ function FormBody({
   restricted,
   onChange,
   loading,
+  between,
 }: {
   schema: ModelSchema
   values: Record<string, unknown>
@@ -865,6 +874,8 @@ function FormBody({
   restricted?: Record<string, boolean>
   onChange?: (name: string, value: unknown) => void
   loading?: boolean
+  /** Something the schema places after the group with this label (the related lists). */
+  between?: { after: string; node: ReactNode }
 }) {
   return (
     <div className="form-body">
@@ -876,9 +887,11 @@ function FormBody({
         const visible = group.fields.filter(
           (name) => name !== schema.workflow?.field && (loading || isVisible(schema.fields[name], values)),
         )
-        if (visible.length === 0) return null
+        const after = between && group.label === between.after ? between.node : null
+        if (visible.length === 0) return after
         return (
-          <section key={group.label ?? `group-${index}`} className="form-section">
+          <Fragment key={group.label ?? `group-${index}`}>
+          <section className="form-section">
             {group.label && <h2 className="form-section__label">{group.label}</h2>}
             <div className="form-section__fields">
               {visible.map((name) => (
@@ -899,6 +912,8 @@ function FormBody({
               ))}
             </div>
           </section>
+          {after}
+          </Fragment>
         )
       })}
     </div>
