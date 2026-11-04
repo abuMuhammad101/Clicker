@@ -54,12 +54,13 @@ const LIST_CELLS: Partial<Record<FieldType, Renderer>> = {
   integer: (a) => <IntegerListCell value={typeof a.value === 'number' ? a.value : a.value == null ? null : Number(a.value)} />,
   date: (a) => <DateListCell value={asString(a.value)} />,
   datetime: (a) => <DateTimeListCell value={asString(a.value)} />,
-  selection: (a) => <SelectionListCell value={asString(a.value)} choices={a.schema.choices ?? []} />,
+  selection: (a) => <SelectionListCell value={asString(a.value)} choices={a.schema.choices ?? []} tones={a.schema.tones} />,
   many_to_one: (a) => (
     <ManyToOneListCell
       label={a.label}
       restricted={a.restricted}
-      target={a.schema.target}
+      // A person is named, never linked: there is no page for them.
+      target={a.schema.person ? undefined : a.schema.target}
       id={typeof a.value === 'number' ? a.value : null}
     />
   ),

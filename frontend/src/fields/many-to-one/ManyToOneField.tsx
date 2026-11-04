@@ -28,6 +28,8 @@ interface ManyToOneFieldProps extends FieldProps<number> {
   forceOpen?: boolean
   /** The current value links to a record this user can't see. */
   restricted?: boolean
+  /** The link is to a person (who requested it): shown by name, not as a link. */
+  person?: boolean
 }
 
 export function ManyToOneField({
@@ -49,6 +51,7 @@ export function ManyToOneField({
   forceFocused,
   forceOpen,
   restricted,
+  person,
 }: ManyToOneFieldProps) {
   const [openState, setOpenState] = useState(false)
   const open = forceOpen ?? openState
@@ -83,6 +86,8 @@ export function ManyToOneField({
       readOnlyValue={
         isRestricted ? (
           <span className="restricted-value">Restricted</span>
+        ) : shownLabel && value != null && person ? (
+          <span className="truncate">{shownLabel}</span>
         ) : shownLabel && value != null ? (
           <RecordRef model={target} id={value} surface="peek" className="truncate hover:underline">
             {shownLabel}

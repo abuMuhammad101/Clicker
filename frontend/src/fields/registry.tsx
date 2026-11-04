@@ -103,7 +103,7 @@ const FORM_COMPONENTS: Partial<Record<FieldType, Renderer>> = {
   ),
   datetime: (a) => <DateTimeField {...common(a)} value={asString(a.value)} />,
   selection: (a) => (
-    <SelectionField {...common(a)} value={asString(a.value)} choices={a.schema.choices ?? []} />
+    <SelectionField {...common(a)} value={asString(a.value)} choices={a.schema.choices ?? []} tones={a.schema.tones} />
   ),
   many_to_one: (a) => (
     <ManyToOneField
@@ -111,6 +111,7 @@ const FORM_COMPONENTS: Partial<Record<FieldType, Renderer>> = {
       value={typeof a.value === 'number' ? a.value : null}
       displayValue={a.displayValue}
       restricted={a.restricted}
+      person={a.schema.person}
       target={a.schema.target!}
       domain={
         a.schema.domain

@@ -70,6 +70,10 @@ export interface FieldSchema {
   assigned?: string
   /** Computed fields a list can group into ranges ("0–30 days"), inclusive at both ends. */
   buckets?: { label: string; min?: number; max?: number }[]
+  /** A link to a person (who requested, who owns): named, never linked. */
+  person?: boolean
+  /** A selection whose values read as chips (a payment status): the tone of each value. */
+  tones?: Record<string, Tone>
 }
 
 /** A reverse relation shown under a record's form (Schema.related_lists). */
