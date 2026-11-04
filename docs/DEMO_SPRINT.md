@@ -26,11 +26,24 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
 | S-5 | Passed (4 Nov): oldest-first allocation, locked posted bills, one bill per connection (tests); Journey A walked through as Manager, Billing officer, Cashier and Recovery officer on the local database; slowest screen 122 ms. **Neon not seeded**: the demo runs on local Postgres (see Demo machine). |
 | S-6 | Passed (4 Nov), nothing cut: Journey B on its own database (`clicker_port`), the invoice drafts itself at gate-out (one bill, also under a race), team page and View as role (equality test over every role and model), lakh grouping, statement header, second approver above Rs 1 crore, bulk Assign owner. |
-| S-7 | Next |
+| S-7 | Next. Re-measure on the demo laptop in S-7 (the timings below the Demo machine steps were taken in the cloud container). |
 
 ## Demo machine
 
 The demo runs on the laptop it is presented from, on a **local Postgres**, not Neon: no network, no latency, nothing shared. **There are two demos and two databases**: the water board (`clicker_demo`) and the clearing agency, Harbour Gate Clearing (`clicker_port`). They never share a database (contacts are shared, so a port owner would otherwise see federal ministries), and each backend exposes only its own journey's models and roles (`CLICKER_JOURNEY`). Setting a laptop up from nothing takes about **3 minutes of computer time** (measured: database 1 s, migrate 6 s, seed 170 s) plus the installs. Do it on the machine you will present from, then again the evening before, to prove it.
+
+**Linux or macOS: one script.** With Postgres running, `backend/.venv` and `frontend/node_modules` installed, and `DEMO_DATABASE_SERVER` in `.env`, `scripts/demo_setup.sh` creates `clicker_demo` and `clicker_port` (`--fresh` drops them first), migrates, seeds both journeys and prints each one's headline numbers. It creates a `.env` with a generated `SECRET_KEY` if there is none. Cloud run, fresh databases: **227 s** (water 216 s, clearing agency 11 s, migrations included). It ends by printing the two commands that run each journey on its own ports; on Windows keep using the steps below and `scripts\demo-stack.ps1 water|clearance`, which switches journeys in a few seconds.
+
+**Timings, cloud (measured 4 Nov in the build container, local Postgres with fsync off, median of 7). Re-measure on the demo laptop in S-7.**
+
+| Screen | cloud |
+| --- | --- |
+| Jobs by stage (list + group headers) | 140 ms |
+| Demurrage at risk | 43 ms |
+| A job record with schema and activity | 95 ms |
+| That job's two related lists | 59 ms |
+| Water: Bills, Aging view | 96 ms |
+| Water: a statement's five related lists | 119 ms |
 
 You need Git, Python 3.12 or newer, and Node 20 or newer (this laptop: Python 3.14, Node 24). All commands are PowerShell, run from the repo folder unless they say otherwise.
 
