@@ -121,6 +121,7 @@ class Bill(ClickerModel):
     amount_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
     amount_paid = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
     amount_adjusted = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
+    notes = models.TextField(blank=True, help_text='Anything the customer or an approver should know about this bill.')
     state = models.CharField(max_length=16, choices=STATE_CHOICES, default='draft', editable=False)
 
     class Meta:
@@ -147,14 +148,14 @@ class Bill(ClickerModel):
         list_sort = [{'field': 'issue_date', 'direction': 'desc'}]
 
         groups = [
-            {'label': 'Bill', 'fields': ['number', 'customer', 'issue_date', 'due_date']},
+            {'label': 'Bill', 'fields': ['number', 'customer', 'issue_date', 'due_date', 'notes']},
             {
                 'label': 'Amounts',
                 'fields': ['amount_total', 'amount_paid', 'amount_adjusted', 'balance', 'payment_status', 'days_overdue'],
             },
         ]
         related_lists = [
-            {'relation': 'lines', 'label': 'Lines', 'columns': ['description', 'quantity', 'unit_price', 'amount']},
+            {'relation': 'lines', 'label': 'Lines', 'columns': ['description', 'quantity', 'unit_price', 'amount', 'pass_through']},
             {'relation': 'allocations', 'label': 'Payments applied', 'columns': ['payment', 'amount', 'reversed']},
             {'relation': 'adjustments', 'label': 'Adjustments', 'columns': ['number', 'kind', 'amount', 'state']},
         ]
@@ -260,6 +261,9 @@ class Bill(ClickerModel):
             BILLING_OFFICER: ['view_bill', 'add_bill', 'change_bill', 'post_bill'],
             'Cashier': ['view_bill'],
             RECOVERY_OFFICER: ['view_bill'],
+            # A clearing agency: Accounts prepares and posts invoices; the Coordinator reads them.
+            'Accounts': ['view_bill', 'add_bill', 'change_bill', 'post_bill', 'cancel_bill'],
+            'Coordinator': ['view_bill'],
         }
 
     # ---- validation and defaults
@@ -319,6 +323,10 @@ class BillLine(ClickerModel):
     description = models.CharField(max_length=255)
     quantity = models.DecimalField(max_digits=12, decimal_places=3, default=1, validators=[MinValueValidator(Decimal('0'))])
     unit_price = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal('0'))])
+    pass_through = models.BooleanField(
+        default=False,
+        help_text='Money paid to someone else on the customer’s behalf and billed back at cost: the agency’s own charge is not this.',
+    )
 
     class Meta:
         ordering = ['id']
@@ -330,7 +338,7 @@ class BillLine(ClickerModel):
         display_field = 'description'
         field_types = {'unit_price': 'currency'}
         on_save = 'on_save'
-        list_display = ['description', 'quantity', 'unit_price', 'amount']
+        list_display = ['description', 'quantity', 'unit_price', 'amount', 'pass_through']
         list_sort = [{'field': 'id', 'direction': 'asc'}]
         computed = {
             'amount': {
@@ -347,6 +355,8 @@ class BillLine(ClickerModel):
             BILLING_OFFICER: ['view_billline', 'add_billline', 'change_billline'],
             'Cashier': ['view_billline'],
             RECOVERY_OFFICER: ['view_billline'],
+            'Accounts': ['view_billline', 'add_billline', 'change_billline'],
+            'Coordinator': ['view_billline'],
         }
 
     def clean(self):
@@ -512,6 +522,7 @@ class Payment(ClickerModel):
             CASHIER: ['view_payment', 'add_payment', 'change_payment', 'post_payment'],
             BILLING_OFFICER: ['view_payment'],
             RECOVERY_OFFICER: ['view_payment'],
+            'Accounts': ['view_payment', 'add_payment', 'change_payment', 'post_payment'],
         }
 
     def clean(self):
@@ -568,6 +579,7 @@ class PaymentAllocation(ClickerModel):
             CASHIER: ['view_paymentallocation'],
             BILLING_OFFICER: ['view_paymentallocation'],
             RECOVERY_OFFICER: ['view_paymentallocation'],
+            'Accounts': ['view_paymentallocation'],
         }
 
     @property
@@ -768,6 +780,7 @@ class Adjustment(ClickerModel):
         default_grants = {
             BILLING_OFFICER: ['view_adjustment', 'add_adjustment', 'change_adjustment', 'request_adjustment'],
             RECOVERY_OFFICER: ['view_adjustment'],
+            'Accounts': ['view_adjustment', 'add_adjustment', 'change_adjustment', 'request_adjustment'],
         }
 
     # ---- validation

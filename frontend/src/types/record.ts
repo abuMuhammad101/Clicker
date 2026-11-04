@@ -43,6 +43,8 @@ export interface RecordWorkflow {
   waiting: string | null
   /** Why a transition this user holds isn't offered right now (its own check refuses), in words. */
   held_back?: string[]
+  /** For a transition whose question depends on the record: the sentence to confirm with. */
+  confirms?: Record<string, string>
 }
 
 export interface RecordPerson {

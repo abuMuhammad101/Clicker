@@ -133,7 +133,7 @@ export interface SchemaActions {
   delete: boolean
 }
 
-export type Tone = 'positive' | 'warning' | 'danger' | 'info' | 'neutral'
+export type Tone = 'positive' | 'warning' | 'danger' | 'critical' | 'info' | 'neutral'
 
 export interface WorkflowState {
   value: string

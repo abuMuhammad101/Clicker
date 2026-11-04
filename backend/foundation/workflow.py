@@ -57,7 +57,7 @@ And for how it reads on screen, all optional:
 - **`path`**: the main line of states, in order, which the record header draws
   as a stepper (Draft → Requested → Approved). States off it (Cancelled,
   Rejected) are exits. Default: every state, in the field's choice order.
-- **`tones`**: `{state: 'positive' | 'warning' | 'danger' | 'info' | 'neutral'}`,
+- **`tones`**: `{state: 'positive' | 'warning' | 'danger' | 'critical' | 'info' | 'neutral'}` (`critical` is danger, solid: money is being lost now),
   the colour of the state's chip. Default neutral.
 - **`hint`** on a transition: what it does, in words, shown beside its button
   before anyone presses it ("Once posted, it can't be edited, only reversed.").
@@ -67,7 +67,7 @@ And for how it reads on screen, all optional:
 """
 from django.core.exceptions import ImproperlyConfigured
 
-TONES = ('positive', 'warning', 'danger', 'info', 'neutral')
+TONES = ('positive', 'warning', 'danger', 'critical', 'info', 'neutral')
 
 
 def declaration(model):
@@ -259,8 +259,11 @@ def schema_for(user, model):
         if not may_run(user, model, name):
             continue
         entry = {'name': name, 'label': spec['label'], 'from': list(spec['from']), 'to': spec['to']}
-        if spec.get('confirm'):
-            entry['confirm'] = spec['confirm']
+        if spec.get('confirm') or spec.get('confirm_with'):
+            # `confirm_with` names a method that words the question for one record
+            # ("This creates a draft invoice for Rs 12,48,500…"); the record carries that
+            # sentence, and this is only the fallback.
+            entry['confirm'] = spec.get('confirm') or 'Go ahead?'
         hint = _hint(model, decl, spec)
         if hint:
             entry['hint'] = hint
@@ -317,6 +320,7 @@ def record_status(user, obj, roles_cache=None, checks=False):
         # now, as sentences ("Payments have been applied, so it can’t be cancelled"). One
         # record only; empty for a list.
         'held_back': _held_back(user, obj) if checks else [],
+        'confirms': _confirms(user, obj) if checks else {},
     }
     if available_now:
         return status
@@ -343,6 +347,16 @@ def record_status(user, obj, roles_cache=None, checks=False):
     else:
         status['waiting'] = f'Waiting for {_a(roles)} to {actions} it.'
     return status
+
+
+def _confirms(user, obj):
+    """{transition: sentence} for the available transitions whose question depends on the record."""
+    decl = declaration(type(obj))
+    return {
+        name: getattr(obj, spec['confirm_with'])(user)
+        for name, spec in decl['transitions'].items()
+        if spec.get('confirm_with') and blocked_reason(user, obj, name, check=False) is None
+    }
 
 
 def _held_back(user, obj):

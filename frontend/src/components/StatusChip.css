@@ -50,6 +50,14 @@
   --chip-border: var(--danger-border);
 }
 
+.status-chip--critical {
+  /* Danger, solid: reserved for "money is being lost right now" (demurrage accruing). */
+  --chip-bg: var(--danger-solid);
+  --chip-fg: var(--text-on-accent);
+  --chip-dot: var(--text-on-accent);
+  --chip-border: var(--danger-solid);
+}
+
 .status-chip--info {
   --chip-bg: var(--info-subtle);
   --chip-fg: var(--info);

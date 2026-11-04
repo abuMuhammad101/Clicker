@@ -521,6 +521,10 @@ function EditableForm({
     }
   }
 
+  // The question for this record: its own sentence if the schema words one per record.
+  const confirmText = (transition: WorkflowTransition | null) =>
+    transition ? (record?.workflow?.confirms?.[transition.name] ?? transition.confirm) : undefined
+
   const askToRun = (transition: WorkflowTransition) => {
     if (transition.confirm) setConfirmTransition(transition)
     else void runTransition(transition)
@@ -742,7 +746,7 @@ function EditableForm({
             <AlertDialogTitle>
               {confirmTransition?.label} {record?.display}?
             </AlertDialogTitle>
-            <AlertDialogDescription>{confirmTransition?.confirm}</AlertDialogDescription>
+            <AlertDialogDescription>{confirmText(confirmTransition)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go back</AlertDialogCancel>

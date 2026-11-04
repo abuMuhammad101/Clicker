@@ -189,10 +189,22 @@ class Contact(ClickerModel):
             ],
             'Cashier': ['view_contact'],
             'Recovery officer': ['view_contact'],
+            # A clearing agency's people: the Coordinator keeps clients current, the rest read them.
+            'Coordinator': [
+                'view_contact', 'add_contact', 'change_contact',
+                'view_contact_tax_id', 'add_contact_tax_id', 'view_contact_active', 'view_contact_credit_limit',
+            ],
+            'Documentation': ['view_contact', 'view_contact_tax_id'],
+            'Field agent': ['view_contact'],
+            'Accounts': ['view_contact', 'view_contact_tax_id', 'view_contact_credit_limit'],
         }
 
-        # A Recovery officer sees only the consumers whose case they own.
-        record_rules = [{'role': 'Recovery officer', 'filter': {'recovery_cases__owner__user_id': USER}}]
+        # A Recovery officer sees only the consumers whose case they own; a Field agent only the
+        # clients whose jobs are assigned to them.
+        record_rules = [
+            {'role': 'Recovery officer', 'filter': {'recovery_cases__owner__user_id': USER}},
+            {'role': 'Field agent', 'filter': {'jobs__assigned_to__user_id': USER}},
+        ]
 
         # What a customer owes, from their bills, in the database: it sorts,
         # filters and sums like a column, and only someone who may view the
@@ -438,6 +450,10 @@ class Staff(ClickerModel):
             'Billing officer': ['view_staff'],
             'Cashier': ['view_staff'],
             'Recovery officer': ['view_staff'],
+            'Coordinator': ['view_staff'],
+            'Documentation': ['view_staff'],
+            'Field agent': ['view_staff'],
+            'Accounts': ['view_staff'],
         }
 
     def __str__(self):

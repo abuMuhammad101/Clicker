@@ -386,6 +386,18 @@ def groups(queryset, model, fields, name, labels_for=None):
             group.update(key=str(value), label=choices.get(str(value), str(value)), filter=Filter(name, 'in', (value,)).as_text())
         result.append(group)
 
+    if kind == 'selection' and entry.get('show_empty'):
+        # A pipeline shows every stage, in order, even the ones nothing is in: an empty stage
+        # is information, and `muted` tells the list to draw it quietly.
+        present = {group['key'] for group in result}
+        zero = {name: '0.00' for name in sums}
+        for choice in entry.get('choices', []):
+            if str(choice['value']) not in present:
+                result.append({
+                    'key': str(choice['value']), 'label': choice['label'], 'count': 0, 'sums': dict(zero),
+                    'filter': Filter(name, 'in', (choice['value'],)).as_text(), 'muted': True,
+                })
+
     return sorted(result, key=_group_order(entry, kind))
 
 

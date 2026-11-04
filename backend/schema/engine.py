@@ -136,6 +136,9 @@ def _field_schema(field, overrides):
     if field.choices:
         entry['choices'] = [{'value': value, 'label': label} for value, label in field.choices]
 
+    if name in overrides.get('empty_groups', ()):
+        entry['show_empty'] = True
+
     if base_type in ('many_to_one', 'many_to_many'):
         related_meta = field.related_model._meta
         entry['target'] = {'app_label': related_meta.app_label, 'model': related_meta.model_name}
@@ -330,6 +333,26 @@ def schema_field_names(model):
     return names
 
 
+def _may_read_required(user, label):
+    """
+    A computed field's `requires` entry: "app.model" (the user may view that model),
+    or "app.model.field" (they may also read that field, on every row of it: a total
+    over rows a record rule hides from them would leak what the rule hides).
+    """
+    from foundation import rules
+
+    parts = label.split('.')
+    model = apps.get_model('.'.join(parts[:2]))
+    if not can(user, model, 'view'):
+        return False
+    if len(parts) == 3:
+        if parts[2] not in field_access(user, model, [parts[2]]):
+            return False
+        if rules.is_narrowed(user, model):
+            return False
+    return True
+
+
 def readable_computed(model, readable, user=None):
     """
     Computed field names whose every dependency is in `readable`, and (when it
@@ -340,7 +363,7 @@ def readable_computed(model, readable, user=None):
         if not all(dependency in readable for dependency in computed_fields.dependencies(spec)):
             continue
         required = spec.get('requires', ())
-        if required and (user is None or not all(can(user, apps.get_model(label), 'view') for label in required)):
+        if required and (user is None or not all(_may_read_required(user, label) for label in required)):
             continue
         names.append(name)
     return names
@@ -431,6 +454,7 @@ def all_fields(model):
         'field_types': getattr(schema_cls, 'field_types', {}),
         'visible_when': getattr(schema_cls, 'visible_when', {}),
         'domains': getattr(schema_cls, 'domains', {}),
+        'empty_groups': getattr(schema_cls, 'empty_groups', ()),
     }
     fields = {name: _field_schema(model._meta.get_field(name), overrides) for name in schema_field_names(model)}
     for name, spec in computed_fields.declarations(model).items():
@@ -544,6 +568,7 @@ def build_schema(model, user, mode=None):
         'field_types': getattr(schema_cls, 'field_types', {}),
         'visible_when': getattr(schema_cls, 'visible_when', {}),
         'domains': getattr(schema_cls, 'domains', {}),
+        'empty_groups': getattr(schema_cls, 'empty_groups', ()),
     }
 
     all_names = schema_field_names(model)

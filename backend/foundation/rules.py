@@ -45,6 +45,15 @@ def _resolve(filters, user):
     return {key: (user.pk if value == USER else value) for key, value in filters.items()}
 
 
+def is_narrowed(user, model):
+    """Does a record rule limit which rows of `model` this user sees?"""
+    rules = declared(model)
+    if not rules or user.is_superuser:
+        return False
+    viewing = _groups_that_view(user, model)
+    return bool(viewing) and viewing <= {rule['role'] for rule in rules}
+
+
 def narrow(user, model, queryset):
     """`queryset` limited to the rows this user's record rules allow."""
     rules = declared(model)
