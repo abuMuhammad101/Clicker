@@ -46,6 +46,8 @@ def _user_payload(user):
         'username': user.get_username(),
         'display_name': full_name or user.get_username(),
         'email': user.email,
+        # Whether the person may see the app as another role (Owner and Manager).
+        'can_view_as_role': user.has_perm('core.view_as_role'),
     }
 
 

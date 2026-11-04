@@ -135,6 +135,10 @@ def _field_schema(field, overrides):
 
     if field.choices:
         entry['choices'] = [{'value': value, 'label': label} for value, label in field.choices]
+        provider = overrides.get('field_choices', {}).get(name)
+        if provider:
+            # The model narrows its own choices at run time (the roles that exist in this journey).
+            entry['choices'] = [dict(choice) for choice in provider()]
 
     if name in overrides.get('empty_groups', ()):
         entry['show_empty'] = True
@@ -455,6 +459,7 @@ def all_fields(model):
         'visible_when': getattr(schema_cls, 'visible_when', {}),
         'domains': getattr(schema_cls, 'domains', {}),
         'empty_groups': getattr(schema_cls, 'empty_groups', ()),
+        'field_choices': _choice_providers(schema_cls),
     }
     fields = {name: _field_schema(model._meta.get_field(name), overrides) for name in schema_field_names(model)}
     for name, spec in computed_fields.declarations(model).items():
@@ -504,6 +509,15 @@ def _bulk_actions(model, user, fields):
         for spec in declared
         if spec['field'] in writable and spec['field'] in fields
     ]
+
+
+def _choice_providers(schema_cls):
+    """`Schema.field_choices = {'role': 'journey_roles'}`: name → a static method on the model returning choices."""
+    declared = getattr(schema_cls, 'field_choices', {}) or {}
+    if not declared:
+        return {}
+    model = next(m for m in apps.get_models() if getattr(m, 'Schema', None) is schema_cls)
+    return {name: getattr(model, method) for name, method in declared.items()}
 
 
 def _related_lists_after(schema_cls, groups):
@@ -569,6 +583,7 @@ def build_schema(model, user, mode=None):
         'visible_when': getattr(schema_cls, 'visible_when', {}),
         'domains': getattr(schema_cls, 'domains', {}),
         'empty_groups': getattr(schema_cls, 'empty_groups', ()),
+        'field_choices': _choice_providers(schema_cls),
     }
 
     all_names = schema_field_names(model)

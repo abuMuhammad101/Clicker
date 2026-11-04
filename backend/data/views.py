@@ -460,7 +460,8 @@ class ModelRecordDetailView(APIView):
             raise Http404('Not found.')
         # Opening a record, on any surface, is what the Recents home shows.
         # Recorded here rather than by a surface, so a new surface can't forget.
-        record_view(request.user, obj)
+        if not getattr(request, 'view_as', None):
+            record_view(request.user, obj)
         return Response(_envelope(request.user, model, schema, obj))
 
     def patch(self, request, app_label, model_name, pk):

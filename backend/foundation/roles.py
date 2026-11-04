@@ -77,9 +77,10 @@ def seed_roles(using='default'):
     if allowed is None or AUDITOR in allowed:
         auditor, _ = Group.objects.using(using).get_or_create(name=AUDITOR)
         auditor.permissions.set(
-            Permission.objects.using(using).filter(
-                content_type__in=content_types.values(), codename__startswith='view_'
-            )
+            Permission.objects.using(using)
+            .filter(content_type__in=content_types.values(), codename__startswith='view_')
+            # Reading everything is not seeing the app as someone else: that stays with the top roles.
+            .exclude(codename='view_as_role')
         )
 
     grants = {role: [] for role in BUILT_IN_ROLES if role not in (*TOP_ROLES, AUDITOR) and (allowed is None or role in allowed)}

@@ -11,6 +11,7 @@ from django.db.models.functions import Upper
 from django.conf import settings
 
 from billing.expressions import customer_advance, customer_oldest_overdue_days, customer_outstanding
+from foundation import actions
 from foundation.computed import over
 from foundation.models import ClickerModel
 from foundation.rules import USER
@@ -386,15 +387,11 @@ ROLE_CHOICES = [
 
 
 @over()
-def _role_of_staff(context):
-    return Subquery(
-        Group.objects.filter(user=OuterRef('user_id')).order_by('name').values('name')[:1], output_field=CharField()
-    )
-
-
-@over()
 def _last_sign_in(context):
-    return F('user__last_login')
+    # A subquery, not a join: a joined nullable column can't be row-locked in a write.
+    from django.contrib.auth import get_user_model
+
+    return Subquery(get_user_model().objects.filter(pk=OuterRef('user_id')).values('last_login')[:1])
 
 
 class Staff(ClickerModel):
@@ -414,30 +411,32 @@ class Staff(ClickerModel):
         on_delete=models.PROTECT,
         related_name='staff',
     )
-    active = models.BooleanField(default=True)
+    role = models.CharField(
+        max_length=24, blank=True, choices=[(c['value'], c['label']) for c in ROLE_CHOICES],
+        help_text='What this person may see and do. Changing it changes what they see the next time they open a screen.',
+    )
+    active = models.BooleanField(default=True, help_text='A deactivated person is signed out and can’t sign in.')
 
     class Meta:
         ordering = ['display_name']
-        verbose_name = 'staff member'
-        verbose_name_plural = 'staff'
+        verbose_name = 'team member'
+        verbose_name_plural = 'team'
+        permissions = [('view_as_role', 'Can see the app as another role sees it')]
 
     class Schema:
         icon = 'id-card'
         display_field = 'display_name'
         archive_field = 'active'
-        list_display = ['display_name', 'active']
+        on_save = 'on_save'
+        read_only_fields = []
+        field_choices = {'role': 'journey_roles'}
+        list_display = ['display_name', 'role', 'active', 'last_sign_in']
+        groups = [{'label': 'Team member', 'fields': ['display_name', 'role', 'active', 'last_sign_in']}]
         list_sort = [{'field': 'display_name', 'direction': 'asc'}]
         search_fields = ['display_name']
         # The team page is this model's own list and form: what a person's role is, and
         # when they last signed in, are calculated from their account, never typed.
         computed = {
-            'role': {
-                'label': 'Role',
-                'type': 'selection',
-                'choices': ROLE_CHOICES,
-                'description': 'The role this person signs in with',
-                'expression': _role_of_staff,
-            },
             'last_sign_in': {
                 'label': 'Last sign-in',
                 'type': 'datetime',
@@ -458,3 +457,58 @@ class Staff(ClickerModel):
 
     def __str__(self):
         return self.display_name
+
+    @staticmethod
+    def journey_roles():
+        """The roles that exist in this deployment (the running journey's), as choices."""
+        from foundation.roles import active_roles
+
+        allowed = active_roles()
+        return [c for c in ROLE_CHOICES if allowed is None or c['value'] in allowed]
+
+    def clean(self):
+        if self.role and self.role not in {c['value'] for c in self.journey_roles()}:
+            raise ValidationError({'role': f'“{self.role}” isn’t a role here.'})
+
+    def on_save(self, ctx, created):
+        """
+        Role and active are what the team page edits; the account follows. A person can't change
+        their own role or deactivate themselves, the last top-role member can't be demoted or
+        deactivated, and a deactivated person is signed out everywhere.
+        """
+        from django.contrib.auth import get_user_model
+
+        from foundation.roles import top_roles
+        from foundation.sessions import end_sessions
+
+        user = self.user
+        if user is None:
+            return
+        current = set(user.groups.values_list('name', flat=True))
+        changing_role = bool(self.role) and current != {self.role}
+        deactivating = (not self.active) and user.is_active
+        acting_on_self = ctx.user is not None and ctx.user.pk == user.pk
+        if changing_role and acting_on_self:
+            raise actions.Refused('You can’t change your own role. Ask another ' + ' or '.join(top_roles()) + '.')
+        if deactivating and acting_on_self:
+            raise actions.Refused('You can’t deactivate yourself.')
+        tops = set(top_roles())
+        loses_top = current & tops and ((changing_role and self.role not in tops) or deactivating)
+        if loses_top:
+            others = (
+                get_user_model().objects.filter(is_active=True, groups__name__in=tops).exclude(pk=user.pk).distinct().count()
+            )
+            if others == 0:
+                raise actions.Refused(
+                    f'{self.display_name} is the last {" or ".join(sorted(current & tops))}. '
+                    'Make someone else one first.'
+                )
+        if changing_role:
+            user.groups.set(Group.objects.filter(name=self.role))
+        if deactivating:
+            user.is_active = False
+            user.save(update_fields=['is_active'])
+            end_sessions(user)
+        elif self.active and not user.is_active:
+            user.is_active = True
+            user.save(update_fields=['is_active'])

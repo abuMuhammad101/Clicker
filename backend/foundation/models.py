@@ -80,7 +80,13 @@ class AuditEntry(models.Model):
     ACTION_CREATE = 'create'
     ACTION_UPDATE = 'update'
     ACTION_TRANSITION = 'transition'
-    ACTION_CHOICES = [(ACTION_CREATE, 'Created'), (ACTION_UPDATE, 'Updated'), (ACTION_TRANSITION, 'Moved')]
+    ACTION_VIEW_AS = 'view_as'
+    ACTION_CHOICES = [
+        (ACTION_CREATE, 'Created'),
+        (ACTION_UPDATE, 'Updated'),
+        (ACTION_TRANSITION, 'Moved'),
+        (ACTION_VIEW_AS, 'Viewed as a role'),
+    ]
 
     timestamp = models.DateTimeField(default=timezone.now, editable=False, db_index=True)
     actor = models.ForeignKey(
