@@ -221,13 +221,14 @@ class Contact(ClickerModel):
         # order and field order within a group are both explicit, on purpose.
         groups = [
             {'label': 'Identity', 'fields': ['name', 'type', 'parent', 'job_title', 'tax_id']},
-            {'label': 'Communication', 'fields': ['email', 'phone', 'mobile', 'website']},
-            {'label': 'Address', 'fields': ['street', 'street2', 'city', 'state', 'zip', 'country']},
+            # Right under the name: for a customer, this form is their statement.
+            {'label': 'Account', 'fields': ['outstanding', 'oldest_overdue_days', 'advance']},
             {
                 'label': 'Commercial',
                 'fields': ['is_customer', 'is_vendor', 'customer_since', 'payment_terms_days', 'credit_limit'],
             },
-            {'label': 'Account', 'fields': ['outstanding', 'oldest_overdue_days', 'advance']},
+            {'label': 'Communication', 'fields': ['email', 'phone', 'mobile', 'website']},
+            {'label': 'Address', 'fields': ['street', 'street2', 'city', 'state', 'zip', 'country']},
             {'label': 'Classification', 'fields': ['active', 'notes']},
         ]
 

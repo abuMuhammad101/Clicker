@@ -213,6 +213,8 @@ class Bill(ClickerModel):
                 'label': 'Aging',
                 'filters': ['state:in:posted', 'balance:gte:0.01'],
                 'group_by': 'days_overdue',
+                # Every bucket shows its count and total; the oldest, where the money is, is open.
+                'collapsed': ['0', '1', '2', '3', '4'],
                 'ordering': '-balance',
             },
             {
@@ -324,6 +326,7 @@ class BillLine(ClickerModel):
 
     class Schema:
         icon = 'list'
+        nav = False
         display_field = 'description'
         field_types = {'unit_price': 'currency'}
         on_save = 'on_save'
@@ -554,6 +557,7 @@ class PaymentAllocation(ClickerModel):
 
     class Schema:
         icon = 'split'
+        nav = False
         display_field = 'label'
         system_managed = True
         field_types = {'amount': 'currency'}
@@ -638,7 +642,10 @@ class Adjustment(ClickerModel):
         # What an approver reads, top to bottom: the bill and who owes it, what
         # they owe, what is asked and why, who asked, and what it does to the balance.
         groups = [
-            {'label': 'What is being reduced', 'fields': ['bill', 'customer', 'bill_days_overdue', 'customer_outstanding']},
+            {
+                'label': 'What is being reduced',
+                'fields': ['number', 'bill', 'customer', 'bill_days_overdue', 'customer_outstanding'],
+            },
             {'label': 'The request', 'fields': ['kind', 'amount', 'reason', 'requested_by', 'first_approver']},
             {'label': 'What it does', 'fields': ['balance_before', 'balance_after']},
         ]

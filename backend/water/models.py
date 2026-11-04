@@ -362,6 +362,7 @@ class ConnectionBill(ClickerModel):
 
     class Schema:
         icon = 'link'
+        nav = False
         display_field = 'label'
         system_managed = True
         list_display = ['connection', 'bill', 'period', 'bill_total']
