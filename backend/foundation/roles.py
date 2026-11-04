@@ -1,7 +1,10 @@
 """
 The built-in roles, as Django Groups.
 
-- **Manager**: every permission on every exposed model, field grants included.
+- **Manager** and **Owner**: every permission on every exposed model, field grants
+  included. Two names for the same power, because each journey calls its
+  top role what its people call it (a water board has a Manager, a clearing
+  agency an Owner).
 - **Auditor**: every `view_` permission on every exposed model, field-level
   reads included, and nothing else: it reads everything, activity trail and
   all, and changes nothing.
@@ -20,9 +23,31 @@ whether roles become editable data.)
 from django.apps import apps
 
 MANAGER = 'Manager'
+OWNER = 'Owner'
 CLERK = 'Clerk'
 AUDITOR = 'Auditor'
-BUILT_IN_ROLES = (MANAGER, CLERK, AUDITOR)
+BUILT_IN_ROLES = (MANAGER, OWNER, CLERK, AUDITOR)
+# The roles that hold every permission: whoever may do anything, the last of them can't be removed.
+TOP_ROLES = (MANAGER, OWNER)
+
+
+def journey():
+    """The running journey's settings, or None when every app is exposed (tests, development)."""
+    from django.conf import settings
+
+    return settings.CLICKER_JOURNEYS.get(settings.CLICKER_JOURNEY)
+
+
+def top_roles():
+    """The roles that hold every permission here: both names with no journey, else the journey's own."""
+    running = journey()
+    return (running['top_role'],) if running else TOP_ROLES
+
+
+def active_roles():
+    """The roles that exist in this deployment: the journey's five, or None for all of them."""
+    running = journey()
+    return set(running['roles']) if running else None
 
 
 def _exposed_models():
@@ -44,23 +69,26 @@ def seed_roles(using='default'):
     models = _exposed_models()
     content_types = ContentType.objects.db_manager(using).get_for_models(*models)
 
-    manager, _ = Group.objects.using(using).get_or_create(name=MANAGER)
-    manager.permissions.set(
-        Permission.objects.using(using).filter(content_type__in=content_types.values())
-    )
+    allowed = active_roles()
+    for top in top_roles():
+        group, _ = Group.objects.using(using).get_or_create(name=top)
+        group.permissions.set(Permission.objects.using(using).filter(content_type__in=content_types.values()))
 
-    auditor, _ = Group.objects.using(using).get_or_create(name=AUDITOR)
-    auditor.permissions.set(
-        Permission.objects.using(using).filter(
-            content_type__in=content_types.values(), codename__startswith='view_'
+    if allowed is None or AUDITOR in allowed:
+        auditor, _ = Group.objects.using(using).get_or_create(name=AUDITOR)
+        auditor.permissions.set(
+            Permission.objects.using(using).filter(
+                content_type__in=content_types.values(), codename__startswith='view_'
+            )
         )
-    )
 
-    grants = {role: [] for role in BUILT_IN_ROLES if role not in (MANAGER, AUDITOR)}
+    grants = {role: [] for role in BUILT_IN_ROLES if role not in (*TOP_ROLES, AUDITOR) and (allowed is None or role in allowed)}
     for model in models:
         for role, codenames in declared_grants(model).items():
-            if role in (MANAGER, AUDITOR):
-                continue  # Managers have everything and Auditors read everything; declaring it would be noise.
+            if role in (*TOP_ROLES, AUDITOR):
+                continue  # The top roles have everything and Auditors read everything; declaring it would be noise.
+            if allowed is not None and role not in allowed:
+                continue  # Another journey's role: not created here.
             content_type = content_types[model]
             for codename in codenames:
                 try:

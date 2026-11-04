@@ -38,6 +38,25 @@ if CLICKER_ENV not in ('development', 'production'):
     raise ImproperlyConfigured(f'CLICKER_ENV must be development or production, not {CLICKER_ENV!r}.')
 IS_PRODUCTION = CLICKER_ENV == 'production'
 
+# Which demo journey this deployment runs. Journeys share one codebase and never one
+# database: a journey's own apps are exposed only when it is the one running, and its
+# roles are the only roles that exist. Empty (tests, plain development): everything.
+CLICKER_JOURNEY = env('CLICKER_JOURNEY', default='')
+CLICKER_JOURNEYS = {
+    'water': {
+        'apps': ['water'],
+        'top_role': 'Manager',
+        'roles': ['Manager', 'Billing officer', 'Cashier', 'Recovery officer', 'Auditor'],
+    },
+    'clearance': {
+        'apps': ['clearance'],
+        'top_role': 'Owner',
+        'roles': ['Owner', 'Coordinator', 'Documentation', 'Field agent', 'Accounts'],
+    },
+}
+if CLICKER_JOURNEY and CLICKER_JOURNEY not in CLICKER_JOURNEYS:
+    raise ImproperlyConfigured(f'CLICKER_JOURNEY must be one of {sorted(CLICKER_JOURNEYS)} (or empty), not {CLICKER_JOURNEY!r}.')
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool('DEBUG', default=False)
 if IS_PRODUCTION and DEBUG:

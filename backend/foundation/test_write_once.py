@@ -15,7 +15,7 @@ from foundation.test_roles import member_of
 from foundation.testing import make_user
 from schema.engine import build_schema
 
-NOTE = 'Set when the record is created. Ask a Manager to change it.'
+NOTE = 'Set when the record is created. Ask a Manager or Owner to change it.'
 
 
 def audit_for(contact):

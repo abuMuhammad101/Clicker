@@ -64,7 +64,9 @@ def system_user():
     if created or user.has_usable_password():
         user.set_unusable_password()
         user.save(update_fields=['password'])
-    manager = Group.objects.filter(name='Manager').first()
+    from .roles import top_roles
+
+    manager = Group.objects.filter(name=top_roles()[0]).first()
     if manager and not user.groups.filter(pk=manager.pk).exists():
         user.groups.add(manager)
     return user
