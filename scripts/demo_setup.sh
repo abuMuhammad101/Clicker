@@ -25,6 +25,8 @@ if [ ! -f .env ]; then
     "$("$python" -c 'import secrets; print(secrets.token_urlsafe(50))')" > .env
   echo "Created .env (add DEMO_DATABASE_SERVER to it, then run this again)." >&2
 fi
+# A demo machine never signs out mid-presentation (production refuses this setting).
+grep -q '^CLICKER_DEMO_SESSION_HOURS=' .env || printf 'CLICKER_DEMO_SESSION_HOURS=36\n' >> .env
 server="$(sed -n 's/^DEMO_DATABASE_SERVER=//p' .env | tail -1 | tr -d '\r')"
 [ -n "$server" ] || { echo "Set DEMO_DATABASE_SERVER in .env (see .env.example)." >&2; exit 1; }
 command -v psql >/dev/null || { echo "psql not found: install the Postgres client tools." >&2; exit 1; }
