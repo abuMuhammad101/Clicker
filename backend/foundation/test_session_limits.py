@@ -11,6 +11,8 @@ BACKEND = Path(__file__).resolve().parent.parent
 PRODUCTION = {
     'CLICKER_ENV': 'production', 'DEBUG': 'False', 'ALLOWED_HOSTS': 'clicker.example.com',
     'SECRET_KEY': 'throwaway-' + 'x' * 60, 'DATABASE_URL': 'postgresql://u:p@127.0.0.1:1/none',
+    # A demo machine's own .env carries the demo value; the production case must not inherit it.
+    'CLICKER_DEMO_SESSION_HOURS': '0',
     'CORS_ALLOWED_ORIGINS': 'https://app.example.com', 'CSRF_TRUSTED_ORIGINS': 'https://app.example.com',
     'EMAIL_HOST': 'smtp.example.com', 'EMAIL_HOST_USER': 'u', 'EMAIL_HOST_PASSWORD': 'p',
 }
@@ -37,7 +39,7 @@ class SessionLimitTests(SimpleTestCase):
         self.assertEqual(json.loads(result.stdout), [12 * 3600, 24 * 3600])
 
     def test_a_demo_machine_can_lengthen_both_limits(self):
-        result = settings_in({'SECRET_KEY': 'x' * 60, 'DATABASE_URL': PRODUCTION['DATABASE_URL'], 'CLICKER_DEMO_SESSION_HOURS': '36'})
+        result = settings_in({'SECRET_KEY': 'x' * 60, 'DATABASE_URL': PRODUCTION['DATABASE_URL'], 'CLICKER_ENV': 'development', 'CLICKER_DEMO_SESSION_HOURS': '36'})
         self.assertEqual(result.returncode, 0, result.stderr[-800:])
         self.assertEqual(json.loads(result.stdout), [36 * 3600, 36 * 3600])
 
