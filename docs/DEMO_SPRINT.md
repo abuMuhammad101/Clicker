@@ -16,7 +16,7 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | **S-6** | Journey B: Karachi port clearing agency (Jobs with stages and a demurrage countdown, Containers, Disbursements; the invoice drafts itself at gate-out); team and roles page with "View as role" | Gate-out drafts exactly one invoice (test); "View as role" shows exactly what that role's schema allows, using the same permission function as the API; Journey B runs end to end in the browser |
 | **S-7** | Freeze and rehearse | Two full rehearsals without a code change; `check --deploy`, `pip-audit`, `npm audit` clean; nothing new merged |
 
-## Status (3 Nov 2026)
+## Status (4 Nov 2026)
 
 | # | Gate |
 | --- | --- |
@@ -26,7 +26,7 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
 | S-5 | Passed (4 Nov): oldest-first allocation, locked posted bills, one bill per connection (tests); Journey A walked through as Manager, Billing officer, Cashier and Recovery officer on the local database; slowest screen 122 ms. **Neon not seeded**: the demo runs on local Postgres (see Demo machine). |
 | S-6 | Passed (4 Nov), nothing cut: Journey B on its own database (`clicker_port`), the invoice drafts itself at gate-out (one bill, also under a race), team page and View as role (equality test over every role and model), lakh grouping, statement header, second approver above Rs 1 crore, bulk Assign owner. |
-| S-7 | Next. Re-measure on the demo laptop in S-7 (the timings below the Demo machine steps were taken in the cloud container). |
+| S-7 | Passed in the cloud (4 Nov): both journeys rehearsed twice from a fresh seed through the browser with no code change between (`scripts/rehearse.sh`, 27/27 steps each), 95 fail-safe checks (no external host, offline, four viewports, zero console errors), `check --deploy`, `pip-audit` and `npm audit` clean. **Still to do: Hassan's rehearsal on the demo laptop**, and re-measuring the timings there (those below were taken in the cloud container). Code is frozen: only fixes to a failure found in rehearsal merge. |
 
 ## Demo machine
 
@@ -181,6 +181,8 @@ Cut **whole items, in this order**, never half-build one. Cut items go to the No
 6. Setup checklist
 7. Team page
 8. Board view
+
+**Cut in S-7:** nothing from the list above, and nothing started that was not a fix. Not done, on purpose: a hand-written "Deactivate" (the verb is the schema's `archive_verbs`) and any change to the 760 px form width (the ten-stage stepper compacts to markers instead; see the build log).
 
 **Never cut security.** S-1's rules hold for every later session; nothing ships that bypasses them to save time.
 
