@@ -227,6 +227,9 @@ def build_registry(user):
                 # means the frontend uses its generic icon — icon design is
                 # deferred without blocking a module from appearing.
                 'icon': _icon_name(model),
+                # False for a model that is reached through the records that point at it
+                # (a bill's lines, a payment's allocations), not from the sidebar.
+                'nav': bool(getattr(getattr(model, 'Schema', None), 'nav', True)),
             }
             for model in app_config.get_models()
             if is_exposed(model) and can(user, model, 'view')
@@ -356,12 +359,14 @@ def related_lists(model, user):
         if link not in target_access:
             continue
         target_meta = target._meta
+        # A calculated column (a bill's balance) is as readable here as in the target's own list.
+        shown = set(target_access) | set(readable_computed(target, set(target_access), user))
         entries.append({
             'name': declared['relation'],
             'label': declared.get('label') or _sentence_case(target_meta.verbose_name_plural),
             'target': {'app_label': target_meta.app_label, 'model': target_meta.model_name},
             'field': link,
-            'columns': [c for c in declared.get('columns', []) if c in target_access],
+            'columns': [c for c in declared.get('columns', []) if c in shown],
             'can_add': can(user, target, 'add') and target_access[link] == WRITE,
         })
     return entries

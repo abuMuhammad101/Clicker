@@ -9,6 +9,8 @@ export interface RegistryModel {
   route: string
   /** A lucide icon name from the model's Schema; absent means the generic icon. */
   icon?: string | null
+  /** False: reached through the records that point at it, not listed in the sidebar. */
+  nav?: boolean
 }
 
 export interface RegistryApp {

@@ -122,7 +122,7 @@ export function Sidebar({
                 )}
                 {!folded && (
                   <ul className="sidebar__list" id={listId}>
-                    {app.models.map((entry) => {
+                    {app.models.filter((entry) => entry.nav !== false).map((entry) => {
                       const active = pathname === entry.route || pathname.startsWith(`${entry.route}/`)
                       return (
                         <li key={entry.route}>
