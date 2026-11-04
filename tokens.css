@@ -94,6 +94,14 @@
   --text-disabled: var(--n-400);
   --text-on-accent: #ffffff;
 
+  /* Row text. Light-on-dark blooms, so in dark the body cells step down and the
+     identifier and amount columns keep the full text colour: they stay the loudest
+     things in a row. In light the two are the same. */
+  --cell-text: var(--text);
+  --cell-weight: var(--weight-normal);
+  --cell-strong-text: var(--text);
+  --cell-strong-weight: var(--weight-normal);
+
   /* ---------- Accent ---------- */
   --accent: #4a3fcf;
   --accent-hover: #3d33b5;
@@ -276,6 +284,12 @@
   --text-muted: #a2a4ac;
   --text-disabled: #61636b;
   --text-on-accent: #0e0f13;
+
+  /* 4.5:1 or better on --surface, --surface-hover and --surface-selected (checked in S-7). */
+  --cell-text: #c9cad1;
+  --cell-weight: 380; /* Inter Variable takes any weight between 100 and 900 */
+  --cell-strong-text: var(--text);
+  --cell-strong-weight: 450;
 
   --accent: #8991ff;
   --accent-hover: #9ea5ff;

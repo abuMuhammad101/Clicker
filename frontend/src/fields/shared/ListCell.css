@@ -5,7 +5,8 @@
   min-width: var(--column-min-width);
   max-width: var(--column-default-width);
   font-size: var(--text-sm);
-  color: var(--text);
+  color: var(--cell-text);
+  font-weight: var(--cell-weight);
   overflow: hidden;
 }
 
@@ -48,4 +49,10 @@
    lets the column be widened. */
 .list-cell--numeric .amount {
   min-width: max-content;
+}
+
+/* The amount column leads the row (in dark the other cells step down). */
+.list-cell--numeric .amount {
+  color: var(--cell-strong-text);
+  font-weight: var(--cell-strong-weight);
 }
