@@ -1,5 +1,5 @@
 import { formatDate } from '@/lib/dates'
-import { formatMoneyCompact, groupThousands } from '@/lib/money'
+import { formatMoney, formatMoneyCompact, groupThousands } from '@/lib/money'
 import type { FieldSchema, FieldType, ModelSchema } from '@/types/schema'
 
 /**
@@ -129,7 +129,8 @@ function describeValue(field: FieldSchema, value: string, labels?: Record<string
   if (value === undefined) return '…'
   switch (field.type) {
     case 'currency':
-      return formatMoneyCompact(value)
+      // Compact reads well from a lakh up; below it the paisa matter (“Rs 0.01”, not “Rs 0”).
+      return Math.abs(Number(value)) >= 100_000 ? formatMoneyCompact(value) : formatMoney(value)
     case 'integer':
     case 'decimal': {
       const negative = value.startsWith('-')
