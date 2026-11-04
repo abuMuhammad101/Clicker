@@ -55,7 +55,7 @@ export function BulkBar({
     setBusy(true)
     setError(null)
     try {
-      const result = await apiSend<{ updated: number }>('POST', `/api/data/${appLabel}/${model}/bulk/${open.key}/`, {
+      const result = await apiSend<{ updated: number }>('POST', `/data/${appLabel}/${model}/bulk/${open.key}/`, {
         ids: selected,
         value,
       })
