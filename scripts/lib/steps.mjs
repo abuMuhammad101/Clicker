@@ -78,6 +78,17 @@ export async function pageText(person) {
   return (await person.page.locator('main').innerText()).replace(/\s+/g, ' ')
 }
 
+/** Wait until the page's visible text matches. The text is what a person reads (line breaks collapsed). */
+export async function waitForText(person, pattern, timeout = 20000) {
+  const source = pattern.source
+  const flags = pattern.flags
+  await person.page.waitForFunction(
+    ({ source, flags }) => new RegExp(source, flags).test((document.querySelector('main')?.innerText ?? '').replace(/\s+/g, ' ')),
+    { source, flags },
+    { timeout },
+  )
+}
+
 export async function sidebar(person) {
   return (await person.page.locator('nav').first().innerText()).split('\n').map((s) => s.trim()).filter(Boolean)
 }

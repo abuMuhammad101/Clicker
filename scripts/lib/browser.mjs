@@ -78,6 +78,9 @@ export class Person {
   /** The 404s a scene deliberately provokes ("This record isn't available"): expected, and the only ones. */
   expect404(urlPart) { this.allowedStatuses.push({ status: 404, urlPart }) }
 
+  /** A refusal a scene deliberately provokes and asserts on (a write while viewing as another role). */
+  expectRefusal(status, urlPart) { this.allowedStatuses.push({ status, urlPart }) }
+
   async close() { await this.context.close() }
 }
 
