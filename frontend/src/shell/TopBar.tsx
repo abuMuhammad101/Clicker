@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, LogOut } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, LogOut } from 'lucide-react'
 import { SaveBar } from '@/components/SaveBar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useAuth, type User } from '@/features/auth/authContext'
 import type { FormState } from '@/features/form-renderer/FormRenderer'
+import { ViewAsDialog } from '@/features/view-as/ViewAsDialog'
 import { Link } from '@/lib/Link'
+import { viewingAs } from '@/lib/viewAs'
 import { cn } from '@/lib/utils'
 
 export interface Crumb {
@@ -69,8 +71,11 @@ export function TopBar({ crumbs, user, unsaved }: TopBarProps) {
 function UserMenu({ user }: { user: User }) {
   const { logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [viewAs, setViewAs] = useState(false)
 
   return (
+    <>
+    <ViewAsDialog open={viewAs} onOpenChange={setViewAs} />
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button type="button" className="user-menu__trigger" aria-label="Account menu">
@@ -88,11 +93,25 @@ function UserMenu({ user }: { user: User }) {
             <p className="user-menu__who-detail">{user.email || user.username}</p>
           )}
         </div>
+        {user.can_view_as_role && !viewingAs() && (
+          <button
+            type="button"
+            className="user-menu__item"
+            onClick={() => {
+              setOpen(false)
+              setViewAs(true)
+            }}
+          >
+            <Eye className="size-4" aria-hidden />
+            View as role…
+          </button>
+        )}
         <button type="button" className="user-menu__item" onClick={() => void logout('/login')}>
           <LogOut className="size-4" aria-hidden />
           Sign out
         </button>
       </PopoverContent>
     </Popover>
+    </>
   )
 }

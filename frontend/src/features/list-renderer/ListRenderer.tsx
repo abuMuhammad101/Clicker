@@ -1245,7 +1245,7 @@ export function GroupRow({
       aria-expanded={openable ? !collapsed : undefined}
       data-row-index={index}
       tabIndex={tabIndex}
-      className={cn('list-group', collapsed && 'list-group--collapsed', !openable && 'list-group--closed')}
+      className={cn('list-group', collapsed && 'list-group--collapsed', !openable && 'list-group--closed', group.muted && 'list-group--muted')}
       style={{ transform: `translateY(${start}px)` }}
       onClick={openable ? onToggle : undefined}
       onFocus={(event) => event.target === event.currentTarget && onFocus?.()}
@@ -1265,7 +1265,7 @@ export function GroupRow({
       </div>
       {columns.slice(lead).map((column) => (
         <div key={column.name} role="cell" className="list-group__cell" style={{ width: column.width }}>
-          {column.type === 'currency' && column.name in group.sums && (
+          {column.type === 'currency' && column.name in group.sums && !group.muted && (
             loading ? <Skeleton className="ml-auto h-3 w-16" /> : <span className="list-group__sum" title={aggregateDisplay('currency', group.sums[column.name]).exact}>{aggregateDisplay('currency', group.sums[column.name]).short}</span>
           )}
         </div>

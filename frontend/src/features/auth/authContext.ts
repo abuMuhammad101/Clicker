@@ -5,6 +5,8 @@ export interface User {
   username: string
   display_name: string
   email: string
+  /** May see the app as another role (Owner and Manager). */
+  can_view_as_role?: boolean
 }
 
 export type AuthState =

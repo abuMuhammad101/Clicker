@@ -1,3 +1,5 @@
+import { viewingAs } from './viewAs'
+
 const API_URL = import.meta.env.VITE_API_URL
 
 if (!API_URL) {
@@ -66,6 +68,9 @@ async function request<T>(path: string, { probe, ...init }: RequestOptions = {})
   const method = (init.method ?? 'GET').toUpperCase()
   const headers = new Headers(init.headers)
   if (method !== 'GET' && csrfToken) headers.set('X-CSRFToken', csrfToken)
+  // Viewing as a role: ask to be answered as that role (reads only; the server refuses the rest).
+  const role = viewingAs()
+  if (role && !path.startsWith('/auth/') && !path.startsWith('/view-as/')) headers.set('X-View-As-Role', role)
 
   let response: Response
   try {

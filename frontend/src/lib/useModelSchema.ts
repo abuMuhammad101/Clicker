@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { apiGet, ApiError } from '@/lib/api'
+import { readOnlySchema, viewingAs } from '@/lib/viewAs'
 import type { ModelSchema } from '@/types/schema'
 
 type State =
@@ -17,7 +18,7 @@ export function useModelSchema(appLabel: string, modelName: string): State {
 
     apiGet<ModelSchema>(`/schema/${appLabel}/${modelName}/`)
       .then((schema) => {
-        if (!cancelled) setState({ status: 'ready', schema })
+        if (!cancelled) setState({ status: 'ready', schema: viewingAs() ? readOnlySchema(schema) : schema })
       })
       .catch((error: unknown) => {
         if (cancelled) return

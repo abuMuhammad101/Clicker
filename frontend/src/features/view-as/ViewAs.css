@@ -1,0 +1,52 @@
+/* ---------- View as role ---------- */
+.view-as-banner {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--info-border);
+  background: var(--info-subtle);
+  color: var(--info);
+}
+
+.view-as-banner__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.view-as-banner__text {
+  margin: 0;
+  margin-right: auto;
+  font-size: var(--text-base);
+}
+
+.view-as__roles {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.view-as__role {
+  display: flex;
+  width: 100%;
+  height: var(--control-height);
+  justify-content: space-between;
+}
+
+.view-as__count {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.view-as__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-base);
+}

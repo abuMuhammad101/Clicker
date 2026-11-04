@@ -902,3 +902,15 @@
     transition: none;
   }
 }
+
+/* A pipeline stage with nothing in it: still there, in order, but quiet. */
+.list-group--muted {
+  background: transparent;
+  cursor: default;
+}
+
+.list-group--muted .list-group__label,
+.list-group--muted .list-group__count {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular, 400);
+}

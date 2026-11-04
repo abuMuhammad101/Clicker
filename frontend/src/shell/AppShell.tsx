@@ -7,6 +7,7 @@ import { SchemaViewer } from '@/features/schema-viewer/SchemaViewer'
 import { DesignTokens } from '@/gallery/DesignTokens'
 import { FieldGallery } from '@/gallery/FieldGallery'
 import type { FormState } from '@/features/form-renderer/FormRenderer'
+import { ViewAsBanner } from '@/features/view-as/ViewAsBanner'
 import { PeekHost } from '@/surfaces/PeekHost'
 import { LIST_STATE_KEYS, listStateFromSearch, listStateToSearch } from '@/lib/listQuery'
 import { navigate, useLocation } from '@/lib/router'
@@ -129,6 +130,7 @@ export function AppShell({ user }: { user: User }) {
         onToggleSection={toggleSection}
       />
       <div className="app-shell__main">
+        <ViewAsBanner />
         <TopBar
           crumbs={breadcrumbs(pathname, apps, pageLabel)}
           user={user}

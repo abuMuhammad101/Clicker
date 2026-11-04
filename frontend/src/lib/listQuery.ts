@@ -282,6 +282,8 @@ export interface GroupHeader {
   filter: string | null
   restricted?: boolean
   empty?: boolean
+  /** A stage nothing is in: shown, quietly, so the pipeline reads whole. */
+  muted?: boolean
 }
 
 /** The query-string part every list request for one state shares (not sort, not paging). */
