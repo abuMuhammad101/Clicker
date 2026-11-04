@@ -119,12 +119,18 @@ async function journeyA() {
   })
   await ledger(officer, 'Billing officer scenes')
 
-  await step('A5 Manager approves it, and the bill’s balance drops', manager, async () => {
+  await step('A5 Manager approves the write-off (the balance after is the balance before less Rs 5,000)', manager, async () => {
     await mp.goto(adjustmentUrl)
     await mp.locator('form.form-sheet').waitFor()
     await settle(mp)
     const before = await textOf(mp.locator('main'))
-    check(/Bill balance before\s*Rs\s?[\d,]+\.\d\d/.test(before), 'the adjustment should show the balance before and after')
+    const money = (label) => {
+      const found = new RegExp(`${label}\\s*(?:\u03A3\\s*)?Rs\\s?([\\d,]+\\.\\d\\d)`).exec(before)
+      check(found, `the adjustment should show "${label}"`)
+      return Number(found[1].replaceAll(',', ''))
+    }
+    const balanceBefore = money('Bill balance before')
+    equal(Number((balanceBefore - money('Bill balance after')).toFixed(2)), 5000, 'the balance the write-off would remove')
     await mp.getByRole('button', { name: 'Approve' }).click()
     const dialog = mp.getByRole('alertdialog')
     if (await dialog.count()) await dialog.getByRole('button', { name: /Approve/ }).click()
@@ -206,7 +212,7 @@ async function journeyB() {
     check(/To be invoiced\s*Rs\s?[1-9]/.test(text), 'the To be invoiced card should total the released and gate-out jobs, not Rs 0')
     kamransJob = await openRecord(coordinator, 'clearance/job', 'Kamran Lashari', { search: false })
   })
-  await step('B3 Coordinator sees the Team; a job names its field agent', coordinator, async () => {
+  await step('B3 Coordinator has the Team page', coordinator, async () => {
     check((await sidebar(coordinator)).includes('Team'), 'a Coordinator should have the Team item')
     await openList(coordinator, 'core/staff')
     check((await rows(coordinator)).length >= 5, 'the Team list should name the people')
@@ -326,6 +332,8 @@ async function journeyB() {
     const p = owner.page
     await p.locator('.view-as-banner').getByRole('button').first().click()
     await p.locator('.view-as-banner').waitFor({ state: 'detached', timeout: 20000 })
+    // Leaving the view reloads the app as the Owner; wait for that sidebar, then read it.
+    await p.locator('nav a', { hasText: /^Team$/ }).first().waitFor({ timeout: 20000 })
     check((await sidebar(owner)).includes('Team'), 'the Owner has the Team item again')
     await openList(owner, 'core/staff')
     const all = await rows(owner)

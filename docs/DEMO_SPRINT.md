@@ -34,6 +34,22 @@ The demo runs on the laptop it is presented from, on a **local Postgres**, not N
 
 **Linux or macOS: one script.** With Postgres running, `backend/.venv` and `frontend/node_modules` installed, and `DEMO_DATABASE_SERVER` in `.env`, `scripts/demo_setup.sh` creates `clicker_demo` and `clicker_port` (`--fresh` drops them first), migrates, seeds both journeys and prints each one's headline numbers. It creates a `.env` with a generated `SECRET_KEY` if there is none. Cloud run, fresh databases: **227 s** (water 216 s, clearing agency 11 s, migrations included). It ends by printing the two commands that run each journey on its own ports; on Windows keep using the steps below and `scripts\demo-stack.ps1 water|clearance`, which switches journeys in a few seconds.
 
+**Linux or macOS, from nothing** (needs Git, Python 3.12 or newer, Node 20 or newer, and a Postgres you can create databases in; the Windows steps below download one that needs no installer):
+
+```bash
+git clone https://github.com/abuMuhammad101/Clicker.git && cd Clicker
+python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
+npm --prefix frontend install
+# Postgres: macOS `brew install postgresql@17 && brew services start postgresql@17`; Debian or Ubuntu `sudo apt install postgresql`.
+# Put its address in .env (add `user:password@` if your server asks for one), with a secret key:
+printf 'DEMO_DATABASE_SERVER=postgresql://postgres@127.0.0.1:5432\nSECRET_KEY=%s\nDEBUG=True\nALLOWED_HOSTS=localhost,127.0.0.1\n' \
+  "$(backend/.venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(50))')" > .env
+scripts/demo_setup.sh          # about 4 minutes, prints each journey's headline numbers
+scripts/demo_stack.sh clearance    # http://localhost:5274 ; water: http://localhost:5273
+```
+
+`scripts/demo_stack.sh` waits until the app answers, and `scripts/rehearse.sh` runs both journeys end to end through the browser from a fresh seed (about 5 minutes, exits non-zero on any failure; it needs Playwright, which is not a project dependency: once, in the repo folder, `npm install --no-save playwright && npx playwright install chromium`).
+
 **Timings, cloud (measured 4 Nov in the build container, local Postgres with fsync off, median of 7). Re-measure on the demo laptop in S-7.**
 
 | Screen | cloud |
