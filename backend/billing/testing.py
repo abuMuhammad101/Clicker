@@ -46,8 +46,8 @@ class BillingWorld:
         ]:
             named(user, first, last)
         self.staff = {
-            'recovery': Staff.objects.create(display_name='Farhan Raza', user=self.recovery),
-            'recovery2': Staff.objects.create(display_name='Nida Hussain', user=self.recovery2),
+            'recovery': Staff.objects.create(display_name='Farhan Raza', user=self.recovery, role='Recovery officer'),
+            'recovery2': Staff.objects.create(display_name='Nida Hussain', user=self.recovery2, role='Recovery officer'),
         }
 
     # ---- records, made through the API

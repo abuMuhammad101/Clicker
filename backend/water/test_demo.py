@@ -11,7 +11,7 @@ from unittest import mock
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from billing.models import Adjustment, Bill, Payment
 from core.models import Contact
@@ -23,6 +23,7 @@ from .models import Connection, RecoveryCase
 SMALL_ROSTER = demo._consumers()[:6] + demo._consumers()[40:46] + demo._consumers()[100:106]
 
 
+@override_settings(CLICKER_JOURNEY='water')
 class SeedDemoTests(TestCase):
     def counts(self):
         return [

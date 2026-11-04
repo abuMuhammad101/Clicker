@@ -69,7 +69,7 @@ class AssignOwnerTests(BillingWorld, TestCase):
     def officer_client_staff(self):
         from core.models import Staff
 
-        return Staff.objects.create(display_name='Bilal Ahmed', user=self.officer)
+        return Staff.objects.create(display_name='Bilal Ahmed', user=self.officer, role='Billing officer')
 
     def test_a_case_the_user_cannot_see_makes_the_whole_request_a_404(self):
         self.assign(self.manager_client, [self.cases[0].pk], self.staff['recovery2'].pk)

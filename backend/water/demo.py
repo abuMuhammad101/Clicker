@@ -197,7 +197,9 @@ class Seeder:
             user.groups.set([Group.objects.get(name=role)])
             self.users[username] = user
             self.ctx[username] = actions.Context(user)
-            staff, was_new = Staff.objects.get_or_create(user=user, defaults={'display_name': f'{first} {last}'})
+            staff, was_new = Staff.objects.get_or_create(user=user, defaults={'display_name': f'{first} {last}', 'role': role})
+            if staff.role != role:
+                Staff.objects.filter(pk=staff.pk).update(role=role)
             self.staff[username] = staff
             self.created['staff'] += was_new
         if new_lines:

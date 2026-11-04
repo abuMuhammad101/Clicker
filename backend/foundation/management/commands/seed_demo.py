@@ -14,7 +14,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-JOURNEYS = {'water': 'water.demo'}
+JOURNEYS = {'water': 'water.demo', 'clearance': 'clearance.demo'}
 
 
 class Command(BaseCommand):
@@ -25,8 +25,13 @@ class Command(BaseCommand):
         parser.add_argument('--confirm', required=True, help='The name of the database to write to.')
         parser.add_argument('--env-file', default=str(Path(settings.BASE_DIR).parent / '.env'))
         parser.add_argument('--months', type=int, default=12)
+        parser.add_argument(
+            '--rebase-dates',
+            action='store_true',
+            help='Instead of seeding: move every date in the demo so the story is right today (run on the morning of the demo).',
+        )
 
-    def handle(self, *args, journey, confirm, env_file, months, **options):
+    def handle(self, *args, journey, confirm, env_file, months, rebase_dates=False, **options):
         database = settings.DATABASES['default']
         name = str(database['NAME'])
         if confirm != name:
@@ -36,9 +41,35 @@ class Command(BaseCommand):
             )
         if settings.IS_PRODUCTION:
             raise CommandError('Demo data is for development databases only.')
+        if settings.CLICKER_JOURNEY != journey:
+            raise CommandError(
+                f'This database holds the {journey} journey, so run with CLICKER_JOURNEY={journey}: '
+                'it decides which roles and models exist.'
+            )
+        self._refuse_the_other_journey(journey)
+        if rebase_dates:
+            from foundation import computed, rebase
+
+            days = rebase.rebase_dates(computed.today())
+            self.stdout.write(self.style.SUCCESS(f'Dates moved by {days} day(s); the story is anchored to today.'))
+            return
         from importlib import import_module
 
         module = import_module(JOURNEYS[journey])
         self.stdout.write(f'Seeding the {journey} demo into "{name}" on {database.get("HOST") or "this machine"}.')
         module.Seeder(self.stdout, env_file, months=months).run()
+        from foundation import computed, rebase
+
+        if rebase.anchor() is None:
+            rebase.set_anchor(computed.today())
         self.stdout.write(self.style.SUCCESS('Done.'))
+
+    def _refuse_the_other_journey(self, journey):
+        """Two journeys never share a database: a port owner would otherwise see federal ministries."""
+        from clearance.models import Job
+        from water.models import Connection
+
+        if journey == 'water' and Job.objects.exists():
+            raise CommandError('This database already holds the clearance journey. Use a database of its own for the water board.')
+        if journey == 'clearance' and Connection.objects.exists():
+            raise CommandError('This database already holds the water journey. Use a database of its own for the clearing agency.')

@@ -86,7 +86,7 @@ class WorkflowSchemaTests(LabTestCase):
 
     def test_requesting_says_who_it_goes_to_before_it_is_sent(self):
         request = build_schema(LabAdjustment, self.clerk)['workflow']['transitions'][0]
-        self.assertEqual(request['hint'], 'This goes to a Manager for approval.')
+        self.assertEqual(request['hint'], 'This goes to a Manager or Owner for approval.')
 
     def test_a_declared_hint_and_confirm_reach_the_schema(self):
         post, cancel = build_schema(LabBill, self.manager)['workflow']['transitions']
@@ -188,7 +188,7 @@ class WorkflowApiTests(LabTestCase):
         bill = self.create_bill(self.clerk_client)
         self.assertEqual(
             self.status_for(self.clerk_client, bill),
-            {'available': ['post'], 'locked': False, 'locked_reason': None, 'waiting': None},
+            {'available': ['post'], 'locked': False, 'locked_reason': None, 'waiting': None, 'held_back': [], 'confirms': {}},
         )
         self.assertEqual(self.status_for(self.manager_client, bill)['available'], ['post', 'cancel'])
 
@@ -197,14 +197,14 @@ class WorkflowApiTests(LabTestCase):
         self.run_as(self.clerk_client, adjustment, 'request')
         status = self.status_for(self.clerk_client, adjustment)
         self.assertEqual(status['available'], [])
-        self.assertEqual(status['waiting'], 'Waiting for a Manager to approve or reject it.')
+        self.assertEqual(status['waiting'], 'Waiting for a Manager or Owner to approve or reject it.')
 
     def test_the_requester_is_told_someone_else_has_to_approve(self):
         adjustment = self.create_adjustment(self.manager_client)
         self.run_as(self.manager_client, adjustment, 'request')
         status = self.status_for(self.manager_client, adjustment)
         self.assertEqual(status['available'], [])
-        self.assertEqual(status['waiting'], 'You’re its requester, so another Manager has to approve or reject it.')
+        self.assertEqual(status['waiting'], 'You’re its requester, so another Manager or Owner has to approve or reject it.')
         self.assertEqual(self.status_for(self.other_manager_client, adjustment)['available'], ['approve', 'reject'])
 
     def test_a_finished_record_waits_for_nobody(self):

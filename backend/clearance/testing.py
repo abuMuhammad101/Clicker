@@ -41,8 +41,8 @@ class ClearanceWorld:
         ]:
             named(user, first, last)
         self.staff = {
-            'agent': Staff.objects.create(display_name='Rashid Baloch', user=self.agent),
-            'agent2': Staff.objects.create(display_name='Kamran Lashari', user=self.agent2),
+            'agent': Staff.objects.create(display_name='Rashid Baloch', user=self.agent, role='Field agent'),
+            'agent2': Staff.objects.create(display_name='Kamran Lashari', user=self.agent2, role='Field agent'),
         }
         self.client_contact = Contact.objects.create(
             name='Indus Textile Mills (demo)', type='company', is_customer=True, payment_terms_days=30
