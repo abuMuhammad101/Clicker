@@ -52,6 +52,10 @@ class Command(BaseCommand):
 
             days = rebase.rebase_dates(computed.today())
             self.stdout.write(self.style.SUCCESS(f'Dates moved by {days} day(s); the story is anchored to today.'))
+            self.stdout.write(self.style.WARNING(
+                'Warning: the activity trail is NOT moved. It keeps its real times, so it will read "3 days ago" '
+                'next to records dated today. For a demo, reset with a fresh seed instead: scripts/demo_setup.sh --fresh'
+            ))
             return
         from importlib import import_module
 

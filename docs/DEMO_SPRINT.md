@@ -108,7 +108,7 @@ backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance
 
 `--confirm` must repeat the database's name, so it can never write somewhere you didn't mean. It prints no passwords. It ends with a line like `outstanding Rs 314.4 crore; 163.3 crore (52%) is more than 180 days overdue…` and `Done.`
 
-It is **idempotent**: running it again adds nothing. Run it again on the morning of the demo and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments), so "this month" is always true.
+It is **idempotent**: running it again adds nothing. Run it again and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments); but for demo morning use a fresh seed (see below), not a re-run or a rebase.
 
 **5. Run it: one command, either journey** (switching takes a few seconds; it stops whichever journey was running)
 
@@ -119,14 +119,7 @@ scripts\demo-stack.ps1 clearance    # http://localhost:5274  (API :8201, databas
 
 It reads `DEMO_DATABASE_SERVER` from `.env`, starts the backend with `CLICKER_JOURNEY` and `DATABASE_URL` for that journey, and the frontend with `VITE_API_URL` pointing at the right backend.
 
-**On the morning of the demo**, move the story to today (every calendar date shifts by the days since the seed; the activity trail keeps its real times):
-
-```powershell
-$env:CLICKER_JOURNEY = "clearance"; $env:DATABASE_URL = "postgresql://postgres@127.0.0.1:5434/clicker_port"
-backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance --confirm clicker_port --rebase-dates
-```
-
-(the same with `water` and `clicker_demo` for the water board.)
+**On the morning of the demo, reset with a fresh seed, not a rebase.** `scripts/demo_setup.sh --fresh` (Linux, macOS, Git Bash) drops and rebuilds both databases; on Windows follow `docs/DEMO_RESET.md`, which has the PowerShell commands. A fresh seed is the only reset that makes everything consistent with today, including the activity trail. `seed_demo ... --rebase-dates` still exists and moves every calendar date by the days since the seed, but **it does not move the activity trail** (it keeps its real times, so the trail reads "3 days ago" beside records dated today) and it prints a warning saying so. Use it only to nudge a database you cannot reseed.
 
 **6. Who can sign in.** The seed creates seven fictional staff (all of them in `.env` as `DEMO_PASSWORD_<NAME>`, generated, never printed):
 
