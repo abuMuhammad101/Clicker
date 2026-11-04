@@ -26,6 +26,95 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
 | S-5 | Next |
 
+## Demo machine
+
+The demo runs on the laptop it is presented from, on a **local Postgres**, not Neon: no network, no latency, nothing shared. Setting a laptop up from nothing takes about **3 minutes of computer time** (measured: database 1 s, migrate 6 s, seed 170 s) plus the installs. Do it on the machine you will present from, then again the evening before, to prove it.
+
+You need Git, Python 3.12 or newer, and Node 20 or newer (this laptop: Python 3.14, Node 24). All commands are PowerShell, run from the repo folder unless they say otherwise.
+
+**1. Get the code and its dependencies**
+
+```powershell
+git clone https://github.com/abuMuhammad101/Clicker.git
+cd Clicker
+python -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+cd frontend; npm install; cd ..
+```
+
+**2. A local Postgres that needs no installer, no admin rights and no service.** (Skip this block if Postgres 17 or newer is already installed: create a database called `clicker_demo` in it and change the port in step 3.) This one keeps its data safe on a crash, which a presentation laptop should.
+
+```powershell
+$d = "$env:LOCALAPPDATA\clicker-demo-pg"; New-Item -ItemType Directory -Force $d
+curl.exe -L -o "$d\pg.zip" https://get.enterprisedb.com/postgresql/postgresql-18.3-1-windows-x64-binaries.zip
+tar.exe -xf "$d\pg.zip" -C $d --exclude "pgsql/pgAdmin 4" --exclude pgsql/doc --exclude pgsql/symbols --exclude pgsql/StackBuilder --exclude pgsql/include
+& "$d\pgsql\bin\initdb.exe" -D "$d\data" -U postgres --auth=trust --encoding=UTF8 --locale=C
+Add-Content "$d\data\postgresql.conf" "listen_addresses = '127.0.0.1'`nport = 5434"
+& "$d\pgsql\bin\pg_ctl.exe" -D "$d\data" -l "$d\server.log" start
+& "$d\pgsql\bin\psql.exe" -h 127.0.0.1 -p 5434 -U postgres -c "create database clicker_demo"
+```
+
+It listens on this machine only (`127.0.0.1`) and holds only demo data, so it has no password. **After every reboot, start it again** with the `pg_ctl ... start` line. Do that before opening the app.
+
+**3. Tell the app about it.** Create `.env` in the repo folder (it is never committed):
+
+```powershell
+$key = backend\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(50))"
+@"
+DATABASE_URL=postgresql://postgres@127.0.0.1:5434/clicker_demo
+SECRET_KEY=$key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+VITE_API_URL=http://localhost:8200/api
+CORS_ALLOWED_ORIGINS=http://localhost:5273,http://127.0.0.1:5273
+CSRF_TRUSTED_ORIGINS=http://localhost:5273,http://127.0.0.1:5273
+"@ | Set-Content .env -Encoding utf8
+```
+
+Do **not** set `CLICKER_LAB`: the demo runs without the test-only lab models.
+
+**4. Build the database and fill it**
+
+```powershell
+backend\.venv\Scripts\python.exe backend\manage.py migrate
+backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey water --confirm clicker_demo
+```
+
+`--confirm` must repeat the database's name, so it can never write somewhere you didn't mean. It prints no passwords. It ends with a line like `outstanding Rs 314.4 crore; 163.3 crore (52%) is more than 180 days overdue…` and `Done.`
+
+It is **idempotent**: running it again adds nothing. Run it again on the morning of the demo and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments), so "this month" is always true.
+
+**5. Run it** (two terminals)
+
+```powershell
+backend\.venv\Scripts\python.exe backend\manage.py runserver 8200
+```
+```powershell
+cd frontend; $env:VITE_API_URL = "http://localhost:8200/api"; npm run dev -- --port 5273 --strictPort
+```
+
+Open http://localhost:5273.
+
+**6. Who can sign in.** The seed creates seven fictional staff (all of them in `.env` as `DEMO_PASSWORD_<NAME>`, generated, never printed):
+
+| Sign in as | Role | Use it to show |
+| --- | --- | --- |
+| `ayesha.khan` | Manager | everything; approving a write-off |
+| `bilal.ahmed`, `sana.malik` | Billing officer | bills, billing runs, requesting a reduction |
+| `imran.siddiqui` | Cashier | posting a payment and watching it allocate |
+| `farhan.raza`, `nida.hussain` | Recovery officer | only their own cases |
+| `zainab.qureshi` | Auditor | reads everything, changes nothing |
+
+To get the **same passwords on two machines**, copy the seven `DEMO_PASSWORD_…` lines from one `.env` into the other **before** step 4; the seed uses what it finds there and generates only what is missing. Otherwise open `.env` and read them there.
+
+**7. Check it** (30 seconds)
+
+```powershell
+backend\.venv\Scripts\python.exe backend\manage.py measure_demo --user ayesha.khan
+```
+
+prints how long the Bills aging view and a consumer's statement take (on the build laptop: 88 ms and about 160 ms). If any request fails, the database isn't seeded.
+
 ## Cut order, if behind
 
 Cut **whole items, in this order**, never half-build one. Cut items go to the Notion Parking Lot.
