@@ -222,14 +222,13 @@ class RelatedListTests(Base):
 
     def test_a_company_lists_people_and_products_supplied(self):
         lists = build_schema(Contact, self.manager)['related_lists']
-        # The statement (bills, payments, adjustments) follows, then what a water utility adds.
-        self.assertEqual(
-            [(rl['label'], rl['field'], rl['can_add']) for rl in lists][:3],
-            [('People', 'parent', True), ('Products supplied', 'supplier', True), ('Bills', 'customer', True)],
-        )
+        # The statement leads (bills, payments, adjustments, cases), then connections, people, products.
+        by_label = {rl['label']: (rl['field'], rl['can_add']) for rl in lists}
+        self.assertEqual(by_label['People'], ('parent', True))
+        self.assertEqual(by_label['Products supplied'], ('supplier', True))
         self.assertEqual(
             [rl['label'] for rl in lists],
-            ['People', 'Products supplied', 'Bills', 'Payments', 'Adjustments', 'Connections', 'Recovery cases'],
+            ['Bills', 'Payments', 'Adjustments', 'Recovery cases', 'Connections', 'People', 'Products supplied'],
         )
 
     def test_a_clerk_sees_people_but_not_products_supplied(self):

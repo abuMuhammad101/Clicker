@@ -62,7 +62,7 @@ class SeedDemoTests(TestCase):
         output = self.seed(self.env_file)
         written = self.env_file.read_text(encoding='utf-8')
         keys = [line for line in written.splitlines() if line.startswith('DEMO_PASSWORD_')]
-        self.assertEqual(len(keys), 7)
+        self.assertEqual(len(keys), 8)
         for line in keys:
             self.assertNotIn(line.split('=', 1)[1], output)
         # The same file gives the same passwords the next time, and for another database.

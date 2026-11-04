@@ -88,7 +88,7 @@ class _unique_as_conflict:
         return False
 
 
-def _envelopes(user, model, schema, records):
+def _envelopes(user, model, schema, records, checks=False):
     records = list(records)
     visible = visible_related_ids(user, model, schema, records)
     envelopes = [serialize_record(record, schema, visible) for record in records]
@@ -98,12 +98,13 @@ def _envelopes(user, model, schema, records):
         # exactly these.
         roles_cache = {}
         for envelope, record in zip(envelopes, records):
-            envelope['workflow'] = workflow.record_status(user, record, roles_cache)
+            envelope['workflow'] = workflow.record_status(user, record, roles_cache, checks)
     return envelopes
 
 
 def _envelope(user, model, schema, record):
-    envelope = _envelopes(user, model, schema, [record])[0]
+    # One record: its form can evaluate each transition's own check; a list can't afford to.
+    envelope = _envelopes(user, model, schema, [record], checks=True)[0]
     if schema.get('record_summaries'):
         # The record's own figures (Schema.record_summaries), one aggregate query.
         queryset = scoped_queryset(user, model, 'view').filter(pk=record.pk)

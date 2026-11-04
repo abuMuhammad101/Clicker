@@ -41,6 +41,8 @@ export interface RecordWorkflow {
   locked_reason: string | null
   /** When this user can do nothing: who can, and what. Null otherwise. */
   waiting: string | null
+  /** Why a transition this user holds isn't offered right now (its own check refuses), in words. */
+  held_back?: string[]
 }
 
 export interface RecordPerson {

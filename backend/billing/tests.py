@@ -469,3 +469,34 @@ class MoneyTextTests(SimpleTestCase):
 
         with self.settings(CLICKER_CURRENCY={'code': 'USD', 'symbol': '$', 'decimal_places': 2, 'grouping': 'western'}):
             self.assertEqual(format_money('1248500'), '$ 1,248,500.00')
+
+
+class CancelOfferedOnlyWhenPossibleTests(BillingWorld, TestCase):
+    """The record's form hides Cancel when payments are applied; the API still refuses it."""
+
+    def setUp(self):
+        self.build_world()
+        self.acme = self.customer()
+        self.bill = self.make_bill(self.acme, '1000.00', issue='2026-08-01')
+
+    def offered(self, client):
+        return client.get(f'{BILLS}{self.bill.pk}/').json()['workflow']
+
+    def test_an_unpaid_posted_bill_offers_cancel(self):
+        self.assertIn('cancel', self.offered(self.manager_client)['available'])
+
+    def test_a_bill_with_a_payment_offers_no_cancel_and_says_why(self):
+        self.make_payment(self.acme, '100.00', 'TX-1')
+        workflow = self.offered(self.manager_client)
+        self.assertNotIn('cancel', workflow['available'])
+        self.assertTrue(any('can’t be cancelled' in reason for reason in workflow['held_back']))
+        # Hiding it is a courtesy; the API is the rule.
+        refused = self.transition(self.manager_client, BILLS, self.bill, 'cancel')
+        self.assertEqual(refused.status_code, 409)
+
+    def test_a_list_does_not_run_the_checks(self):
+        self.make_payment(self.acme, '100.00', 'TX-1')
+        rows = self.manager_client.get(BILLS).json()['results']
+        # The list still offers it (it didn't evaluate the check); only the form knows better.
+        self.assertIn('cancel', rows[0]['workflow']['available'])
+        self.assertEqual(rows[0]['workflow']['held_back'], [])

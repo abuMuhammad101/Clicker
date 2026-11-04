@@ -125,13 +125,18 @@ function NextStep({
         />
       )
     }
-    return <Sentence lead={`Ready to ${either(available.map((t) => t.label))}.`} detail={primary?.hint} />
+    return (
+      <Sentence
+        lead={`Ready to ${either(available.map((t) => t.label))}.`}
+        detail={[primary?.hint, ...(status.held_back ?? [])].filter(Boolean).join(' ') || null}
+      />
+    )
   }
   if (status.waiting) {
     return <Sentence icon={Clock} lead={status.waiting} detail={status.locked_reason} />
   }
   if (status.locked_reason) {
-    return <Sentence icon={LockKeyhole} lead={status.locked_reason} />
+    return <Sentence icon={LockKeyhole} lead={status.locked_reason} detail={status.held_back?.join(' ') || null} />
   }
   return <Sentence lead={`This ${verboseName} is ${stateOf(workflow, state).label.toLowerCase()}.`} />
 }

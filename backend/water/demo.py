@@ -341,6 +341,15 @@ class Seeder:
         actions.require_grant(ctx, type(obj), name)
         return actions.perform_transition(ctx, obj, name)
 
+    def approve(self, adjustment):
+        """A Manager approves; above the limit for one approver, a different Manager completes it."""
+        if adjustment.needs_two_approvers():
+            self.step(self.manager, adjustment, 'approve_first')
+            adjustment.refresh_from_db()
+            self.step(self.second_manager, adjustment, 'approve_second')
+        else:
+            self.step(self.manager, adjustment, 'approve')
+
     def billing_and_payments(self):
         """
         Month by month, oldest first: what each consumer pays (by how their
@@ -486,13 +495,7 @@ class Seeder:
             adjustment = actions.create(requester, Adjustment, bill=bill, kind=kind, amount=amount, reason=reason)
             self.step(requester, adjustment, 'request')
             if outcome == 'approve':
-                if adjustment.needs_two_approvers():
-                    # Above the limit for one approver: a different Manager completes it.
-                    self.step(self.manager, adjustment, 'approve_first')
-                    adjustment.refresh_from_db()
-                    self.step(self.second_manager, adjustment, 'approve_second')
-                else:
-                    self.step(self.manager, adjustment, 'approve')
+                self.approve(adjustment)
             elif outcome == 'reject':
                 self.step(self.manager, adjustment, 'reject')
             self.created['adjustments'] += 1
@@ -580,7 +583,7 @@ class Seeder:
                 reason='Consumer wound up; balance irrecoverable (legal notice returned undelivered).',
             )
             self.step(requester, adjustment, 'request')
-            self.step(self.manager, adjustment, 'approve')
+            self.approve(adjustment)
         self.step(self.manager, RecoveryCase.objects.get(pk=case.pk), 'write_off')
 
     # ----------------------------------------------------------------- finish

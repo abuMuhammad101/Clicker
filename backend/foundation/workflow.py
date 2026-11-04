@@ -191,9 +191,14 @@ def granted(user, model):
     return [name for name in decl['transitions'] if may_run(user, model, name)]
 
 
-def available(user, obj):
-    """The transitions `user` may run on `obj` now: granted, from this state, not barred by not_by."""
-    return [name for name in granted(user, type(obj)) if blocked_reason(user, obj, name, check=False) is None]
+def available(user, obj, checks=False):
+    """
+    The transitions `user` may run on `obj` now: granted, from this state, not barred by not_by.
+    With `checks`, a transition whose own `check` would refuse right now is left out too: one
+    record's form can afford to run them (a bill with payments offers no Cancel); a list of
+    records can't (that would be a query or two per row), so it leaves them to the click.
+    """
+    return [name for name in granted(user, type(obj)) if blocked_reason(user, obj, name, check=checks) is None]
 
 
 def roles_that_may_run(model, name):
@@ -281,7 +286,7 @@ def schema_for(user, model):
     }
 
 
-def record_status(user, obj, roles_cache=None):
+def record_status(user, obj, roles_cache=None, checks=False):
     """
     What a record's header needs to say about its workflow for this user:
 
@@ -292,13 +297,14 @@ def record_status(user, obj, roles_cache=None):
       explanation: if a step is someone else's, the sentence says whose.
 
     `roles_cache` (a dict) lets a list of records share one lookup of who
-    holds each transition, instead of one query per record.
+    holds each transition, instead of one query per record. `checks` (one
+    record, not a list) also drops transitions whose own check refuses now.
     """
     model = type(obj)
     decl = declaration(model)
     meta = model._meta
     state = state_of(obj)
-    available_now = available(user, obj)
+    available_now = available(user, obj, checks)
     locked = state in decl.get('locked', ())
     status = {
         'available': available_now,
@@ -307,10 +313,17 @@ def record_status(user, obj, roles_cache=None):
             f'This {meta.verbose_name} is {state_label(model, state)}, so it can’t be edited.' if locked else None
         ),
         'waiting': None,
+        # Transitions this user holds that are in the right state but whose own check refuses
+        # now, as sentences ("Payments have been applied, so it can’t be cancelled"). One
+        # record only; empty for a list.
+        'held_back': _held_back(user, obj) if checks else [],
     }
     if available_now:
         return status
     pending = [(n, s) for n, s in decl['transitions'].items() if state in s['from'] and applies(obj, s)]
+    if checks:
+        # Held back by its own check (the reason is on the click), not waiting on someone else.
+        pending = [(n, s) for n, s in pending if blocked_reason(user, obj, n, check=False) is not None or n not in granted(user, model)]
     if not pending:
         return status
     actions = _either(list(dict.fromkeys(s['label'] for _, s in pending)))
@@ -330,6 +343,17 @@ def record_status(user, obj, roles_cache=None):
     else:
         status['waiting'] = f'Waiting for {_a(roles)} to {actions} it.'
     return status
+
+
+def _held_back(user, obj):
+    model = type(obj)
+    reasons = []
+    for name in granted(user, model):
+        if blocked_reason(user, obj, name, check=False) is None:
+            reason = blocked_reason(user, obj, name, check=True)
+            if reason:
+                reasons.append(reason)
+    return reasons
 
 
 def ensure_transition_permissions(models):
