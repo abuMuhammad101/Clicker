@@ -288,7 +288,8 @@ def schema_for(user, model):
     for name, spec in decl['transitions'].items():
         if not may_run(user, model, name):
             continue
-        entry = {'name': name, 'label': spec['label'], 'from': list(spec['from']), 'to': spec['to']}
+        # `phrase`: what the transition is called inside a sentence about this record ("gate out this job").
+        entry = {'name': name, 'label': spec['label'], 'phrase': _phrase(model, spec), 'from': list(spec['from']), 'to': spec['to']}
         if spec.get('confirm') or spec.get('confirm_with'):
             # `confirm_with` names a method that words the question for one record
             # ("This creates a draft invoice for Rs 12,48,500…"); the record carries that

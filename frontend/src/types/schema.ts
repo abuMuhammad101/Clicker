@@ -153,6 +153,8 @@ export interface WorkflowTransition {
   confirm?: string
   /** What it does, shown beside its button before anyone presses it. */
   hint?: string
+  /** The transition inside a sentence about its record: "gate out this job". */
+  phrase?: string
 }
 
 /** Schema.workflow: the states and the transitions this user may run. */

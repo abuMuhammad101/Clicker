@@ -120,14 +120,14 @@ function NextStep({
     if (dirty) {
       return (
         <Sentence
-          lead={`Save your changes before you ${either(available.map((t) => t.label))}.`}
+          lead={`Save your changes before you ${either(available)}.`}
           detail={primary?.hint}
         />
       )
     }
     return (
       <Sentence
-        lead={`Ready to ${either(available.map((t) => t.label))}.`}
+        lead={`Ready to ${either(available)}.`}
         detail={[primary?.hint, ...(status.held_back ?? [])].filter(Boolean).join(' ') || null}
       />
     )
@@ -213,9 +213,17 @@ function stateOf(workflow: WorkflowSchema, value: string): WorkflowState {
 }
 
 /** ['Post', 'Cancel'] → 'post or cancel'. */
-function either(labels: string[]) {
-  const lower = labels.map((label) => label.charAt(0).toLowerCase() + label.slice(1))
-  return lower.length < 2 ? (lower[0] ?? '') : `${lower.slice(0, -1).join(', ')} or ${lower[lower.length - 1]}`
+/** 'gate out or cancel this job': the server's phrases, merged when they end on the same record. */
+function either(transitions: WorkflowTransition[]) {
+  const phrases = transitions.map((t) => t.phrase ?? t.label.charAt(0).toLowerCase() + t.label.slice(1))
+  if (phrases.length < 2) return phrases[0] ?? ''
+  const split = phrases.map((p) => p.split(' this '))
+  const tails = new Set(split.map((parts) => (parts.length > 1 ? parts.slice(1).join(' this ') : null)))
+  if (tails.size === 1 && !tails.has(null)) {
+    const verbs = split.map((parts) => parts[0])
+    return `${verbs.length < 2 ? verbs[0] : `${verbs.slice(0, -1).join(', ')} or ${verbs[verbs.length - 1]}`} this ${[...tails][0]}`
+  }
+  return `${phrases.slice(0, -1).join(', ')} or ${phrases[phrases.length - 1]}`
 }
 
 function article(word: string) {

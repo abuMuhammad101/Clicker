@@ -41,6 +41,15 @@ describe('WorkflowBar', () => {
     expect(html).toContain('This goes to a Manager for approval.')
   })
 
+  it('says "this job" once when every available step is about the same record', () => {
+    const GATE = { name: 'gate_out', label: 'Gate out', phrase: 'gate out this job', from: ['draft'], to: 'approved' }
+    const CANCEL = { name: 'cancel', label: 'Cancel job', phrase: 'cancel this job', from: ['draft'], to: 'rejected' }
+    const html = renderToStaticMarkup(
+      <WorkflowBar workflow={workflow([GATE, CANCEL])} state="draft" status={status({ available: ['gate_out', 'cancel'] })} verboseName="job" />,
+    )
+    expect(html).toContain('Ready to gate out or cancel this job.')
+  })
+
   it('never shows a step that is someone else’s as a button; it says whose it is', () => {
     const html = renderToStaticMarkup(
       <WorkflowBar
