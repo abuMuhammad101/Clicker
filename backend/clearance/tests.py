@@ -497,3 +497,40 @@ class DeactivateVerbTests(ClearanceWorld, TestCase):
             team['archive_verbs']['consequence'], 'They are signed out now and cannot sign in until you reactivate them.'
         )
         self.assertIsNone(self.owner_client.get('/api/schema/core/contact/').json()['archive_verbs'])
+
+
+class ToBeInvoicedCardTests(ClearanceWorld, TestCase):
+    """The card totals over released and gate-out jobs even on a view that excludes them."""
+
+    AGGREGATE = JOBS + 'aggregate/'
+    VIEW = ['demurrage_status:in:soon,urgent,accruing', 'state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released']
+
+    def setUp(self):
+        self.build_world()
+        self.released = self.make_job(assigned=self.staff['agent'], fee='125000.00')
+        self.make_disbursement(self.released, '500000.00', 'customs_duty', 'CUS-1', approve_by=self.accounts_client)
+        self.advance(self.released, 'released')
+        self.gate_out = self.make_job(fee='30000.00')
+        self.advance(self.gate_out, 'gate_out')
+        self.booked = self.make_job(fee='99999.00')
+
+    def card(self, client, filters=()):
+        cards = client.get(self.AGGREGATE, {'filter': list(filters)}).json()['summaries']
+        return next((c for c in cards if c['label'] == 'To be invoiced'), None)
+
+    def test_the_card_totals_released_and_gate_out_jobs_whatever_the_view_filters(self):
+        total = money('125000.00') + money('500000.00') + money('30000.00')
+        for filters in ([], self.VIEW, ['state:in:booked']):
+            card = self.card(self.owner_client, filters)
+            self.assertEqual(money(card['value']), total, filters)
+        self.assertGreater(total, 0)
+
+    def test_a_card_without_the_option_still_follows_the_view(self):
+        paid_out = next(
+            c for c in self.owner_client.get(self.AGGREGATE, {'filter': ['state:in:booked']}).json()['summaries']
+            if c['label'] == 'Paid out, open jobs'
+        )
+        self.assertEqual(money(paid_out['value']), 0)
+
+    def test_a_field_agents_card_is_hidden_because_they_cannot_read_money(self):
+        self.assertIsNone(self.card(self.agent_client, self.VIEW))

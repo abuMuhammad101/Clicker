@@ -175,7 +175,7 @@ class Job(ClickerModel):
         summaries = [
             {'label': 'Open jobs', 'aggregate': 'count', 'filter': ['state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released,gate_out']},
             {'label': 'At risk', 'aggregate': 'count', 'filter': ['demurrage_status:in:urgent,accruing']},
-            {'label': 'To be invoiced', 'aggregate': 'sum', 'field': 'billable_total', 'filter': ['state:in:released,gate_out']},
+            {'label': 'To be invoiced', 'aggregate': 'sum', 'field': 'billable_total', 'filter': ['state:in:released,gate_out'], 'ignore_view_filters': True},
             {'label': 'Paid out, open jobs', 'aggregate': 'sum', 'field': 'disbursements_total', 'filter': ['state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released,gate_out']},
         ]
         views = [
