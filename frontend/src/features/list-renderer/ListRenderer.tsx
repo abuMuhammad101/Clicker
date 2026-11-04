@@ -56,6 +56,8 @@ import { isVisible } from '@/lib/visibility'
 import { cn } from '@/lib/utils'
 import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema } from '@/types/schema'
+import { BulkBar } from './BulkBar'
+import { Checkbox } from '@/components/ui/checkbox'
 import { FilterBar } from './FilterBar'
 import { InlineEditor } from './InlineEditor'
 import { ListControls, SearchBox } from './ListControls'
@@ -464,6 +466,22 @@ function ListView({
   const [activeIndex, setActiveIndex] = useState(0)
   // One cell at a time can be in the editor; one cell at a time shows "saved".
   const [editing, setEditing] = useState<{ index: number; field: string } | null>(null)
+  // Ticked rows, for the actions the schema offers this user (none: no tick boxes at all).
+  const selectable = !embedded && (schema.list.bulk_actions?.length ?? 0) > 0
+  const [selected, setSelected] = useState<number[]>([])
+  const stateKey = JSON.stringify([listState.filters, listState.q, listState.view, showArchived])
+  useEffect(() => setSelected([]), [stateKey])
+  const shownIds = useMemo(() => {
+    if (grouped) return [] as number[]
+    const ids: number[] = []
+    for (let index = 0; index < total; index++) {
+      const record = getRow(index)
+      if (record) ids.push(record.id)
+    }
+    return ids
+  }, [grouped, total, getRow, flat.state])
+  const toggleSelected = (id: number) =>
+    setSelected((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]))
   const [savedCell, setSavedCell] = useState<{ index: number; field: string } | null>(null)
   useEffect(() => {
     if (!savedCell) return
@@ -887,6 +905,17 @@ function ListView({
         </div>
       )}
 
+      {selectable && selected.length > 0 && (
+        <BulkBar
+          appLabel={appLabel}
+          model={model}
+          schema={schema}
+          selected={selected}
+          onClear={() => setSelected([])}
+          onDone={retry}
+        />
+      )}
+
       {!embedded && (
         <SummaryStrip
           summaries={summaries}
@@ -924,6 +953,15 @@ function ListView({
                   )}
                   style={{ width: widths[headers.indexOf(header)] }}
                 >
+                  {selectable && !grouped && header.column.id === visibleColumns[0] && (
+                    <span className="list-header__select">
+                      <Checkbox
+                        aria-label={`Select every ${schema.verbose_name} shown`}
+                        checked={shownIds.length > 0 && shownIds.every((id) => selected.includes(id))}
+                        onCheckedChange={(checked) => setSelected(checked ? shownIds : [])}
+                      />
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="list-header__sort"
@@ -1105,6 +1143,15 @@ function ListView({
                             />
                           ) : (
                             <>
+                              {selectable && loaded && name === visibleColumns[0] && (
+                                <span className="list-row__select" onClick={(event) => event.stopPropagation()}>
+                                  <Checkbox
+                                    aria-label={`Select ${record.display}`}
+                                    checked={selected.includes(record.id)}
+                                    onCheckedChange={() => toggleSelected(record.id)}
+                                  />
+                                </span>
+                              )}
                               {/* Keyed by value, so a changed value cross-fades in. */}
                               <div
                                 key={JSON.stringify(record?.values[name] ?? null)}

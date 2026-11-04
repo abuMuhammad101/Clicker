@@ -178,8 +178,26 @@ def get_exposed_model(app_label, model_name):
 
 
 def is_exposed(model):
-    """A model is part of Clicker's UI and API exactly when it declares a Schema."""
-    return hasattr(model, 'Schema')
+    """
+    A model is part of Clicker's UI and API exactly when it declares a Schema, and
+    (when a demo journey is running) it isn't another journey's: the water
+    board's models don't exist in the clearing agency's deployment.
+    """
+    if not hasattr(model, 'Schema'):
+        return False
+    return model._meta.app_label not in _other_journeys_apps()
+
+
+def _other_journeys_apps():
+    from django.conf import settings
+
+    running = settings.CLICKER_JOURNEY
+    return {
+        app
+        for name, journey in settings.CLICKER_JOURNEYS.items()
+        if running and name != running
+        for app in journey['apps']
+    }
 
 
 def _sentence_case(text):
@@ -441,6 +459,29 @@ def _list_tools(model, fields):
     }
 
 
+def _bulk_actions(model, user, fields):
+    """
+    `Schema.bulk_actions`: "set this field on the selected rows", e.g.
+
+        bulk_actions = [{'key': 'assign_owner', 'label': 'Assign owner', 'field': 'owner'}]
+
+    Offered only to someone who may write that field on records they can see:
+    the same answer a PATCH of it gets (a field a user may not change is simply
+    not an action they have). The picker is the field's own (target, domain).
+    """
+    from data.access import writable_fields
+
+    declared = getattr(getattr(model, 'Schema', None), 'bulk_actions', None) or []
+    if not declared:
+        return []
+    writable = writable_fields(user, model, 'change')
+    return [
+        {'key': spec['key'], 'label': spec['label'], 'field': spec['field']}
+        for spec in declared
+        if spec['field'] in writable and spec['field'] in fields
+    ]
+
+
 def _related_lists_after(schema_cls, groups):
     after = getattr(schema_cls, 'related_lists_after', None)
     return after if after in [group['label'] for group in groups] else None
@@ -576,6 +617,7 @@ def build_schema(model, user, mode=None):
             },
             'search_fields': [f for f in getattr(schema_cls, 'search_fields', []) if f in fields],
             **_list_tools(model, fields),
+            'bulk_actions': _bulk_actions(model, user, fields),
         },
         'fields': fields,
         'related_lists': related_lists(model, user),

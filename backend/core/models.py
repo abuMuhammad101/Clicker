@@ -3,12 +3,15 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.contrib.postgres.indexes import GinIndex, OpClass
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.contrib.auth.models import Group
 from django.db import models
+from django.db.models import CharField, F, OuterRef, Subquery
 from django.db.models.functions import Upper
 
 from django.conf import settings
 
 from billing.expressions import customer_advance, customer_oldest_overdue_days, customer_outstanding
+from foundation.computed import over
 from foundation.models import ClickerModel
 from foundation.rules import USER
 from water.expressions import consumer_open_cases
@@ -361,6 +364,27 @@ class Contact(ClickerModel):
         return self.display_name
 
 
+ROLE_CHOICES = [
+    {'value': name, 'label': name}
+    for name in (
+        'Manager', 'Owner', 'Billing officer', 'Cashier', 'Recovery officer', 'Auditor', 'Clerk',
+        'Coordinator', 'Documentation', 'Field agent', 'Accounts',
+    )
+]
+
+
+@over()
+def _role_of_staff(context):
+    return Subquery(
+        Group.objects.filter(user=OuterRef('user_id')).order_by('name').values('name')[:1], output_field=CharField()
+    )
+
+
+@over()
+def _last_sign_in(context):
+    return F('user__last_login')
+
+
 class Staff(ClickerModel):
     """
     A person who works here, as records see them: the account officer on a
@@ -392,6 +416,23 @@ class Staff(ClickerModel):
         list_display = ['display_name', 'active']
         list_sort = [{'field': 'display_name', 'direction': 'asc'}]
         search_fields = ['display_name']
+        # The team page is this model's own list and form: what a person's role is, and
+        # when they last signed in, are calculated from their account, never typed.
+        computed = {
+            'role': {
+                'label': 'Role',
+                'type': 'selection',
+                'choices': ROLE_CHOICES,
+                'description': 'The role this person signs in with',
+                'expression': _role_of_staff,
+            },
+            'last_sign_in': {
+                'label': 'Last sign-in',
+                'type': 'datetime',
+                'description': 'When this person last signed in',
+                'expression': _last_sign_in,
+            },
+        }
         default_grants = {
             'Clerk': ['view_staff'],
             'Billing officer': ['view_staff'],

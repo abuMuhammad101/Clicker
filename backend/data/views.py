@@ -24,7 +24,7 @@ from django.db.models import F, Q, Value
 from django.db.models.functions import Lower, NullIf
 from django.http import Http404
 from rest_framework import status
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -373,6 +373,82 @@ class ModelAggregateView(APIView):
                 queryset, model, fields, group_by, labels_for=lambda name, ids: visible_labels(request.user, model, name, ids)
             )
         return Response(result)
+
+
+MAX_BULK = 200
+
+
+def _domain_filters(target_model, domain):
+    """A field's declared domain ({'active': True, 'role': 'Recovery officer'}) as queryset filters."""
+    calculated = computed_fields.declarations(target_model)
+    return {
+        key: value if key in calculated or not isinstance(value, str) else _coerce_domain_value(target_model._meta.get_field(key), value)
+        for key, value in domain.items()
+    }
+
+
+class ModelBulkActionView(APIView):
+    """
+    POST /api/data/<app>/<model>/bulk/<key>/   {"ids": [3, 5], "value": 12}
+
+    A schema-declared bulk action (`Schema.bulk_actions`): set one field on
+    several records, all or none, each change audited in the same transaction.
+    The permission is the field's own write permission; a record the user can't
+    see makes the whole request a 404; a value outside the field's domain (the
+    picker only offers those) is refused.
+    """
+
+    def post(self, request, app_label, model_name, key):
+        model = _resolve(app_label, model_name)
+        spec = next((s for s in getattr(model.Schema, 'bulk_actions', []) or [] if s['key'] == key), None)
+        if spec is None:
+            raise Http404('Not found.')
+        field_name = spec['field']
+        if field_name not in writable_fields(request.user, model, 'change'):
+            raise PermissionDenied('You can’t do this.')
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids or not all(isinstance(i, int) and not isinstance(i, bool) for i in ids):
+            raise ValidationError({'ids': ['Choose the records to change.']})
+        if len(set(ids)) > MAX_BULK:
+            raise ValidationError({'ids': [f'Change at most {MAX_BULK} records at a time.']})
+        schema = _user_schema(request.user, model)
+        field = model._meta.get_field(field_name)
+        value = request.data.get('value')
+        target = None
+        if value is not None:
+            target_model = field.related_model
+            domain = _domain_filters(target_model, schema['fields'][field_name].get('domain') or {})
+            target = scoped_queryset(request.user, target_model, 'view').filter(pk=value, **domain).first()
+            if target is None:
+                raise ValidationError({'value': ['Choose one of the people offered.']})
+        elif not field.null:
+            raise ValidationError({'value': ['Choose a value.']})
+        wanted = set(ids)
+        archive_field = schema.get('archive_field')
+        ctx = actions.Context(request.user, request.META.get('REMOTE_ADDR'))
+        changed = []
+        with transaction.atomic():
+            # Rows the user can see, locked together so two batches can't interleave.
+            locked = list(
+                scoped_queryset(request.user, model, 'view')
+                .select_for_update(of=('self',))
+                .filter(pk__in=wanted)
+                .order_by('pk')
+            )
+            if len(locked) != len(wanted):
+                raise Http404('Not found.')
+            for obj in locked:
+                if workflow.is_locked(obj) or (archive_field and getattr(obj, archive_field) is False):
+                    raise actions.Refused(
+                        f'{obj} can’t be changed: it is {workflow.state_label(model, workflow.state_of(obj))}.'
+                        if workflow.declaration(model)
+                        else f'{obj} is archived, so it can’t be changed.'
+                    )
+                if getattr(obj, field.attname) == (target.pk if target else None):
+                    continue
+                actions.change(ctx, obj, summary=spec.get('summary', ''), **{field_name: target})
+                changed.append(obj.pk)
+        return Response({'updated': len(changed), 'ids': changed, 'selected': len(wanted)})
 
 
 class ModelRecordDetailView(APIView):

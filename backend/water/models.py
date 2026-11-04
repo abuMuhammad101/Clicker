@@ -442,7 +442,9 @@ class RecoveryCase(ClickerModel):
         read_only_fields = ['amount_opened']
         numbering = {'field': 'number', 'prefix': 'RC', 'digits': 5}
         on_save = 'on_save'
-        domains = {'consumer': {'is_customer': True}, 'owner': {'active': True}}
+        domains = {'consumer': {'is_customer': True}, 'owner': {'active': True, 'role': 'Recovery officer'}}
+        # Select cases, choose a recovery officer, done: set one field on many rows (audited each).
+        bulk_actions = [{'key': 'assign_owner', 'label': 'Assign owner', 'field': 'owner'}]
         search_fields = ['number', 'next_action']
         field_types = {'amount_opened': 'currency'}
         list_display = ['number', 'consumer', 'state', 'owner', 'outstanding', 'oldest_overdue_days', 'next_action_date']

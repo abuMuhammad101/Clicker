@@ -44,7 +44,7 @@ from django.db.models.expressions import CombinedExpression, F
 from django.db.models.functions import ExtractDay
 from django.utils import timezone
 
-TYPES = ('currency', 'decimal', 'integer', 'date', 'selection')
+TYPES = ('currency', 'decimal', 'integer', 'date', 'datetime', 'selection')
 
 CONNECTORS = {'+': '+', '-': '−', '*': '×', '/': '÷'}
 
@@ -85,6 +85,8 @@ def output_field(spec):
         return djm.IntegerField()
     if kind == 'date':
         return djm.DateField()
+    if kind == 'datetime':
+        return djm.DateTimeField()
     if kind == 'selection':
         return djm.CharField(max_length=32)
     raise ValueError(f'Unknown computed type {kind!r}')

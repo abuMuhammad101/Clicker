@@ -112,6 +112,15 @@ export interface ListSchema {
   groupable?: string[]
   /** The model's summaries this user may see (values come from the aggregate endpoint). */
   summaries?: { key: string; label: string; aggregate: 'sum' | 'count' | 'avg' }[]
+  /** Things this user may do to ticked rows: set one field on all of them (Schema.bulk_actions). */
+  bulk_actions?: BulkAction[]
+}
+
+export interface BulkAction {
+  key: string
+  label: string
+  /** The field it sets; its own picker (target, domain) chooses the value. */
+  field: string
 }
 
 /** What this user may do with the model, from the same check the API enforces. */
