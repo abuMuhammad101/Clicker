@@ -1955,3 +1955,68 @@ loopback-only helper (127.0.0.1:8766, answers only to the app's origin) that rea
 - **Next single action:** S-6. Journey B (Karachi port clearing agency: Jobs,
   Containers, Disbursements, the invoice drafting itself at gate-out) on the same
   billing core, then the team and roles page with "View as role".
+
+## 2026-11-04 | office | S-6: Journey B (clearing agency), the team page, and the S-5 carry-ins
+
+### What was built
+
+**Part 0, the S-5 carry-ins (all six).**
+- **Lakh grouping** (Rs 4,20,000.00): one formatter (`groupThousands` in `lib/money.ts`), read from the organisation's `currency.grouping`. The browser's `en-PK` locale groups in threes (checked in Node), so the rule is explicit. The server writes the same style in its sentences. Typing accepts both styles; stored values are untouched.
+- **Totals never show paisa**: one display rule in the field registry (`fields/aggregateDisplay.ts`) for group sums, summary strip and chip amounts ("Rs 313 crore", exact figure on hover). A single record's own amounts keep their paisa.
+- **Statement header**: `Schema.record_summaries` (max 4, list-summary shape, scoped to the record; a figure you can't read never arrives), and `Schema.related_lists_after`, so a customer's Bills, Payments, Adjustments and Cases come straight after Identity. The Account group is gone.
+- **Second approver above Rs 1 crore**, and a second Manager seeded.
+- **A form offers only what the record can do**: transition checks run for one record, not in lists (a bill with a payment has no Cancel, and says why; the API still answers 409).
+- **Bulk "Assign owner"** on recovery cases: `Schema.bulk_actions`, tick boxes and a selection bar when the schema offers the user an action, the field's own picker (only Recovery officers), all-or-none, each change audited.
+
+**Part 1, two databases.** `clicker_demo` (water) and `clicker_port` (clearing agency). `CLICKER_JOURNEY` decides which apps are exposed and which roles exist, so a port Owner has no water models even though the code is one. `seed_demo --journey clearance --confirm clicker_port` is idempotent, refuses a database that holds the other journey, and `--rebase-dates` moves every calendar date by "today minus the day the story was anchored" (the activity trail keeps its real times). `scripts/demo-stack.ps1 water|clearance` switches in a few seconds. Steps are under "Demo machine" in `docs/DEMO_SPRINT.md`.
+
+**Part 2 and 3, the `clearance` app.** Job (JOB-YYYY-NNNN, ten stages; Duty paid → Released skips examination), Container (free-days countdown, demurrage), Disbursement (Recorded → Approved, Billed only by the hook). Gate-out drafts exactly one Bill (service-fee line plus one pass-through line per approved billable disbursement; unapproved ones are named in the bill's notes as "not yet billed"), marks them Billed, all in one transaction under the job's row lock and a one-to-one link; the trail says "Created by automation when JOB-2026-0007 went to Gate-out". Closing needs the invoice posted; cancelling after gate-out is refused while it is posted. Roles: Owner, Coordinator, Documentation, Field agent (record rules on jobs, containers and disbursements; no money fields), Accounts.
+
+**Part 4, Team and View as role.** The team page is the Staff model's own list and form (no hand-built page): `role` and `active` are edited there and the account follows (guards: not your own role, not the last Manager/Owner, deactivated users are signed out and can't sign in). **View as role** answers a request carrying `X-View-As-Role` with a *representative of that role* through the very same views and permission functions; reads only, refused on the server otherwise; starting is audited; `core.view_as_role` is held by Owner and Manager only.
+
+**Part 5, the story.** Harbour Gate Clearing (demo): 12 clients, 42 jobs (booked 2, documents in 2, GD filed 3, assessed 8, duty paid 7, examined 6, released 2, gate-out 2, closed 9, cancelled 1), 28 containers (2 accruing = Rs 1,14,000 so far, 3 on their last 0 to 2 days, 12 comfortable inside, 11 through the gate), 7 disbursements waiting for Accounts (Rs 10,45,500), 10 posted invoices (Rs 1,92,66,000), Rs 1,22,00,100 received in 6 payments. JOB-2026-0007 (Makran Machinery Importers (demo)) is at Released, three approved disbursements and one waiting: gate-out creates a draft of **Rs 17,10,500.00**. Fresh seed: about 16 seconds.
+
+### Engine extensions (law held: nothing per-module in the frontend)
+
+`record_summaries` and `related_lists_after`; `bulk_actions` (a generic "set one field on the ticked rows", permission = the field's own write permission); `header_fields` (computed chips beside the state); `empty_groups` (every pipeline stage shown, quietly); `confirm_with` (a confirmation sentence worded per record); `critical` tone (solid red, only for money being lost now); `field_choices` (a model narrows its own choices at run time); `requires: ['app.model.field']` (a total over rows a record rule hides is hidden too); `held_back` and `confirms` on a record's workflow status; computed `datetime`; `actions.create(run_hooks=False)`; the journey switch; Owner as a built-in top role; View as role (`foundation/viewas.py`).
+
+### Decisions, one line each (and where I departed from the brief)
+
+- **The second Manager is Tariq Mehmood, not Imran Siddiqui**: Imran is the water board's Cashier; a person can't be both.
+- **Above the limit the first approval moves the adjustment to "Needs a second approver"** (an explicit state with the first approver filled), not back to "Requested": it reads better in the stepper and the list. The same Manager approving twice is refused with **403**, like the requester (a person barred by the record, not a state conflict); the brief said 409.
+- **`view_as_role` is excluded from the Auditor**, whose rule is "every `view_` permission": reading everything isn't seeing the app as someone else.
+- **Staff stays in `core` and `role` is a stored field** the team page edits (a data migration filled it from each account's group), not a computed one: it has to be writable.
+- **Owner is a second built-in all-permissions role** beside Manager; a journey creates only its own top role and its own five roles.
+- **"Archive" on a team member is how you deactivate** (the same switch): the wording is generic, see gaps.
+- **Field agent sees only the disbursements they recorded** (a record rule on `recorded_by`), and so no job-level money total either (a computed total over rows a rule hides is hidden).
+- **`stage_since` is bookkeeping**, written without a trail entry, so a job's trail is people's moves plus the automation's sentence.
+- **`npm audit` is clean because the `shadcn` package is gone**: its only use was one CSS file, now vendored (`src/styles/shadcn-tailwind.css`); its CLI chain (deepmerge, minimatch via ts-morph) was the vulnerability. `npx shadcn add …` still works when a component is needed.
+
+### Definition of done
+
+1. **Pass.** Backend 324 tests OK (86 new this session); frontend 36 tests OK; `npx tsc -b` clean; build clean.
+2. **Pass.** `foundation/test_viewas.py` loops every role and every exposed model: the schema bytes View as returns equal those the endpoint returns to a real member of that role (and the registry and a list too). A Field agent calling it, or starting a session, gets 403; writes while viewing are refused (403) server-side; starting is audited.
+3. **Pass, on `clicker_port` (API :8201, app :5274)** as each role: Coordinator (Jobs by stage, Demurrage at risk, a job with accruing demurrage), Field agent (28 own jobs, "This record isn't available" on another's, no money anywhere, read-only), Accounts (7 waiting disbursements, approved two), Owner (gate-out of JOB-2026-0007 with its confirmation sentence, the drafted invoice and trail, then View as role → Field agent with the banner), plus the Team page and a client's statement strip. Water: the bulk Assign owner (3 cases picked, only the two Recovery officers offered, applied). Light and dark for every scene except one: `docs/design/s6/` (36 files; the bulk-select scene on the water board has its light version only) and `references.md` (Mobbin).
+4. **Pass.** Local database, median of 7 (`manage.py measure_demo --journey clearance`): Jobs by stage (list + group headers) 107 ms, 32 queries; Demurrage at risk 49 ms; a job record with schema and activity 98 ms; its two related lists 63 ms. None above 200 ms (a first run read 217 ms while a dev server was busy compiling; repeated runs: 107 to 120 ms).
+5. **Pass.** `pip-audit`: no known vulnerabilities. `npm audit`: 0 vulnerabilities. No password file under any served folder (`frontend/public/__design` holds `blank.html`, `fixtures.json`, `harness.js`). Sign-in during the walkthrough used the same loopback-only helper as S-5, reading `.env` at request time; stopped afterwards.
+6. **Done**: this entry, `docs/DEMO_SPRINT.md` (status and Demo machine), `CLAUDE.md` (current state through S-6).
+
+### Cut
+
+Nothing was cut.
+
+### Findings and gaps
+
+- **Gap: "Archive" for deactivating a team member** and "New team member" (creates a person with no sign-in; the account is made elsewhere). Both want schema-declared verbs (`archive_verbs`).
+- **Gap: a Field agent still sees the Team list** (everyone with `view_staff`); decide whether the team page should be Owner/Manager/Coordinator only.
+- The "To be invoiced" card on Demurrage at risk reads Rs 0: its filter (released, gate-out) is inside a view that excludes them. Summary cards inherit the view's filters (S-4 design).
+- The strip's sums and the table share one set of filters; a "totals ignoring filters" option may be wanted for the Accounts demo.
+- Rebase moves dates, not the trail: on the morning, trail entries read "3 days ago" next to bills dated today. A fresh seed (16 s for the clearing agency, ~3 min for the water board) is the cleaner reset.
+- No saved Mercury or Cofounder collections on the connected Mobbin account; Mercury came from search.
+- Water and clearance share one codebase, so a model in `core` that mentions the other journey (`Contact.open_recovery_cases`) is hidden by grants, not absent: fine for the demo, wrong for a product with a plugin boundary.
+- `check` on a bulk action: closed or archived rows refuse the whole batch (409), by design.
+- Hassan's screens to judge by eye: the stepper at ten stages (tightened below 940 px), the red chip colours in dark, "Waiting for a Coordinator or Owner to gate out or cancel job.".
+
+- Missing: the dark version of the bulk Assign owner screenshot (`9a-…-light.jpg` only).
+- Half-finished: nothing.
+- **Next single action:** S-7. Freeze: rebuild both databases fresh on the demo laptop, run each journey end to end twice without a code change, run `check --deploy`, `pip-audit` and `npm audit`, and merge nothing new.

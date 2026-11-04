@@ -25,11 +25,12 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-3 | Passed (1 Nov); screenshots completed 3 Nov |
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
 | S-5 | Passed (4 Nov): oldest-first allocation, locked posted bills, one bill per connection (tests); Journey A walked through as Manager, Billing officer, Cashier and Recovery officer on the local database; slowest screen 122 ms. **Neon not seeded**: the demo runs on local Postgres (see Demo machine). |
-| S-6 | Next |
+| S-6 | Passed (4 Nov), nothing cut: Journey B on its own database (`clicker_port`), the invoice drafts itself at gate-out (one bill, also under a race), team page and View as role (equality test over every role and model), lakh grouping, statement header, second approver above Rs 1 crore, bulk Assign owner. |
+| S-7 | Next |
 
 ## Demo machine
 
-The demo runs on the laptop it is presented from, on a **local Postgres**, not Neon: no network, no latency, nothing shared. Setting a laptop up from nothing takes about **3 minutes of computer time** (measured: database 1 s, migrate 6 s, seed 170 s) plus the installs. Do it on the machine you will present from, then again the evening before, to prove it.
+The demo runs on the laptop it is presented from, on a **local Postgres**, not Neon: no network, no latency, nothing shared. **There are two demos and two databases**: the water board (`clicker_demo`) and the clearing agency, Harbour Gate Clearing (`clicker_port`). They never share a database (contacts are shared, so a port owner would otherwise see federal ministries), and each backend exposes only its own journey's models and roles (`CLICKER_JOURNEY`). Setting a laptop up from nothing takes about **3 minutes of computer time** (measured: database 1 s, migrate 6 s, seed 170 s) plus the installs. Do it on the machine you will present from, then again the evening before, to prove it.
 
 You need Git, Python 3.12 or newer, and Node 20 or newer (this laptop: Python 3.14, Node 24). All commands are PowerShell, run from the repo folder unless they say otherwise.
 
@@ -53,6 +54,7 @@ tar.exe -xf "$d\pg.zip" -C $d --exclude "pgsql/pgAdmin 4" --exclude pgsql/doc --
 Add-Content "$d\data\postgresql.conf" "listen_addresses = '127.0.0.1'`nport = 5434"
 & "$d\pgsql\bin\pg_ctl.exe" -D "$d\data" -l "$d\server.log" start
 & "$d\pgsql\bin\psql.exe" -h 127.0.0.1 -p 5434 -U postgres -c "create database clicker_demo"
+& "$d\pgsql\bin\psql.exe" -h 127.0.0.1 -p 5434 -U postgres -c "create database clicker_port"
 ```
 
 It listens on this machine only (`127.0.0.1`) and holds only demo data, so it has no password. **After every reboot, start it again** with the `pg_ctl ... start` line. Do that before opening the app.
@@ -69,6 +71,7 @@ ALLOWED_HOSTS=localhost,127.0.0.1
 VITE_API_URL=http://localhost:8200/api
 CORS_ALLOWED_ORIGINS=http://localhost:5273,http://127.0.0.1:5273
 CSRF_TRUSTED_ORIGINS=http://localhost:5273,http://127.0.0.1:5273
+DEMO_DATABASE_SERVER=postgresql://postgres@127.0.0.1:5434
 "@ | Set-Content .env -Encoding utf8
 ```
 
@@ -77,24 +80,40 @@ Do **not** set `CLICKER_LAB`: the demo runs without the test-only lab models.
 **4. Build the database and fill it**
 
 ```powershell
+# the water board
+$env:DATABASE_URL = "postgresql://postgres@127.0.0.1:5434/clicker_demo"; $env:CLICKER_JOURNEY = "water"
 backend\.venv\Scripts\python.exe backend\manage.py migrate
 backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey water --confirm clicker_demo
+
+# the clearing agency (a second database; about 15 seconds)
+$env:DATABASE_URL = "postgresql://postgres@127.0.0.1:5434/clicker_port"; $env:CLICKER_JOURNEY = "clearance"
+backend\.venv\Scripts\python.exe backend\manage.py migrate
+backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance --confirm clicker_port
 ```
+
+`CLICKER_JOURNEY` must match the journey: it decides which roles exist, and the seed refuses to run without it, or into a database that already holds the other journey.
 
 `--confirm` must repeat the database's name, so it can never write somewhere you didn't mean. It prints no passwords. It ends with a line like `outstanding Rs 314.4 crore; 163.3 crore (52%) is more than 180 days overdue…` and `Done.`
 
 It is **idempotent**: running it again adds nothing. Run it again on the morning of the demo and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments), so "this month" is always true.
 
-**5. Run it** (two terminals)
+**5. Run it: one command, either journey** (switching takes a few seconds; it stops whichever journey was running)
 
 ```powershell
-backend\.venv\Scripts\python.exe backend\manage.py runserver 8200
-```
-```powershell
-cd frontend; $env:VITE_API_URL = "http://localhost:8200/api"; npm run dev -- --port 5273 --strictPort
+scripts\demo-stack.ps1 water        # http://localhost:5273  (API :8200, database clicker_demo)
+scripts\demo-stack.ps1 clearance    # http://localhost:5274  (API :8201, database clicker_port)
 ```
 
-Open http://localhost:5273.
+It reads `DEMO_DATABASE_SERVER` from `.env`, starts the backend with `CLICKER_JOURNEY` and `DATABASE_URL` for that journey, and the frontend with `VITE_API_URL` pointing at the right backend.
+
+**On the morning of the demo**, move the story to today (every calendar date shifts by the days since the seed; the activity trail keeps its real times):
+
+```powershell
+$env:CLICKER_JOURNEY = "clearance"; $env:DATABASE_URL = "postgresql://postgres@127.0.0.1:5434/clicker_port"
+backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance --confirm clicker_port --rebase-dates
+```
+
+(the same with `water` and `clicker_demo` for the water board.)
 
 **6. Who can sign in.** The seed creates seven fictional staff (all of them in `.env` as `DEMO_PASSWORD_<NAME>`, generated, never printed):
 
@@ -106,6 +125,18 @@ Open http://localhost:5273.
 | `farhan.raza`, `nida.hussain` | Recovery officer | only their own cases |
 | `zainab.qureshi` | Auditor | reads everything, changes nothing |
 
+The clearing agency's five (Harbour Gate Clearing (demo)):
+
+| Sign in as | Role | Use it to show |
+| --- | --- | --- |
+| `hamza.farooqui` | Owner | the gate-out of JOB-2026-0007 and its drafted invoice; **View as role** (user menu) |
+| `mehwish.rauf` | Coordinator | Jobs by stage, Demurrage at risk |
+| `sadia.anwar` | Documentation | stages up to Assessed, and no money anywhere |
+| `rashid.baloch` | Field agent | only his own jobs; another's is "not available" |
+| `ibrahim.qazi` | Accounts | approving disbursements, posting the invoice |
+
+The water board also has a second Manager, `tariq.mehmood`, who completes any reduction above Rs 1 crore.
+
 To get the **same passwords on two machines**, copy the seven `DEMO_PASSWORD_…` lines from one `.env` into the other **before** step 4; the seed uses what it finds there and generates only what is missing. Otherwise open `.env` and read them there.
 
 **7. Check it** (30 seconds)
@@ -114,7 +145,7 @@ To get the **same passwords on two machines**, copy the seven `DEMO_PASSWORD_…
 backend\.venv\Scripts\python.exe backend\manage.py measure_demo --user ayesha.khan
 ```
 
-prints how long the Bills aging view and a consumer's statement take (on the build laptop: 88 ms and about 160 ms). If any request fails, the database isn't seeded.
+prints how long the Bills aging view and a consumer's statement take (on the build laptop: about 100 ms and 160 ms). For the clearing agency add `--journey clearance` (Jobs by stage about 110 ms; a job record with its related lists about 160 ms). If any request fails, the database isn't seeded.
 
 ## Cut order, if behind
 
