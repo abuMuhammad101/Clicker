@@ -28,7 +28,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.db.models import Sum
+from django.db.models import F, Sum
 
 from billing.models import Adjustment, Bill, BillLine, Payment
 from core.models import Contact, Country, Staff
@@ -467,8 +467,11 @@ class Seeder:
             consumer_id = candidates[nth]
             if Adjustment.objects.filter(customer_id=consumer_id, reason=reason).exists():
                 continue
+            # The oldest bill that still has a balance: you can't reduce what is already paid.
             bill = (
-                Bill.objects.filter(customer_id=consumer_id, state='posted', amount_total__gt=0)
+                Bill.objects.filter(
+                    customer_id=consumer_id, state='posted', amount_total__gt=F('amount_paid') + F('amount_adjusted')
+                )
                 .order_by('due_date', 'id')
                 .first()
             )
@@ -545,12 +548,19 @@ class Seeder:
         """One small case closed the honest way: write-offs approved bill by bill, then the Manager closes it."""
         if RecoveryCase.objects.filter(state='written_off').exists():
             return
-        case = (
+        # The case with the fewest open bills, so the write-off is a few adjustments, not dozens.
+        candidates = (
             computed.annotate(RecoveryCase.objects.select_related('consumer'), RecoveryCase)
             .filter(state__in=('notice_2', 'legal', 'instalment'), owner__isnull=False)
-            .order_by('outstanding')
-            .first()
+            .order_by('outstanding', 'id')
         )
+
+        def open_bills(case):
+            return Bill.objects.filter(
+                customer_id=case.consumer_id, state='posted', amount_total__gt=F('amount_paid') + F('amount_adjusted')
+            ).count()
+
+        case = min(candidates, key=lambda c: (open_bills(c), c.outstanding, c.id), default=None)
         if case is None:
             return
         requester = self.officers[0]
