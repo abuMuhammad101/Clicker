@@ -1,4 +1,5 @@
 import { Check, Clock, LockKeyhole, X } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { RecordWorkflow } from '@/types/record'
@@ -187,11 +188,38 @@ export function stepsFor(workflow: WorkflowSchema, state: string): Step[] {
 function Stepper({ workflow, state }: { workflow: WorkflowSchema; state: string }) {
   const steps = stepsFor(workflow, state)
   const last = steps.length - 1
+  const list = useRef<HTMLOListElement>(null)
+  // A long pipeline (ten stages) can be wider than the form. Rather than overflow the card or wrap into two
+  // lines, only the current step keeps its label and the rest are markers (their names stay on hover and for
+  // screen readers). It turns on only when the full stepper does not fit, and off again when it does.
+  const [compact, setCompact] = useState(false)
+  const fullWidth = useRef(0)
+  useLayoutEffect(() => {
+    const element = list.current
+    const container = element?.parentElement
+    if (!element || !container) return
+    const fit = () => {
+      if (!compact) {
+        if (element.scrollWidth > container.clientWidth + 1) {
+          fullWidth.current = element.scrollWidth
+          setCompact(true)
+        }
+      } else if (container.clientWidth >= fullWidth.current) {
+        setCompact(false)
+      }
+    }
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(fit)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [compact, steps.length])
   return (
-    <ol className="workflow-steps" aria-label="Progress">
+    <ol ref={list} className={cn('workflow-steps', compact && 'workflow-steps--compact')} aria-label="Progress">
       {steps.map((step, i) => (
         <li
           key={step.state.value}
+          title={step.state.label}
           className={cn('workflow-step', `workflow-step--${step.status}`, `workflow-step--${step.state.tone}`)}
           aria-current={step.status === 'current' || step.status === 'exit' ? 'step' : undefined}
         >

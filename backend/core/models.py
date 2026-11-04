@@ -274,12 +274,12 @@ class Contact(ClickerModel):
             {
                 'relation': 'bills',
                 'label': 'Bills',
-                'columns': ['number', 'issue_date', 'due_date', 'amount_total', 'balance', 'payment_status'],
+                'columns': ['number', 'due_date', 'amount_total', 'balance', 'payment_status'],
             },
             {
                 'relation': 'payments',
                 'label': 'Payments',
-                'columns': ['number', 'payment_date', 'method', 'reference', 'amount', 'advance'],
+                'columns': ['number', 'payment_date', 'reference', 'amount', 'advance'],
             },
             {'relation': 'adjustments', 'label': 'Adjustments', 'columns': ['number', 'kind', 'amount', 'state']},
             {

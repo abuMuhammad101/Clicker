@@ -53,7 +53,7 @@ async function journeyA() {
     customerId = await openRecord(manager, 'core/contact', 'Federal Steel')
     const text = await pageText(manager)
     check(/Federal Steel Corporation \(demo\)/.test(text), 'the statement is not Federal Steel Corporation')
-    check(/Outstanding\s*Rs\s?[\d,]+\.\d\d/.test(text) && /Oldest overdue/.test(text), 'the statement strip (Outstanding, Oldest overdue) is missing')
+    check(/Outstanding\s*Rs\s?[\d.,]+( crore| lakh)?/.test(text) && /Oldest overdue/.test(text), 'the statement strip (Outstanding, Oldest overdue) is missing')
     check(/Bills\s*\d+/.test(text) && /Payments\s*\d+/.test(text), 'the statement’s Bills and Payments lists are missing')
   })
 

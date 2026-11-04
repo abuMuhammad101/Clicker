@@ -150,6 +150,15 @@ const TYPE_WIDTH: Record<string, number> = {
 }
 
 /**
+ * The least a column of this type may be squeezed to. A date or an amount cut with an ellipsis is wrong
+ * data ("12 Nov 2…"), not a long name: they keep their whole value (a crore-sized amount included).
+ */
+const IDENTIFIER_MIN = 132
+/** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
+const PERSON_MIN = 136
+const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
+
+/**
  * Column widths that use the room they're given. Wider viewport: every column
  * grows in proportion, so there's no dead strip after the last one. Narrower:
  * every column gives up its slack above its minimum, in proportion, so the
@@ -165,6 +174,18 @@ function fitSizes(sizes: number[], mins: number[], available: number): number[] 
   const need = total - available
   if (slackTotal <= need) return sizes.map((size, i) => Math.min(size, mins[i]))
   return sizes.map((size, i) => size - slack[i] * (need / slackTotal))
+}
+
+/**
+ * The least a column may be squeezed to. Text can be cut with an ellipsis, but a chip is a status: cut
+ * "Assessed" to "Assessec" and it reads as a typo. A column of chips never goes narrower than its longest
+ * label (a rough 6.6px a letter at 12px, plus the chip's padding and the cell's).
+ */
+function chipColumnMin(labels: string[], floor: number): number {
+  const longest = labels.reduce((max, label) => Math.max(max, label.length), 0)
+  // Capped: a very long label ("Examination labour") ellipsizes inside its chip, which is by design; it must
+  // not take the room the other columns need in a narrow table (a related list is 660px wide).
+  return longest === 0 ? floor : Math.max(floor, Math.min(112, Math.ceil(longest * 6.6) + 52))
 }
 const OVERSCAN_ROWS = 12
 
@@ -508,12 +529,17 @@ function ListView({
     return visibleColumns.map((name, columnIndex) => {
       const field = schema.fields[name]
       const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.35 : 1)
+      const stateLabels = schema.workflow?.field === name ? schema.workflow.states.map((state) => state.label) : []
+      const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
+      // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
+      const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
+      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0))
       return {
         id: name,
         header: field.label,
         accessorFn: (slot: Slot) => slot.record?.values[name],
-        size: Math.max(minWidth, Math.round(defaultWidth * share)),
-        minSize: minWidth,
+        size: Math.max(columnMin, Math.round(defaultWidth * share)),
+        minSize: columnMin,
         // TanStack guesses the first direction from the first row's value,
         // which here may be an unloaded slot or an empty field. A first
         // click always means ascending.
@@ -613,7 +639,7 @@ function ListView({
     ? headers.map((header) => header.getSize())
     : fitSizes(
         headers.map((header) => header.getSize()),
-        headers.map(() => minColumnWidth),
+        headers.map((header) => header.column.columnDef.minSize ?? minColumnWidth),
         viewportWidth,
       )
   const totalWidth = widths.reduce((a, b) => a + b, 0)
