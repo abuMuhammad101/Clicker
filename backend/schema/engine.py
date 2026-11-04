@@ -270,6 +270,26 @@ def build_registry(user):
     return registry
 
 
+ARCHIVE_VERB_KEYS = ('archive', 'restore', 'archived', 'restored', 'consequence', 'notice')
+
+
+def _archive_verbs(schema_cls):
+    """
+    What archiving is *called* for this model, declared (`Schema.archive_verbs`), never decided in
+    the renderer: {archive: 'Deactivate', restore: 'Reactivate', archived: 'Deactivated', restored:
+    'Reactivated', consequence: the sentence under the confirmation, notice: the banner on an
+    archived record}. Any key left out keeps the generic wording (the renderer's default), so null
+    means the model says nothing and the whole set is the generic one.
+    """
+    declared = getattr(schema_cls, 'archive_verbs', None)
+    if not declared:
+        return None
+    unknown = set(declared) - set(ARCHIVE_VERB_KEYS)
+    if unknown:
+        raise ValueError(f'{schema_cls.__qualname__}.archive_verbs has unknown keys: {sorted(unknown)}')
+    return {key: declared[key] for key in ARCHIVE_VERB_KEYS if key in declared}
+
+
 def _build_groups(schema_cls, field_names):
     """
     Form layout, as data. Two distinct "no explicit group" signals, not one:
@@ -671,6 +691,7 @@ def build_schema(model, user, mode=None):
         # States and the transitions this user holds a grant for (none others).
         'workflow': workflow.schema_for(user, model),
         'archive_field': archive_field if archive_field in fields else None,
+        'archive_verbs': _archive_verbs(schema_cls) if archive_field in fields else None,
         'actions': {
             'view': True,
             'create': may_create,

@@ -1,3 +1,4 @@
+import { archiveVerbs } from '@/lib/archiveVerbs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   columnResizingFeature,
@@ -305,6 +306,7 @@ function ListView({
   // Archived records are out of the list unless asked for: one switch in the
   // toolbar, which lists the archived ones instead.
   const archiveField = schema.archive_field ?? null
+  const verbs = archiveVerbs(schema)
   const [showArchived, setShowArchived] = useState(false)
 
   // Filters this user can apply; the rest are shown on their chips, never sent.
@@ -783,7 +785,7 @@ function ListView({
       <div className="list-toolbar">
         <h1 className="list-toolbar__title">
           {showArchived ? (
-            `Archived ${plural}`
+            `${verbs.archived} ${plural}`
           ) : (
             <ViewMenu
               plural={plural}
@@ -852,7 +854,7 @@ function ListView({
               className={cn('h-[var(--control-height)]', showArchived && 'list-toolbar__toggle--on')}
             >
               <Archive className="size-4" aria-hidden />
-              Archived
+              {verbs.archived}
             </Button>
           )}
           {schema.actions.create && !showArchived && (

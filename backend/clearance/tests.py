@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from billing.models import Bill, BillLine
 from foundation.models import AuditEntry
+from foundation.test_roles import member_of
 
 from .models import Container, Disbursement, Job
 from .testing import BILLS, CONTAINERS, DISBURSEMENTS, JOBS, ClearanceWorld, money
@@ -434,3 +435,65 @@ class JourneyIsolationTests(ClearanceWorld, TestCase):
             self.assertEqual(manager_like.get('/api/data/clearance/job/').status_code, 404)
             apps = {app['app_label'] for app in manager_like.get('/api/registry/').json()['apps']}
             self.assertNotIn('clearance', apps)
+
+
+STAFF = '/api/data/core/staff/'
+
+
+class TeamAccessTests(ClearanceWorld, TestCase):
+    """The Team page is for Owner, Manager and Coordinator; everyone else only sees names on records."""
+
+    def setUp(self):
+        self.build_world()
+        self.manager, self.manager_client = member_of('Manager', 'manager')
+        self.job = self.make_job(assigned=self.staff['agent2'])
+        self.listed = lambda client: {(app['app_label'], m['model']) for app in client.get('/api/registry/').json()['apps'] for m in app['models']}
+
+    def test_owner_manager_and_coordinator_have_the_team(self):
+        for client in (self.owner_client, self.manager_client, self.coordinator_client):
+            self.assertEqual(client.get(STAFF).status_code, 200)
+            self.assertIn(('core', 'staff'), self.listed(client))
+
+    def test_field_agent_documentation_and_accounts_have_no_team(self):
+        record = self.staff['agent'].pk
+        for client in (self.agent_client, self.documentation_client, self.accounts_client):
+            # A hidden model is absent, not forbidden: the same 404 for the list, a record and its schema.
+            for path in (STAFF, f'{STAFF}{record}/', '/api/schema/core/staff/', f'{STAFF}search/?q=ras'):
+                self.assertEqual(client.get(path).status_code, 404, path)
+            self.assertNotIn(('core', 'staff'), self.listed(client))
+            self.assertEqual(client.patch(f'{STAFF}{record}/', {'role': 'Owner'}, format='json').status_code, 404)
+
+    def test_water_roles_have_no_team_either(self):
+        for role in ('Clerk', 'Billing officer', 'Cashier', 'Recovery officer'):
+            _, client = member_of(role, role.lower().replace(' ', '-'))
+            self.assertEqual(client.get(STAFF).status_code, 404, role)
+            self.assertNotIn(('core', 'staff'), self.listed(client))
+
+    def test_a_new_members_name_still_shows_on_their_jobs(self):
+        # Kamran Lashari is a Field agent with no Team page, and his own job still says who he is.
+        job = f'{JOBS}{self.job.pk}/'
+        for client in (self.agent2_client, self.coordinator_client):
+            body = client.get(job).json()
+            self.assertEqual(body['labels']['assigned_to'], 'Kamran Lashari')
+            self.assertNotIn('assigned_to', body.get('restricted', {}))
+
+    def test_view_as_field_agent_shows_no_team(self):
+        listed = {
+            (app['app_label'], m['model'])
+            for app in self.owner_client.get('/api/registry/', HTTP_X_VIEW_AS_ROLE='Field agent').json()['apps']
+            for m in app['models']
+        }
+        self.assertNotIn(('core', 'staff'), listed)
+        self.assertEqual(self.owner_client.get(STAFF, HTTP_X_VIEW_AS_ROLE='Field agent').status_code, 404)
+
+
+class DeactivateVerbTests(ClearanceWorld, TestCase):
+    def test_the_team_form_declares_its_own_words_and_other_models_do_not(self):
+        self.build_world()
+        team = self.owner_client.get('/api/schema/core/staff/').json()
+        self.assertEqual(team['archive_verbs']['archive'], 'Deactivate')
+        self.assertEqual(team['archive_verbs']['restore'], 'Reactivate')
+        self.assertEqual(
+            team['archive_verbs']['consequence'], 'They are signed out now and cannot sign in until you reactivate them.'
+        )
+        self.assertIsNone(self.owner_client.get('/api/schema/core/contact/').json()['archive_verbs'])

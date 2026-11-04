@@ -167,6 +167,17 @@ export interface WorkflowSchema {
   transitions: WorkflowTransition[]
 }
 
+export interface ArchiveVerbs {
+  archive?: string
+  restore?: string
+  archived?: string
+  restored?: string
+  /** The sentence under the confirmation, after the title `<archive> <record>?`. */
+  consequence?: string
+  /** The banner on an archived record. */
+  notice?: string
+}
+
 export interface ModelSchema {
   model: string
   app_label: string
@@ -187,5 +198,7 @@ export interface ModelSchema {
   workflow?: WorkflowSchema | null
   /** A boolean field where false means archived; null when the model can't be archived. */
   archive_field?: string | null
+  /** What archiving is called for this model (the schema's words); null means the generic ones. */
+  archive_verbs?: ArchiveVerbs | null
   actions: SchemaActions
 }
