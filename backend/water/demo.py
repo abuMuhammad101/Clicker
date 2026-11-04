@@ -41,6 +41,7 @@ from .models import BillingRun, Connection, RecoveryCase, Tariff
 STAFF = [
     # username, first, last, role
     ('ayesha.khan', 'Ayesha', 'Khan', 'Manager'),
+    ('tariq.mehmood', 'Tariq', 'Mehmood', 'Manager'),
     ('bilal.ahmed', 'Bilal', 'Ahmed', 'Billing officer'),
     ('sana.malik', 'Sana', 'Malik', 'Billing officer'),
     ('imran.siddiqui', 'Imran', 'Siddiqui', 'Cashier'),
@@ -202,6 +203,7 @@ class Seeder:
         if new_lines:
             _env_append(self.env_file, ['# Demo staff logins (generated; never commit this file)', *new_lines])
         self.manager = self.ctx['ayesha.khan']
+        self.second_manager = self.ctx['tariq.mehmood']
         self.officers = [self.ctx['bilal.ahmed'], self.ctx['sana.malik']]
         self.cashier = self.ctx['imran.siddiqui']
         self.recovery = [self.ctx['farhan.raza'], self.ctx['nida.hussain']]
@@ -484,7 +486,13 @@ class Seeder:
             adjustment = actions.create(requester, Adjustment, bill=bill, kind=kind, amount=amount, reason=reason)
             self.step(requester, adjustment, 'request')
             if outcome == 'approve':
-                self.step(self.manager, adjustment, 'approve')
+                if adjustment.needs_two_approvers():
+                    # Above the limit for one approver: a different Manager completes it.
+                    self.step(self.manager, adjustment, 'approve_first')
+                    adjustment.refresh_from_db()
+                    self.step(self.second_manager, adjustment, 'approve_second')
+                else:
+                    self.step(self.manager, adjustment, 'approve')
             elif outcome == 'reject':
                 self.step(self.manager, adjustment, 'reject')
             self.created['adjustments'] += 1

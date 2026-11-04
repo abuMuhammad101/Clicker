@@ -352,6 +352,52 @@ class AdjustmentTests(BillingWorld, TestCase):
         self.assertEqual(self.transition(self.manager_client, ADJUSTMENTS, adjustment, 'approve').status_code, 200)
 
 
+class CrossTheLimitTests(BillingWorld, TestCase):
+    """The shipped limit (Rs 1 crore): above it one Manager's yes is not enough."""
+
+    def setUp(self):
+        self.build_world()
+        self.acme = self.customer()
+        self.bill = self.make_bill(self.acme, '30000000.00', issue='2026-07-01')  # Rs 3 crore
+
+    def test_the_limit_is_one_crore(self):
+        from django.conf import settings
+
+        self.assertEqual(settings.CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD, Decimal('10000000.00'))
+
+    def test_one_managers_approval_above_the_limit_waits_for_a_second(self):
+        adjustment = self.make_adjustment(self.bill, '15000000.00')  # Rs 1.5 crore
+        # The single-step approval is refused above the limit...
+        self.assertEqual(self.transition(self.manager_client, ADJUSTMENTS, adjustment, 'approve').status_code, 409)
+        # ...the first approval is recorded and nothing is reduced yet.
+        self.assertEqual(self.transition(self.manager_client, ADJUSTMENTS, adjustment, 'approve_first').status_code, 200)
+        adjustment.refresh_from_db()
+        self.assertEqual(adjustment.state, 'approved_once')
+        self.assertEqual(adjustment.first_approver, self.manager)
+        self.bill.refresh_from_db()
+        self.assertEqual(self.bill.amount_adjusted, money('0.00'))
+        # The same Manager can't be the second, and the requester never can.
+        self.assertIn(self.transition(self.manager_client, ADJUSTMENTS, adjustment, 'approve_second').status_code, (403, 409))
+        self.assertIn(self.transition(self.officer_client, ADJUSTMENTS, adjustment, 'approve_second').status_code, (403, 404))
+        adjustment.refresh_from_db()
+        self.assertEqual(adjustment.state, 'approved_once')
+        # A different Manager completes it.
+        self.assertEqual(self.transition(self.other_manager_client, ADJUSTMENTS, adjustment, 'approve_second').status_code, 200)
+        self.bill.refresh_from_db()
+        self.assertEqual(self.bill.amount_adjusted, money('15000000.00'))
+
+    def test_the_requester_can_never_approve(self):
+        adjustment = self.make_adjustment(self.bill, '15000000.00', client=self.manager_client)
+        for name in ('approve', 'approve_first'):
+            self.assertIn(self.transition(self.manager_client, ADJUSTMENTS, adjustment, name).status_code, (403, 409), name)
+        adjustment.refresh_from_db()
+        self.assertEqual(adjustment.state, 'requested')
+
+    def test_at_or_below_the_limit_one_approval_is_enough(self):
+        adjustment = self.make_adjustment(self.bill, '10000000.00')  # exactly Rs 1 crore
+        self.assertEqual(self.transition(self.manager_client, ADJUSTMENTS, adjustment, 'approve').status_code, 200)
+
+
 class RoleTests(BillingWorld, TestCase):
     def setUp(self):
         self.build_world()
@@ -391,7 +437,7 @@ class RoleTests(BillingWorld, TestCase):
         values = self.manager_client.get(f'/api/data/core/contact/{self.acme.pk}/').json()['values']
         self.assertEqual((values['outstanding'], values['oldest_overdue_days']), ('600.00', 95))
         labels = [rl['label'] for rl in build_schema(Contact, self.manager)['related_lists']]
-        self.assertEqual(labels[2:5], ['Bills', 'Payments', 'Adjustments'])
+        self.assertEqual(labels[:4], ['Bills', 'Payments', 'Adjustments', 'Recovery cases'])
         owing = self.manager_client.get('/api/data/core/contact/', {'filter': 'outstanding:gte:0.01'}).json()
         self.assertEqual(owing['count'], 1)
         # Not for someone who can't view bills.

@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+from decimal import Decimal
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -260,9 +261,9 @@ TIME_ZONE = 'Asia/Karachi'
 CLICKER_CURRENCY = {'code': 'PKR', 'symbol': 'Rs', 'decimal_places': 2, 'grouping': 'lakh'}
 
 # Reductions (credit notes, write-offs, discounts; S-3) need one Manager's
-# approval, never the requester's own. Above this amount a second approver
-# would be required; None means no such threshold yet.
-CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD = None
+# approval, never the requester's own. Above this amount (Rs 1 crore) a second,
+# different Manager must approve too; None would mean no such threshold.
+CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD = Decimal('10000000.00')
 
 USE_I18N = True
 
