@@ -24,7 +24,8 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-2 | Passed (30 Oct; review fixes 1 Nov) |
 | S-3 | Passed (1 Nov); screenshots completed 3 Nov |
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
-| S-5 | Next |
+| S-5 | Passed (4 Nov): oldest-first allocation, locked posted bills, one bill per connection (tests); Journey A walked through as Manager, Billing officer, Cashier and Recovery officer on the local database; slowest screen 122 ms. **Neon not seeded**: the demo runs on local Postgres (see Demo machine). |
+| S-6 | Next |
 
 ## Demo machine
 

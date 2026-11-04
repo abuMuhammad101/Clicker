@@ -1809,3 +1809,149 @@ right at volume. To the Notion Parking Lot.
 - **Next single action:** S-5. Replace the lab with the real invoicing core:
   a `Bill` model with the lab bill's workflow, numbering, aging buckets,
   summaries and views, then Payments with oldest-first allocation.
+
+## 2026-11-04 | office | S-5: invoicing core and Journey A (water)
+
+### What was built
+
+**The shared core, `billing` (any journey can use it).**
+- `Bill` and `BillLine`: totals are recalculated from the lines while the bill
+  is a Draft (each line rounded to the paisa), then locked. Posting numbers the
+  bill, and a posted bill answers any edit with 409. `amount_paid` and
+  `amount_adjusted` belong to the server. Status, days overdue and balance are
+  computed; views: Aging, Overdue over 90 days, and the rest of S-4's set.
+- `Payment` and `PaymentAllocation`: posting a payment pays the customer's oldest
+  bills first (by due date, then number), each bill row locked
+  (`select_for_update`) so two concurrent payments can't over-allocate. What is
+  left over is an advance held on the customer and applied when their next bill
+  posts. A (method, reference) pair can't repeat among payments that aren't
+  cancelled.
+- `Adjustment` (credit note, write-off): Draft → Requested → Approved or
+  Rejected. The requester can't approve it. Above a threshold setting
+  (`CLICKER_REDUCTION_SECOND_APPROVER_THRESHOLD`, left unset) a second Manager
+  must approve too. Approval reduces the bill in the same transaction.
+- On `Contact`: computed outstanding, oldest overdue days and advance held, and
+  related lists (Bills, Payments, Adjustments, Connections, Recovery cases)
+  that together are the consumer's statement.
+
+**Journey A, `water`.** `Tariff`, `Connection` (number written once, then read
+only), `BillingRun` (one draft bill per active connection, water and sewerage
+lines, refuses a second run for the same connection and month, "Post all"),
+`RecoveryCase` (one open case per consumer; stages notice 1 → notice 2 → legal →
+instalment → settled; disconnection order; write-off and settle check the
+consumer's balance). `Staff` lives in `core` (shared).
+
+**Activity trail.** Every form shows the record's audit history under it, in
+words: who moved what from where to where, with money formatted by the client.
+Automation entries are written by the system user "Clicker automation", not by a
+person.
+
+**Roles.** Manager, Billing officer, Cashier, Recovery officer, Auditor (reads
+everything, changes nothing), all as Groups seeded after migrate. A Recovery
+officer sees only the cases they own (a record rule); someone else's case is a
+404.
+
+**Seed.** `manage.py seed_demo --journey water --confirm <db>`: about 150
+"(demo)" consumers, 12 months of bills and payments, old dues for federal and
+military bodies going back to 2022/23, adjustments in every state, 95 recovery
+cases, seven logins whose generated passwords go to local `.env` and are never
+printed. It is idempotent: a second run adds nothing (checked: identical counts).
+
+### Engine extensions (the law held: no model-specific frontend code)
+
+- **Transition hook:** `run` (a method called inside the transition's
+  transaction), `check` (a refusal sentence computed on click; the button stays),
+  `when` (choose between same-labelled transitions by state), `not_by`.
+- **Record rules:** `Schema.record_rules` narrow a role's queryset in
+  `scoped_queryset`; a user is narrowed only if every group that lets them see
+  the model is bound to a rule.
+- **Cross-relation computed fields** (`requires` models), computed selections
+  with tones, computed columns in related lists.
+- `Schema.on_save`, `system_managed`, `nav=False` (a model reached only through
+  its parents stays out of the sidebar), audit `summary`, `person` links (a user
+  is named, never linked), and `foundation/actions.py`, the one server-side write
+  API (create/change/transition, each audited in the same transaction).
+
+### Decisions, one line each
+
+- Archived means read-only (409 and a read-only form): you asked for it.
+- The demo runs on local Postgres, `CONN_MAX_AGE` 60: Neon was ~175 ms a query.
+- Neon is not seeded and has no S-5 timings: hours of seeding for no gain.
+- Lab models stay test-only (`CLICKER_LAB`): the demo runs without them.
+- Staff is in `core`: Journey B needs people too.
+- Write-offs go through adjustments (approved by a Manager), then the case closes.
+- Passwords are generated into `.env`, never printed or committed.
+- Allocation is oldest due date first: it is how recovery officers reason.
+
+### Definition of done
+
+1. **Pass.** 238 backend tests OK. They include: oldest-first allocation with
+   an advance; concurrent posts never over-allocate; a repeated reference is
+   refused; a PATCH to a posted bill is a 409; an approved adjustment reduces
+   the balance; a requester can't approve their own; one bill per active
+   connection and a repeated run refused; a Recovery officer gets 404 on
+   another's case; an archived contact can't be edited; automation entries carry
+   the system actor.
+2. **Pass.** `npx tsc -b` clean; frontend tests 26 passed; `npm run build`.
+3. **Pass, on the local database** (real API on 8200, frontend on 5273), as each
+   role. Manager: Bills "Aging" with its summary strip; Federal Steel's
+   statement (account, bills, payments, adjustments, cases, activity). Cashier:
+   a Rs 60,000,000 bank transfer posted and allocated oldest-first. Billing
+   officer: requested a Rs 5,000,000 write-off against a 447-day bill. Manager:
+   the approval screen with the bill's age and the customer's total owed; after
+   Approve the customer's total fell by exactly Rs 5,000,000 and the bill's
+   trail says "Adjustment ADJ-2026-00014 reduced the balance by Rs 5,000,000.00".
+   Recovery officer (Farhan Raza): 38 own cases; another officer's case reads
+   "This record isn't available". Manager: "Needs an owner" lists 4 cases.
+   Screenshots at 1440, light and dark: `docs/design/s5/`.
+4. **Pass.** Local database, median of 5 (`manage.py measure_demo`):
+
+   | Screen | Median | Queries |
+   | --- | --- | --- |
+   | Bills, Aging view (first 100 rows, grouped by age) | 97 ms | 22 |
+   | Bills over 90 days, largest group opened | 44 ms | 12 |
+   | Federal Steel's statement: record, schema, activity | 46 ms | 32 |
+   | Statement: its five related lists | 122 ms | 64 |
+   | Customers owing money, biggest first | 54 ms | 11 |
+
+   Slowest 122 ms. Neon was not measured (decision above).
+
+The seeded numbers the demo opens on: Rs 313.3 crore outstanding; Rs 163.6 crore
+(52%) more than 180 days overdue, 95% of that federal and military; 2,518 bills,
+1,185 payments, 13 adjustments, 95 recovery cases. Fresh machine set-up time:
+database 1 s, migrate 6 s, seed about 3 minutes. Steps: "Demo machine" in
+`docs/DEMO_SPRINT.md`. The walkthrough's own changes (the Rs 60,000,000 payment
+and ADJ-2026-00014) were wiped: the local demo database was dropped and re-seeded
+afterwards, and a second seed run changed nothing.
+
+### Handling of the sign-in passwords during the walkthrough
+
+You asked for the credential file to leave the served folder. It was deleted from
+`frontend/public/`; nothing replaced it on disk. For the browser pane I used a
+loopback-only helper (127.0.0.1:8766, answers only to the app's origin) that read
+`.env` at request time; it is stopped, and `frontend/public/__design` holds only
+`blank.html`, `fixtures.json`, `harness.js`.
+
+### Findings and gaps
+
+- A `check` refusal shows on click only (Cancel on a posted bill with payments
+  offers a primary button that then refuses). Evaluating checks in lists would be
+  one query per row, so it stays on click.
+- Editing a bill line doesn't refresh the parent form's total until reload.
+- "Reversed" shows ✕ in allocation lists; it should read like the other booleans.
+- Digit grouping is Western (Rs 420,000), not lakh (Rs 4,20,000): your call.
+- The Contact computed fields annotate on every contact query; fine at 150
+  contacts, a scale concern later.
+- The billing run is synchronous: move it to a background task at ~10,000
+  connections.
+- Metered billing uses assessed consumption, not meter readings.
+- Persistent connections only help a threaded server, not `runserver`.
+- In the dark statement capture 2b the sidebar scrolled with the page; cosmetic,
+  in the capture only.
+- The local Postgres stops when the session ends; restart it with `pg_ctl` (in
+  "Demo machine").
+
+- Half-finished: nothing.
+- **Next single action:** S-6. Journey B (Karachi port clearing agency: Jobs,
+  Containers, Disbursements, the invoice drafting itself at gate-out) on the same
+  billing core, then the team and roles page with "View as role".
