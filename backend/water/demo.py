@@ -30,7 +30,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db.models import Sum
 
-from billing.models import Adjustment, Bill, Payment
+from billing.models import Adjustment, Bill, BillLine, Payment
 from core.models import Contact, Country, Staff
 from foundation import actions, automation, computed
 from foundation.money import quantize
@@ -107,6 +107,20 @@ COMMERCIAL_NAMES = [
     'Horizon Hospital', 'Jubilee Heights', 'Regent Plaza', 'Beacon Chambers', 'Summit Hotel', 'Orchard Residency',
     'Dockside Offices', 'Kohinoor Plaza', 'Gateway Mall',
 ]
+
+# What a month's consumption is scaled by, so twelve months of billing leave arrears in the
+# low hundreds of crores once the old dues below are added.
+SCALE = Decimal('0.75')
+
+# Dues that go back years, carried forward from the utility's older billing system: the
+# federal bodies and military installations that have not paid for a very long time.
+# category: (months of that consumer's monthly bill still owed, the financial years it is spread over)
+LEGACY = {
+    'federal': ((7, 12), ['2022/23', '2023/24', '2024/25']),
+    'military': ((9, 15), ['2023/24', '2024/25']),
+    'provincial': ((0.5, 2.0), ['2024/25']),
+}
+LEGACY_LINE = 'Arrears brought forward from the previous billing system, FY'
 
 DISTRICT_CODE = {
     'central': 'CEN', 'east': 'EAS', 'west': 'WES', 'south': 'SOU', 'korangi': 'KOR', 'malir': 'MAL', 'keamari': 'KEA',
@@ -247,7 +261,7 @@ class Seeder:
             for n in range(wanted):
                 district = districts[(index + n) % len(districts)]
                 size = rng.choice([75, 100, 150, 200, 300, 450, 600])
-                kgal = Decimal(str(round(median * rng.lognormvariate(0, 0.7), 3)))
+                kgal = Decimal(str(round(median * float(SCALE) * rng.lognormvariate(0, 0.7), 3)))
                 if n < have:
                     continue
                 code = DISTRICT_CODE[district]
@@ -267,6 +281,41 @@ class Seeder:
                     account_officer=officers[(index + n) % 2],
                 )
                 self.created['connections'] += 1
+
+    # ------------------------------------------------------------ old dues
+
+    def legacy_arrears(self):
+        """
+        Bills from before the twelve months, still unpaid: a bill for each past
+        financial year, dated its last day (30 June), for the consumers who have
+        not paid for years. They are posted like any bill, so the oldest-first rule
+        sends every later payment to them before anything recent.
+        """
+        officer = self.officers[0]
+        for consumer_id, profile in self.profile.items():
+            plan = LEGACY.get(profile['category'])
+            if not plan:
+                continue
+            (low, high), years = plan
+            rng = random.Random(f'{self.seed}:legacy:{profile["name"]}')
+            months = Decimal(str(round(rng.uniform(low, high), 2)))
+            monthly = sum(
+                (
+                    quantize(c.assessed_monthly_kgal * c.tariff.rate_per_kgal * (1 + c.tariff.sewerage_percent / 100))
+                    for c in Connection.objects.filter(consumer_id=consumer_id).select_related('tariff')
+                ),
+                Decimal('0'),
+            )
+            share = quantize(months * monthly / len(years))
+            for year in years:
+                issued = datetime.date(int(year[:4]) + 1, 6, 30)
+                description = f'{LEGACY_LINE}{year}'
+                if BillLine.objects.filter(bill__customer_id=consumer_id, description=description).exists():
+                    continue
+                bill = actions.create(officer, Bill, customer_id=consumer_id, issue_date=issued)
+                actions.create(officer, BillLine, bill=bill, description=description, quantity=1, unit_price=share)
+                self.step(officer, bill, 'post')
+                self.created['old bills'] += 1
 
     # ----------------------------------------------------------- twelve months
 
@@ -301,6 +350,9 @@ class Seeder:
         periods = self.periods()
         ledger = defaultdict(deque)  # consumer id → deque of [month index, amount still owed]
         last_bill = defaultdict(Decimal)
+        # The old dues sit at the front of every ledger: the oldest are paid first.
+        for bill in Bill.objects.filter(state='posted', issue_date__lt=periods[0]).order_by('issue_date', 'id'):
+            ledger[bill.customer_id].append([-1, bill.amount_total])
         for index, period in enumerate(periods):
             if index:
                 self.pay_month(rng, ledger, last_bill, index, periods[index])
@@ -381,8 +433,8 @@ class Seeder:
             return min(owed, last * Decimal(rng.uniform(0.4, 1.0))) if rng.random() < 0.06 else 0
         if category == 'provincial':
             return min(owed, last * Decimal(rng.uniform(0.8, 1.4))) if rng.random() < 0.6 else 0
-        if category == 'military':  # pays late, in lumps
-            return min(owed, old * Decimal(rng.uniform(0.6, 0.95))) if (index + profile['offset']) % 4 == 0 and old > 0 else 0
+        if category == 'military':  # pays late, in lumps, and mostly into the dues from years ago
+            return min(owed, old * Decimal(rng.uniform(0.1, 0.22))) if (index + profile['offset']) % 4 == 0 and old > 0 else 0
         if category == 'port_utility':  # mostly on time, and catches up after a missed month
             pace = Decimal('1.0') if owed < Decimal('1.8') * last else Decimal('1.6')
             return min(owed, last * pace * Decimal(rng.uniform(0.95, 1.05))) if rng.random() < 0.85 else 0
@@ -536,8 +588,15 @@ class Seeder:
             Decimal('0'),
         )
         crore = Decimal('10000000')
+        names = {pk: p['category'] for pk, p in self.profile.items()}
+        old_by_kind = defaultdict(Decimal)
+        for bill in Bill.objects.filter(state='posted', due_date__lt=today - datetime.timedelta(days=180)):
+            old_by_kind[names.get(bill.customer_id, '?')] += bill.balance_value
+        share = (over_180 / outstanding * 100) if outstanding else 0
+        carried = sum(old_by_kind[k] for k in ('federal', 'military')) / over_180 * 100 if over_180 else 0
         self.say(
-            f'  outstanding Rs {outstanding / crore:,.1f} crore, of which {over_180 / crore:,.1f} crore is more than 180 days overdue'
+            f'  outstanding Rs {outstanding / crore:,.1f} crore; {over_180 / crore:,.1f} crore ({share:.0f}%) is more than '
+            f'180 days overdue, {carried:.0f}% of that from federal bodies and military installations'
         )
         advance = Payment.objects.filter(state='posted').aggregate(t=Sum('amount'))['t'] or 0
         self.say(f'  {Bill.objects.count()} bills, {Payment.objects.count()} payments ({advance / crore:,.1f} crore), '
@@ -549,6 +608,7 @@ class Seeder:
             ('people', self.people),
             ('reference data', self.reference),
             ('consumers and connections', self.consumers),
+            ('old dues', self.legacy_arrears),
             ('twelve months of billing and payments', self.billing_and_payments),
             ('adjustments', self.adjustments),
             ('recovery', self.recovery_cases),
