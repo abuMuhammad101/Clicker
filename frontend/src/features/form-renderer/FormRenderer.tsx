@@ -707,6 +707,9 @@ function EditableForm({
 
       {record && schema.related_lists && schema.related_lists.length > 0 && (
         <RelatedLists
+          // A transition or a save changes what the lists beside the record show (a posted
+          // payment's allocations): a new version of the record is a fresh fetch of them.
+          key={record.meta?.updated_at ?? record.id}
           parent={{ app_label: appLabel, model, id: record.id }}
           lists={schema.related_lists}
         />
