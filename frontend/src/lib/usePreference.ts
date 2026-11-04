@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiGet, apiSend } from '@/lib/api'
+import { viewingAs } from '@/lib/viewAs'
 
 /**
  * A per-user preference kept on the server, so it follows the person to
@@ -40,6 +41,9 @@ export function usePreference<T>(key: string, fallback: T) {
       changed.current = true
       current.current = next
       setValue(next)
+      // While viewing as another role nothing is written (the server refuses it, with a 403 the person never
+      // asked for); the change still holds for this page load.
+      if (viewingAs()) return
       void apiSend('PUT', `/preferences/${key}/`, { value: next }).catch(() => {
         // Not saved; it still holds for this page load.
       })

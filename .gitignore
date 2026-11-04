@@ -34,3 +34,6 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+
+# Rehearsal failure screenshots (scripts/rehearse.mjs): local evidence, not history
+docs/design/s7/failures/
