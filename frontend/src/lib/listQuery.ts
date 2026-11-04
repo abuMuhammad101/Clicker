@@ -1,5 +1,6 @@
 import { formatDate } from '@/lib/dates'
-import { formatMoney, formatMoneyCompact, groupThousands } from '@/lib/money'
+import { aggregateDisplay } from '@/fields/aggregateDisplay'
+import { formatMoney, groupThousands } from '@/lib/money'
 import type { FieldSchema, FieldType, ModelSchema } from '@/types/schema'
 
 /**
@@ -129,8 +130,9 @@ function describeValue(field: FieldSchema, value: string, labels?: Record<string
   if (value === undefined) return '…'
   switch (field.type) {
     case 'currency':
-      // Compact reads well from a lakh up; below it the paisa matter (“Rs 0.01”, not “Rs 0”).
-      return Math.abs(Number(value)) >= 100_000 ? formatMoneyCompact(value) : formatMoney(value)
+      // A threshold is something a person typed, not a total: from a lakh up it reads
+      // like an aggregate (the registry's rule); below it the paisa matter (“Rs 0.01”, not “Rs 0”).
+      return Math.abs(Number(value)) >= 100_000 ? aggregateDisplay('currency', value).short : formatMoney(value)
     case 'integer':
     case 'decimal': {
       const negative = value.startsWith('-')

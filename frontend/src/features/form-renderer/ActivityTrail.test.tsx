@@ -59,7 +59,7 @@ describe('ActivityList', () => {
   it('formats an amount in a summary in the reader’s money format', () => {
     const text = html([entry({ summary: 'Payment PAY-2026-00012 allocated {money:420000.00}' })])
     expect(text).toContain('Payment PAY-2026-00012 allocated')
-    expect(text).toContain('Rs 420,000.00')
+    expect(text).toContain('Rs 4,20,000.00')
     expect(text).not.toContain('{money')
   })
 

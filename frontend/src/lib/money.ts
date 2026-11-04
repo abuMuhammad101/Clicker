@@ -11,7 +11,7 @@ import { organisation } from './organisation'
 export interface DecimalParts {
   /** '−' (a true minus sign) or ''. Never colour: red belongs to status. */
   sign: string
-  /** Whole units with thousands separators: "1,245,000". */
+  /** Whole units with digit separators: "12,45,000". */
   whole: string
   /** The point and the fraction, padded to scale: ".50". '' at scale 0. */
   fraction: string
@@ -19,7 +19,7 @@ export interface DecimalParts {
 
 const MINUS = '−'
 
-/** "1245000.5" at 2 places → { sign: '', whole: '1,245,000', fraction: '.50' }. */
+/** "1245000.5" at 2 places → { sign: '', whole: '12,45,000', fraction: '.50' }. */
 export function decimalParts(value: string, places: number): DecimalParts {
   const text = value.trim()
   const negative = text.startsWith('-')
@@ -30,17 +30,26 @@ export function decimalParts(value: string, places: number): DecimalParts {
   return { sign: negative && !isZero ? MINUS : '', whole: groupThousands(digits), fraction }
 }
 
+/**
+ * Groups a run of digits the way the organisation counts: the last three,
+ * then pairs ("12,34,567") for lakh grouping; threes ("1,234,567") otherwise.
+ * One function, so no screen has its own idea of where the commas go. (The
+ * browser's `en-PK` locale groups in threes, so it can't be relied on.)
+ */
 export function groupThousands(digits: string): string {
-  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  if ((organisation().currency.grouping ?? 'lakh') === 'western') {
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  }
+  return digits.replace(/\B(?=(\d{2})*\d{3}(?!\d))/g, ',')
 }
 
-/** "1,245,000.50" (or "−1,245,000.50"). */
+/** "12,45,000.50" (or "−12,45,000.50"). */
 export function formatDecimal(value: string, places: number): string {
   const { sign, whole, fraction } = decimalParts(value, places)
   return `${sign}${whole}${fraction}`
 }
 
-/** "Rs 1,245,000.00"; a negative amount is "−Rs 1,245,000.00". */
+/** "Rs 12,45,000.00"; a negative amount is "−Rs 12,45,000.00". */
 export function formatMoney(value: string): string {
   const { currency } = organisation()
   const { sign, whole, fraction } = decimalParts(value, currency.decimal_places)

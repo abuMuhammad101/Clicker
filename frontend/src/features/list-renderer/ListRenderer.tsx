@@ -46,7 +46,7 @@ import {
   type ListState,
   type SavedView,
 } from '@/lib/listQuery'
-import { formatMoney } from '@/lib/money'
+import { aggregateDisplay } from '@/fields/aggregateDisplay'
 import { useLocation } from '@/lib/router'
 import { usePreference } from '@/lib/usePreference'
 import { toast } from '@/lib/toast'
@@ -1219,7 +1219,7 @@ export function GroupRow({
       {columns.slice(lead).map((column) => (
         <div key={column.name} role="cell" className="list-group__cell" style={{ width: column.width }}>
           {column.type === 'currency' && column.name in group.sums && (
-            loading ? <Skeleton className="ml-auto h-3 w-16" /> : <span className="list-group__sum" title={formatMoney(group.sums[column.name])}>{formatMoney(group.sums[column.name])}</span>
+            loading ? <Skeleton className="ml-auto h-3 w-16" /> : <span className="list-group__sum" title={aggregateDisplay('currency', group.sums[column.name]).exact}>{aggregateDisplay('currency', group.sums[column.name]).short}</span>
           )}
         </div>
       ))}

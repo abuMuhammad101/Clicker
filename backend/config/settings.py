@@ -257,7 +257,7 @@ TIME_ZONE = 'Asia/Karachi'
 # The organisation's currency. One currency, held here, never per field
 # (multi-currency is in the Parking Lot). Money is Decimal end to end and
 # travels to the browser as a string.
-CLICKER_CURRENCY = {'code': 'PKR', 'symbol': 'Rs', 'decimal_places': 2}
+CLICKER_CURRENCY = {'code': 'PKR', 'symbol': 'Rs', 'decimal_places': 2, 'grouping': 'lakh'}
 
 # Reductions (credit notes, write-offs, discounts; S-3) need one Manager's
 # approval, never the requester's own. Above this amount a second approver

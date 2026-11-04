@@ -11,7 +11,7 @@ from decimal import Decimal
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
-from django.test import TestCase, TransactionTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 
 from core.models import Contact
 from foundation.models import AuditEntry
@@ -403,3 +403,23 @@ class RoleTests(BillingWorld, TestCase):
         from foundation.test_roles import member_of
 
         return member_of('Clerk', 'clerk')[0]
+
+
+class MoneyTextTests(SimpleTestCase):
+    """Sentences the server writes group digits the way the organisation counts."""
+
+    def test_lakh_grouping(self):
+        from foundation.money import format_money
+
+        self.assertEqual(format_money('0'), 'Rs 0.00')
+        self.assertEqual(format_money('999.5'), 'Rs 999.50')
+        self.assertEqual(format_money('1000'), 'Rs 1,000.00')
+        self.assertEqual(format_money('420000'), 'Rs 4,20,000.00')
+        self.assertEqual(format_money('1248500.05'), 'Rs 12,48,500.05')
+        self.assertEqual(format_money('-31332000000'), '−Rs 31,33,20,00,000.00')
+
+    def test_western_grouping_when_configured(self):
+        from foundation.money import format_money
+
+        with self.settings(CLICKER_CURRENCY={'code': 'USD', 'symbol': '$', 'decimal_places': 2, 'grouping': 'western'}):
+            self.assertEqual(format_money('1248500'), '$ 1,248,500.00')

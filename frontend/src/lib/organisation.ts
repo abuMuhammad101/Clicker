@@ -11,6 +11,8 @@ export interface Currency {
   code: string
   symbol: string
   decimal_places: number
+  /** How digits group: 'lakh' (12,34,567), the way people in Pakistan read money, or 'western' (1,234,567). */
+  grouping?: 'lakh' | 'western'
 }
 
 export interface Organisation {
@@ -19,7 +21,7 @@ export interface Organisation {
 }
 
 let current: Organisation = {
-  currency: { code: 'PKR', symbol: 'Rs', decimal_places: 2 },
+  currency: { code: 'PKR', symbol: 'Rs', decimal_places: 2, grouping: 'lakh' },
   time_zone: 'Asia/Karachi',
 }
 

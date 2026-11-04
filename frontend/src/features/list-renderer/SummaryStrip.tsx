@@ -1,6 +1,6 @@
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Summary } from '@/lib/listQuery'
-import { formatMoney, formatMoneyCompact, groupThousands } from '@/lib/money'
+import { aggregateDisplay } from '@/fields/aggregateDisplay'
 import { cn } from '@/lib/utils'
 import './SummaryStrip.css'
 
@@ -39,7 +39,7 @@ export function SummaryStrip({
   return (
     <div className={cn('summary-strip', loading && 'summary-strip--updating')} role="group" aria-label="Summaries">
       {summaries.map((summary) => {
-        const { short, exact } = formatSummary(summary)
+        const { short, exact } = aggregateDisplay(summary.type, summary.value, summary.aggregate)
         const clickable = onApply && summary.filter.length > 0
         const content = (
           <>
@@ -71,13 +71,4 @@ export function SummaryStrip({
 
 function isZero(value: string) {
   return Number(value) === 0
-}
-
-function formatSummary(summary: Summary) {
-  if (summary.type === 'currency') {
-    return { short: formatMoneyCompact(summary.value), exact: formatMoney(summary.value) }
-  }
-  const [whole, fraction] = summary.value.split('.')
-  const text = `${whole.startsWith('-') ? '−' : ''}${groupThousands(whole.replace(/^-/, ''))}${fraction && summary.aggregate === 'avg' ? `.${fraction}` : ''}`
-  return { short: text, exact: text }
 }
