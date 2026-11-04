@@ -197,14 +197,14 @@ class WorkflowApiTests(LabTestCase):
         self.run_as(self.clerk_client, adjustment, 'request')
         status = self.status_for(self.clerk_client, adjustment)
         self.assertEqual(status['available'], [])
-        self.assertEqual(status['waiting'], 'Waiting for a Manager or Owner to approve or reject it.')
+        self.assertEqual(status['waiting'], 'Waiting for a Manager or Owner to approve or reject this lab adjustment.')
 
     def test_the_requester_is_told_someone_else_has_to_approve(self):
         adjustment = self.create_adjustment(self.manager_client)
         self.run_as(self.manager_client, adjustment, 'request')
         status = self.status_for(self.manager_client, adjustment)
         self.assertEqual(status['available'], [])
-        self.assertEqual(status['waiting'], 'You’re its requester, so another Manager or Owner has to approve or reject it.')
+        self.assertEqual(status['waiting'], 'You’re its requester, so another Manager or Owner has to approve or reject this lab adjustment.')
         self.assertEqual(self.status_for(self.other_manager_client, adjustment)['available'], ['approve', 'reject'])
 
     def test_a_finished_record_waits_for_nobody(self):

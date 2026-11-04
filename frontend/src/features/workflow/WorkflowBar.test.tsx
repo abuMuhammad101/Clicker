@@ -46,12 +46,12 @@ describe('WorkflowBar', () => {
       <WorkflowBar
         workflow={workflow([REQUEST])}
         state="requested"
-        status={status({ locked: true, locked_reason: 'Locked.', waiting: 'Waiting for a Manager to approve or reject it.' })}
+        status={status({ locked: true, locked_reason: 'Locked.', waiting: 'Waiting for a Manager to approve or reject this adjustment.' })}
         verboseName="adjustment"
       />,
     )
     expect(buttons(html)).toEqual([])
-    expect(html).toContain('Waiting for a Manager to approve or reject it.')
+    expect(html).toContain('Waiting for a Manager to approve or reject this adjustment.')
   })
 
   it('shows only the transitions available now, the forward one as primary', () => {

@@ -13,7 +13,7 @@ import './WorkflowBar.css'
  * Only transitions the user's schema allows ever appear, and only the ones
  * available on this record now. A step that belongs to someone else is
  * never a disabled button; it's a sentence saying whose it is ("Waiting for
- * a Manager to approve or reject it.").
+ * a Manager to approve or reject this adjustment.").
  */
 export function WorkflowBar({
   workflow,

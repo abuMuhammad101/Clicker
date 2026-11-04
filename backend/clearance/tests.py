@@ -534,3 +534,15 @@ class ToBeInvoicedCardTests(ClearanceWorld, TestCase):
 
     def test_a_field_agents_card_is_hidden_because_they_cannot_read_money(self):
         self.assertIsNone(self.card(self.agent_client, self.VIEW))
+
+
+class StateSentenceTests(ClearanceWorld, TestCase):
+    def test_a_released_job_waiting_on_gate_out_names_the_job(self):
+        self.build_world()
+        job = self.make_job(assigned=self.staff['agent'])
+        self.advance(job, 'released')
+        body = self.documentation_client.get(f'{JOBS}{job.pk}/').json()
+        waiting = (body.get('workflow') or {}).get('waiting')
+        # (Every role exists in tests; in the clearance journey the Manager is not one of them.)
+        self.assertTrue(waiting.startswith('Waiting for a Coordinator'), waiting)
+        self.assertTrue(waiting.endswith(' to gate out or cancel this job.'), waiting)

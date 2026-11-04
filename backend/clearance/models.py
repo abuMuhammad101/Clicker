@@ -213,17 +213,17 @@ class Job(ClickerModel):
             },
             'locked': ['closed', 'cancelled'],
             'transitions': {
-                'documents_in': {'label': 'Documents received', 'from': ['booked'], 'to': 'documents_in', 'run': 'entered'},
-                'file_gd': {'label': 'File GD', 'from': ['documents_in'], 'to': 'gd_filed', 'run': 'entered'},
-                'assess': {'label': 'Record assessment', 'from': ['gd_filed'], 'to': 'assessed', 'run': 'entered'},
-                'pay_duty': {'label': 'Duty paid', 'from': ['assessed'], 'to': 'duty_paid', 'run': 'entered'},
-                'examine': {'label': 'Examined', 'from': ['duty_paid'], 'to': 'examined', 'run': 'entered'},
+                'documents_in': {'label': 'Documents received', 'waiting_verb': 'record the documents as received on {this}', 'from': ['booked'], 'to': 'documents_in', 'run': 'entered'},
+                'file_gd': {'label': 'File GD', 'waiting_verb': 'file the GD for {this}', 'from': ['documents_in'], 'to': 'gd_filed', 'run': 'entered'},
+                'assess': {'label': 'Record assessment', 'waiting_verb': 'record the assessment on {this}', 'from': ['gd_filed'], 'to': 'assessed', 'run': 'entered'},
+                'pay_duty': {'label': 'Duty paid', 'waiting_verb': 'record the duty as paid on {this}', 'from': ['assessed'], 'to': 'duty_paid', 'run': 'entered'},
+                'examine': {'label': 'Examined', 'waiting_verb': 'record the examination on {this}', 'from': ['duty_paid'], 'to': 'examined', 'run': 'entered'},
                 'release': {
                     'label': 'Release',
                     'from': ['duty_paid', 'examined'],
                     'to': 'released',
                     'run': 'entered',
-                    'hint': 'A green-channel job can be released straight after duty is paid, without an examination.',
+                    'hint': 'If this is a green-channel job, it can be released straight after duty is paid, without an examination.',
                 },
                 'gate_out': {
                     'label': 'Gate out',
@@ -231,7 +231,7 @@ class Job(ClickerModel):
                     'to': 'gate_out',
                     'run': 'drafts_the_invoice',
                     'confirm_with': 'confirm_gate_out',
-                    'hint': 'Drafts the client’s invoice from the service fee and the approved disbursements.',
+                    'hint': 'Drafts this job’s invoice from the service fee and the approved disbursements.',
                 },
                 'close': {
                     'label': 'Close job',
@@ -246,7 +246,7 @@ class Job(ClickerModel):
                     'to': 'cancelled',
                     'check': 'check_cancel',
                     'run': 'withdraw_the_draft',
-                    'confirm': 'The job is closed without being billed. A draft invoice, if there is one, is cancelled.',
+                    'confirm': 'This job is closed without being billed. A draft invoice, if there is one, is cancelled.',
                 },
             },
         }

@@ -229,6 +229,36 @@ def _either(labels):
     return labels[0] if len(labels) == 1 else f'{", ".join(labels[:-1])} or {labels[-1]}'
 
 
+def _phrase(model, spec):
+    """
+    What a transition is called in a sentence about the record: 'approve this adjustment', 'gate out
+    this job'. A transition whose label isn't a verb that takes the record as its object ('Duty paid',
+    'Request approval') declares `waiting_verb`, with `{this}` where the record goes.
+    """
+    this = f'this {model._meta.verbose_name}'
+    declared = spec.get('waiting_verb')
+    if declared:
+        return declared.replace('{this}', this)
+    label = spec['label'].lower()
+    noun = model._meta.verbose_name.lower()
+    if label.endswith(f' {noun}'):
+        label = label[: -len(noun)].rstrip()
+    return f'{label} {this}'
+
+
+def _either_phrases(phrases):
+    """['approve this bill', 'reject this bill'] → 'approve or reject this bill' when they end the same way."""
+    phrases = list(dict.fromkeys(phrases))
+    if len(phrases) == 1:
+        return phrases[0]
+    tails = {p.split(' this ', 1)[1] if ' this ' in p else None for p in phrases}
+    if None not in tails and len(tails) == 1:
+        tail = tails.pop()
+        verbs = [p.split(' this ', 1)[0] for p in phrases]
+        return f'{_either(verbs)} this {tail}'
+    return f'{", ".join(phrases[:-1])} or {phrases[-1]}'
+
+
 def _hint(model, decl, spec):
     if spec.get('hint'):
         return spec['hint']
@@ -296,7 +326,7 @@ def record_status(user, obj, roles_cache=None, checks=False):
     - `available`: the transitions they may run on it now;
     - `locked` and `locked_reason`: whether its state refuses edits, and why;
     - `waiting`: when they can do nothing, who can and what ("Waiting for a
-      Manager to approve or reject it."). Never a disabled button with no
+      Manager to approve or reject this bill."). Never a disabled button with no
       explanation: if a step is someone else's, the sentence says whose.
 
     `roles_cache` (a dict) lets a list of records share one lookup of who
@@ -330,7 +360,7 @@ def record_status(user, obj, roles_cache=None, checks=False):
         pending = [(n, s) for n, s in pending if blocked_reason(user, obj, n, check=False) is not None or n not in granted(user, model)]
     if not pending:
         return status
-    actions = _either(list(dict.fromkeys(s['label'] for _, s in pending)))
+    actions = _either_phrases([_phrase(model, s) for _, s in pending])
     cache = roles_cache if roles_cache is not None else {}
     for n, _ in pending:
         if (model, n) not in cache:
@@ -343,9 +373,9 @@ def record_status(user, obj, roles_cache=None, checks=False):
     )
     if barred:
         others = f'another {" or ".join(roles)}' if roles else 'someone else'
-        status['waiting'] = f'You’re its {meta.get_field(barred).verbose_name}, so {others} has to {actions} it.'
+        status['waiting'] = f'You’re its {meta.get_field(barred).verbose_name}, so {others} has to {actions}.'
     else:
-        status['waiting'] = f'Waiting for {_a(roles)} to {actions} it.'
+        status['waiting'] = f'Waiting for {_a(roles)} to {actions}.'
     return status
 
 
