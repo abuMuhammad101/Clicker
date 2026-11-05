@@ -388,12 +388,17 @@ async function journeyB() {
     await settle(welcome.page)
     equal((await rows(welcome)).length, 6, 'rows in the list the card opens')
   })
-  await step('B6c A Field agent is told of nothing waiting that is not theirs', agent, async () => {
+  await step('B6c A Field agent is told only of their own jobs, and never of an approval', agent, async () => {
+    await openList(agent, 'clearance/job')
+    const own = (await rows(agent)).length
     await agent.page.goto(`${agent.base.app}/`)
     await agent.page.getByRole('heading', { level: 1 }).waitFor()
     await agent.page.waitForTimeout(1200)
-    const strip = await agent.page.getByRole('region', { name: 'Waiting for you' }).count()
-    equal(strip, 0, 'a Waiting-for-you strip for a Field agent')
+    const strip = agent.page.getByRole('region', { name: 'Waiting for you' })
+    const said = (await strip.count()) ? await textOf(strip) : ''
+    check(!/disbursement|invoice|bill/i.test(said), `a Field agent should not be told of approvals or invoices: ${said}`)
+    const counted = [...said.matchAll(/(\d+)\s*jobs/g)].reduce((sum, m) => sum + Number(m[1]), 0)
+    check(counted <= own, `the strip counts ${counted} jobs but the Field agent owns ${own}`)
   })
   await ledger(welcome, 'Accounts scenes (home)')
 
