@@ -508,8 +508,8 @@
   top: 50%;
   right: var(--space-3);
   display: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -945,4 +945,13 @@
 .list-row__select [data-slot='checkbox'] {
   width: 24px;
   height: 24px;
+}
+
+/* The select-all box lines up with the row boxes under it (the rows sit inside the cell's padding; the header's box did not). */
+.list-header__select {
+  margin-left: var(--cell-padding-x, var(--space-5));
+}
+
+.list-header__select + .list-header__sort {
+  padding-left: 0;
 }
