@@ -15,6 +15,7 @@ Score = (impact on the demo, 1 to 5) x (impact on perceived enterprise quality, 
 | Session-expired dialog in the new words | 2x3/1 = 6.0 | `SessionExpiredDialog.tsx` |
 | Group rows that screen readers can open and close, a live region that is always there, named info marks | 1x4/1 = 4.0 | `ListRenderer.tsx`, `Toaster.tsx`, `FieldShell.tsx` |
 | Click targets of at least 24 px (links in cells, filter chips, breadcrumbs, sidebar groups) | 1x4/1 = 4.0 | CSS |
+| Copy an identifier on click, with a toast ("Copied JOB-2026-0007") | 3x3/1 = 9.0 | `FormRenderer.tsx` |
 | No layout jump when a list first paints | 2x4/1 = 8.0 | `ListRenderer.tsx` |
 | A person is named, never linked, where they cannot open the record (no dead link, no 404 behind a name) | 2x4/1 = 8.0 | `schema/engine.py` |
 
@@ -26,7 +27,6 @@ The Part 4 box ended with the tour, the welcome and the audit fixes ahead of the
 
 | Item | Score | Why not now |
 | --- | --- | --- |
-| Copy an identifier on click, with a toast ("Copied JOB-2026-0007") | 3x3/1 = 9.0 | Cheap; first in line for the next session |
 | Command palette (Cmd/Ctrl+K: jump to a list, a record, a saved view) driven by the registry | 5x5/4 = 6.3 | The registry and a `command` component already exist; a day of work to do it properly (records search, saved views, permitted actions) |
 | Session-timeout warning two minutes before expiry (extend or sign out) | 2x4/3 = 2.7 | Needs the server to say when a session ends; the demo sets 36 hours |
 | 409 conflict wording ("Someone else changed this. Review their change or keep yours.") | 2x4/3 = 2.7 | Optimistic locking is on the S-3 cut list, so there is no conflict to word yet |

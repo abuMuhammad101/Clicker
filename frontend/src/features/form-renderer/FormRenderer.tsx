@@ -638,7 +638,23 @@ function EditableForm({
           </div>
           <p className="form-header__meta">
             <span className="form-header__model">{schema.verbose_name_plural}</span>
-            {record && <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>}
+            {record && (
+              <button
+                type="button"
+                className="form-header__id"
+                title="Copy"
+                aria-label={`Copy ${documentNumber(schema, record) ?? `#${record.id}`}`}
+                onClick={() => {
+                  const id = documentNumber(schema, record) ?? `#${record.id}`
+                  navigator.clipboard?.writeText(id).then(
+                    () => toast({ message: `Copied ${id}` }),
+                    () => toast({ kind: 'error', message: `Couldn’t copy ${id}` }),
+                  )
+                }}
+              >
+                {documentNumber(schema, record) ?? `#${record.id}`}
+              </button>
+            )}
             {record?.meta && (
               // Relative where it's glanced at; the exact time on hover.
               <span className="form-header__updated">

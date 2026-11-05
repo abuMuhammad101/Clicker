@@ -353,3 +353,18 @@
 .related-list__all:hover {
   text-decoration: underline;
 }
+
+/* The identifier is a button that copies itself: it reads as it did, and says what it will do on hover. */
+button.form-header__id {
+  min-height: 24px;
+  font-size: inherit;
+  color: inherit;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: copy;
+  transition: background-color var(--duration-instant) var(--ease);
+}
+
+button.form-header__id:hover {
+  background: var(--surface-hover);
+}
