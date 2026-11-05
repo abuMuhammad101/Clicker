@@ -419,8 +419,10 @@ async function journeyB() {
     await touring.page.waitForTimeout(800)
     await touring.page.reload()
     await touring.page.getByRole('button', { name: 'Help' }).click()
+    // The menu fills in once the tour and the person's progress have been fetched: wait for the offer, then read it.
+    await touring.page.getByRole('button', { name: 'Take the tour' }).waitFor({ timeout: 15000 })
     equal(await touring.page.getByRole('button', { name: 'Pick up the tour' }).count(), 0, 'a Pick up offer after Skip')
-    check((await touring.page.getByRole('button', { name: 'Take the tour' }).count()) === 1, 'the tour can be started again from Help')
+    equal(await touring.page.getByRole('button', { name: 'Take the tour' }).count(), 1, 'Take the tour offers after Skip')
     // Esc puts it down, and it can be picked up where it was.
     await touring.page.keyboard.press('Escape')
     await touring.page.getByRole('button', { name: 'Help' }).click()
@@ -431,7 +433,8 @@ async function journeyB() {
     equal(await touring.page.locator('.tour-card').count(), 0, 'tour cards after Esc')
     await touring.page.waitForTimeout(800)
     await touring.page.getByRole('button', { name: 'Help' }).click()
-    check((await touring.page.getByRole('button', { name: 'Pick up the tour' }).count()) === 1, 'Esc should leave a Pick up the tour offer')
+    await touring.page.getByRole('button', { name: 'Pick up the tour' }).waitFor({ timeout: 15000 })
+    equal(await touring.page.getByRole('button', { name: 'Pick up the tour' }).count(), 1, 'Pick up the tour offers after Esc')
     await ledger(touring, 'Tour scenes (clearance)')
   })
   await step('B7 Owner gates out JOB-2026-0007: one draft bill, Rs 17,10,500.00, the left-out disbursement named', owner, async () => {

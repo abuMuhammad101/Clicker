@@ -45,3 +45,26 @@ Reported by the script and judged not defects: the date input's calendar button 
 - Keyboard order, Esc and focus return are exercised at 1440 light only; contrast and everything else at all eight combinations.
 - Urdu text expansion (+40 percent) was not tested.
 - The audit runs against the Vite dev server, as the demo does; a production build was built and its tests run, but not audited.
+
+# S-8b: the human pass, and what it found
+
+In S-8 the eyes-on pass was done on the screens the fixes touched. In S-8b it was done on the whole product's screens, at 1440 and 1280, light and dark, from the audit's own screenshots (`docs/audit/shots/`, 29 screens x 2 viewports x 2 themes = 116 images; regenerated three times as fixes landed). **Honest scope:** I opened, one at a time and at full size, 21 of the 116 images: the Owner's home (clearing agency) at 1440 light and dark and at 1280 light, the Manager's home (water board) at 1440 light, Jobs by stage (1440 light and dark), the job record, Federal Steel's statement, Needs an owner, the Team page, Containers (light, twice), Disbursements waiting (dark), the water Aging view (1280 light and dark), the Field agent's jobs (dark) and Adjustments waiting (light). The other screens are lists drawn by the same renderer and were covered by the scripted checks only (0 P0 and P1 at every viewport and theme); they were **not** looked at with a person's eye. Said plainly so nobody relies on more than was done.
+
+| id | sev | screen | what the eye found | fix | status |
+| --- | --- | --- | --- | --- | --- |
+| S8b-01 | P1 | Owner's home and Manager's home, 1440 | The "Waiting for you" sentences were cut with an ellipsis ("recovery cases to send the fi…", "jobs to record the examinatio…"): the sentence is the point of the card | the sentence wraps (two lines), the cards stretch to the tallest | fixed |
+| S8b-02 | P1 | Jobs by stage, Job record, 1440 | The row's open-as-page and edit buttons sat on top of the last figure ("Rs 2,86,500" with ".00" hidden behind the arrow) | a 32px strip at each row's right edge holds row actions; columns fit what is left | fixed |
+| S8b-03 | P1 | Jobs by stage, Containers, 1440 | After the S-8 target-size fix, a linked name (Client, Job) was cut mid-letter with no ellipsis ("Hilal Steel Re-F", "Makran Machir"): the link had become a flex box, and a flex box cannot ellipsize | the link is a 24px block again, centred in its row | fixed (a regression of mine) |
+| S8b-04 | P1 | Needs an owner, 1440 | The select-all box sat on the table's left edge, 13px left of the row boxes under it, and the 24px boxes were larger than their slot | the header box takes the cell's padding; its label no longer adds a second one | fixed |
+| S8b-05 | P1 | Water Aging view, 1280 | The customer, the reason a bill is on the list, was cut to nine letters ("Federal S…", "National …") | a linked record's name keeps 120px on a page list | fixed |
+| S8b-06 | P1 | Job, Bill, Statement | The gap between the last group and a related list was 0 or 24px where groups are 16 or 24px apart | one gap token (`--form-group-gap`) for groups and related lists, 24 editing and 16 reading | fixed, checked by the audit |
+| S8b-07 | P1 | any list | Row tick boxes 16px and the row's edit button 20px (under 24px) | 24px | fixed |
+| S8b-08 | P2 | Adjustments | A link in a cell showed the browser's dotted focus line, not the product's ring | one focus ring | fixed |
+| S8b-09 | P2 | Statement | The Payments table gives "Reference" the room that the two figure columns leave: "REH-1793…", "DEMO-1-…" | not fixed | deferred |
+| S8b-10 | P2 | Containers | A "Days left" of -4 is typed with a hyphen, where totals use a true minus | not fixed | deferred |
+| S8b-11 | P2 | Containers, Disbursements | Wide empty bands (the receipt column, "Demurrage so far" for containers with none) next to cut text | not fixed | deferred |
+| S8b-12 | P2 | Lists | The 24px tick boxes weigh more than 12px text; the row is still 34px | not fixed | deferred |
+
+Counts from this pass: found P0 0, P1 7, P2 5; fixed P0 0, P1 7, P2 1; deferred 4 (all P2), plus the three spacing P2s from S-8.
+
+The other new work in S-8b is covered above this heading in the S-8 table: the cards' words (a test for singular and plural, a test for the cap), the tour card's placement (a check at every one of the 17 steps at four viewports in both themes, in `audit.mjs`), and the form gap (a check in `audit.mjs`).
