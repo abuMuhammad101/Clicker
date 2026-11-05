@@ -11,7 +11,8 @@
   display: inline-flex;
   align-items: stretch;
   max-width: 360px;
-  height: var(--control-height-sm);
+  /* The chip's two borders sit outside the 24px its buttons must have. */
+  height: calc(var(--control-height-sm) + 2px);
   border: 1px solid var(--border-control);
   border-radius: var(--radius-full);
   background: var(--surface);
@@ -61,7 +62,8 @@
 
 .filter-chip__remove {
   display: grid;
-  width: 22px;
+  width: 24px;
+  min-height: 24px;
   place-items: center;
   border-radius: 0 var(--radius-full) var(--radius-full) 0;
   color: var(--text-muted);
@@ -121,6 +123,7 @@
 }
 
 .filter-bar__clear {
+  min-height: 24px;
   padding: 0 var(--space-2);
   font-size: var(--text-sm);
   color: var(--text-muted);

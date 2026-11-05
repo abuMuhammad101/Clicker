@@ -6,16 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Clicker</title>
     <script>
-      // Follow the system light/dark setting before first paint, so there is
-      // no flash. tokens.css reads [data-theme]; there is no manual switch yet.
+      // Before first paint, so there is no flash: the person's own choice (user menu > Theme) if they made one,
+      // otherwise the system's light/dark setting. tokens.css reads [data-theme].
       ;(function () {
         try {
           var media = matchMedia('(prefers-color-scheme: dark)')
           var apply = function () {
-            document.documentElement.dataset.theme = media.matches ? 'dark' : 'light'
+            var chosen = null
+            try { chosen = localStorage.getItem('clicker.theme') } catch (e) {}
+            document.documentElement.dataset.theme = chosen === 'light' || chosen === 'dark' ? chosen : media.matches ? 'dark' : 'light'
           }
           apply()
           media.addEventListener('change', apply)
+          window.addEventListener('clicker-theme', apply)
         } catch (e) {}
       })()
     </script>

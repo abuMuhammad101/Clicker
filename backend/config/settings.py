@@ -128,6 +128,33 @@ if CLICKER_DEMO_SESSION_HOURS:
 # anywhere: an SSO provider's subject can map onto any username.
 CLICKER_SIGN_IN_PROVIDERS = [{'id': 'password', 'label': 'Username and password'}]
 
+# The organisation's name and one line of promise, shown on the sign-in screen and in the welcome. One organisation
+# for now: the journey picks a default, and the environment can say anything else.
+_ORG_DEFAULTS = {
+    'clearance': ('Harbour Gate Clearing (demo)', 'Every container, every rupee, in one place.'),
+    'water': ('Water Board (demo)', 'Every bill, every payment, every overdue rupee, in one place.'),
+}
+CLICKER_ORG_NAME = env('CLICKER_ORG_NAME', default=_ORG_DEFAULTS.get(CLICKER_JOURNEY, ('Clicker', ''))[0])
+CLICKER_ORG_PROMISE = env('CLICKER_ORG_PROMISE', default=_ORG_DEFAULTS.get(CLICKER_JOURNEY, ('', 'Business software that builds itself from your data.'))[1])
+
+# Up to three static cards for the sign-in screen's right-hand panel: what the product does, in the journey's own
+# words. Decorative (the screen hides them from assistive technology), all fictional and marked "(demo)". Each is
+# {tone: warning|info|positive|danger, chip, text, figure?}; the frontend only draws them. An organisation with
+# none gets a calm panel with the headline alone.
+_LOGIN_PROOF_DEFAULTS = {
+    'clearance': [
+        {'tone': 'warning', 'chip': 'Demurrage · 2 days', 'text': 'Makran Machinery Importers (demo)'},
+        {'tone': 'info', 'chip': 'Invoice drafted by automation', 'text': 'Gate-out recorded, three disbursements included', 'figure': 'Rs 17,10,500.00'},
+        {'tone': 'positive', 'chip': 'Approved', 'text': 'Write-off approved by a second Manager'},
+    ],
+    'water': [
+        {'tone': 'danger', 'chip': 'Overdue · 180+ days', 'text': 'Military installation (demo)', 'figure': 'Rs 4,86,20,000.00'},
+        {'tone': 'info', 'chip': 'Bills generated', 'text': 'Billing run for the month, one click', 'figure': '2,518 bills'},
+        {'tone': 'positive', 'chip': 'Approved', 'text': 'Write-off approved by a second Manager'},
+    ],
+}
+CLICKER_LOGIN_PROOF = _LOGIN_PROOF_DEFAULTS.get(CLICKER_JOURNEY, [])
+
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',

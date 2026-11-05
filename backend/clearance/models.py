@@ -213,11 +213,11 @@ class Job(ClickerModel):
             },
             'locked': ['closed', 'cancelled'],
             'transitions': {
-                'documents_in': {'label': 'Documents received', 'waiting_verb': 'record the documents as received on {this}', 'from': ['booked'], 'to': 'documents_in', 'run': 'entered'},
-                'file_gd': {'label': 'File GD', 'waiting_verb': 'file the GD for {this}', 'from': ['documents_in'], 'to': 'gd_filed', 'run': 'entered'},
-                'assess': {'label': 'Record assessment', 'waiting_verb': 'record the assessment on {this}', 'from': ['gd_filed'], 'to': 'assessed', 'run': 'entered'},
-                'pay_duty': {'label': 'Duty paid', 'waiting_verb': 'record the duty as paid on {this}', 'from': ['assessed'], 'to': 'duty_paid', 'run': 'entered'},
-                'examine': {'label': 'Examined', 'waiting_verb': 'record the examination on {this}', 'from': ['duty_paid'], 'to': 'examined', 'run': 'entered'},
+                'documents_in': {'label': 'Documents received', 'waiting_verb': 'record the documents as received on {this}', 'action': 'mark the documents received', 'from': ['booked'], 'to': 'documents_in', 'run': 'entered'},
+                'file_gd': {'label': 'File GD', 'waiting_verb': 'file the GD for {this}', 'action': 'file the GD', 'from': ['documents_in'], 'to': 'gd_filed', 'run': 'entered'},
+                'assess': {'label': 'Record assessment', 'waiting_verb': 'record the assessment on {this}', 'action': 'record the assessment', 'from': ['gd_filed'], 'to': 'assessed', 'run': 'entered'},
+                'pay_duty': {'label': 'Duty paid', 'waiting_verb': 'record the duty as paid on {this}', 'action': 'record duty paid', 'from': ['assessed'], 'to': 'duty_paid', 'run': 'entered'},
+                'examine': {'label': 'Examined', 'waiting_verb': 'record the examination on {this}', 'action': 'record the examination', 'from': ['duty_paid'], 'to': 'examined', 'run': 'entered'},
                 'release': {
                     'label': 'Release',
                     'from': ['duty_paid', 'examined'],

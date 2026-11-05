@@ -508,8 +508,8 @@
   top: 50%;
   right: var(--space-3);
   display: none;
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -588,7 +588,7 @@
 .list-row__actions {
   position: absolute;
   top: 50%;
-  right: var(--space-4);
+  right: var(--space-3);
   display: none;
   transform: translateY(-50%);
 }
@@ -601,8 +601,8 @@
 
 .list-row__action {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -850,7 +850,29 @@
   cursor: default;
 }
 
+.list-group__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  height: 100%;
+  min-height: 24px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-group__toggle:disabled {
+  cursor: default;
+}
+
 .list-group__lead {
+  align-self: stretch;
   display: flex;
   flex: none;
   align-items: center;
@@ -916,4 +938,20 @@
 .list-group--muted .list-group__count {
   color: var(--text-muted);
   font-weight: var(--weight-regular, 400);
+}
+
+/* The tick boxes that select rows are click targets of 24px (the box itself, so nothing about the hit area is a pseudo-element). */
+.list-header__select [data-slot='checkbox'],
+.list-row__select [data-slot='checkbox'] {
+  width: 24px;
+  height: 24px;
+}
+
+/* The select-all box lines up with the row boxes under it (the rows sit inside the cell's padding; the header's box did not). */
+.list-header__select {
+  margin-left: var(--cell-padding-x, var(--space-5));
+}
+
+.list-header__select + .list-header__sort {
+  padding-left: 0;
 }

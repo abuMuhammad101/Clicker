@@ -75,4 +75,57 @@ class ProvidersTests(TestCase):
     def test_anyone_can_list_the_ways_to_sign_in(self):
         response = APIClient().get('/api/auth/providers/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'providers': [{'id': 'password', 'label': 'Username and password'}]})
+        body = response.json()
+        self.assertEqual(body['providers'], [{'id': 'password', 'label': 'Username and password'}])
+        self.assertEqual(set(body['organisation']), {'name', 'promise', 'login_proof'})
+
+    def test_the_proof_strip_is_three_cards_at_most_and_each_has_a_known_tone(self):
+        proof = APIClient().get('/api/auth/providers/').json()['organisation']['login_proof']
+        self.assertLessEqual(len(proof), 3)
+        for card in proof:
+            self.assertTrue(set(card) <= {'tone', 'chip', 'text', 'figure'})
+            self.assertIn(card['tone'], {'warning', 'info', 'positive', 'danger'})
+
+
+class SignInCopyAndRedirectTests(TestCase):
+    """The words and the return path of the sign-in screen."""
+
+    def setUp(self):
+        self.user = get_user_model().objects.create_user('amina', password=PASSWORD)
+        self.client = APIClient(enforce_csrf_checks=False)
+
+    def post(self, username='amina', password=PASSWORD, **extra):
+        return self.client.post('/api/auth/login/', {'username': username, 'password': password, **extra}, format='json', REMOTE_ADDR='203.0.113.9')
+
+    def test_a_wrong_password_a_missing_name_and_a_deactivated_account_say_the_same_thing(self):
+        self.user.is_active = False
+        self.user.save()
+        words = {
+            (r.status_code, r.json()['detail'])
+            for r in (self.post(password='wrong'), self.post(username='nobody'), self.post())
+        }
+        self.assertEqual(words, {(400, 'That sign-in didn’t work. Check your details and try again.')})
+
+    def test_the_lockout_says_how_long_in_plain_time(self):
+        for _ in range(5):
+            self.post(password='wrong')
+        locked = self.post()
+        self.assertEqual(locked.status_code, 429)
+        self.assertRegex(locked.json()['detail'], r'^Too many attempts\. Try again in (1[0-5]|[1-9]) minutes?\.$')
+
+    def test_a_same_site_path_is_where_you_land_and_nothing_else_is(self):
+        ok = ['/', '/clearance/job/7', '/clearance/job?view=module%3Aby_stage&filter=state%3Ain%3Abooked', '/billing/bill/12?peek=x']
+        for path in ok:
+            self.assertEqual(self.post(next=path).json()['redirect'], path)
+            self.client.post('/api/auth/logout/')
+        evil = [
+            '//evil.com', 'https://evil.com/x', 'http://evil.com', 'javascript:alert(1)', '/\\evil.com', '/\t/evil.com',
+            '/%2f/evil.com', '/%2F%2Fevil.com', '/%5cevil.com', 'evil.com', '', None, 5, '/login', '/login?next=/', '\n//evil.com',
+            'data:text/html,x', '/%09/evil.com',
+        ]
+        for path in evil:
+            self.assertEqual(self.post(next=path).json()['redirect'], '/', repr(path))
+            self.client.post('/api/auth/logout/')
+
+    def test_no_redirect_given_means_home(self):
+        self.assertEqual(self.post().json()['redirect'], '/')

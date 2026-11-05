@@ -6,7 +6,7 @@
 // Needs both stacks up (scripts/demo_stack.sh both) on freshly seeded databases. Passwords are read from .env at
 // run time, typed into the real sign-in form, and never printed. A failure saves a screenshot under
 // docs/design/s7/failures/ and stops the run with exit code 1.
-import { Person, launch } from './lib/browser.mjs'
+import { JOURNEYS, Person, launch, passwordFor } from './lib/browser.mjs'
 import { check, equal, openList, openRecord, pageText, pickView, rows, settle, sidebar, step, summary, waitForText } from './lib/steps.mjs'
 
 const which = process.argv[2] ?? 'both'
@@ -29,6 +29,92 @@ async function ledger(p, label) {
     check(p.consoleErrors.length === 0, `console errors: ${p.consoleErrors.join(' | ')}`)
     check(p.badResponses.length === 0, `unexpected responses: ${p.badResponses.join(' | ')}`)
   })
+}
+
+
+// ------------------------------------------------------------------------------------------------ S-8 helpers
+
+const WRONG = 'That sign-in didn’t work. Check your details and try again.'
+
+/** The sign-in screen, as a stranger sees it: nobody signed in, nothing remembered. */
+async function signInScreen(journey, username) {
+  const { app } = JOURNEYS[journey]
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  const fill = async (name, password) => {
+    await page.getByLabel('Username').fill(name)
+    await page.locator('input[name="password"]').fill(password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+  }
+  try {
+    // A wrong password, and a name that does not exist, read exactly the same.
+    await page.goto(`${app}/login?next=${encodeURIComponent('/clearance/job?view=module%3Aby_stage')}`)
+    await page.getByRole('heading', { name: 'Sign in' }).waitFor()
+    await fill(username, 'not-the-password')
+    await page.getByRole('alert').waitFor()
+    const wrongPassword = await textOf(page.getByRole('alert'))
+    await fill('nobody.here', 'not-the-password')
+    await page.waitForTimeout(600)
+    const unknownName = await textOf(page.getByRole('alert'))
+    equal(wrongPassword, WRONG, 'a wrong password reads')
+    equal(unknownName, WRONG, 'an unknown name reads')
+    // The right one lands where the person was going, not on Home.
+    await fill(username, passwordFor(username))
+    await page.waitForURL(/\/clearance\/job\?view=module%3Aby_stage/, { timeout: 20000 })
+    return page.url().replace(app, '')
+  } finally {
+    await context.close()
+  }
+}
+
+async function evilReturnPath(journey, username) {
+  const { app } = JOURNEYS[journey]
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  try {
+    await page.goto(`${app}/login?next=${encodeURIComponent('//evil.example/steal')}`)
+    await page.getByLabel('Username').fill(username)
+    await page.locator('input[name="password"]').fill(passwordFor(username))
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('navigation').first().waitFor({ timeout: 20000 })
+    return new URL(page.url()).host + new URL(page.url()).pathname
+  } finally {
+    await context.close()
+  }
+}
+
+/** Run the tour to its end by pressing Next; returns the steps seen and the ones skipped for want of an anchor. */
+async function runTour(p, label) {
+  const page = p.page
+  const skipped = []
+  const onConsole = (message) => {
+    const m = /\[tour\] skipping "([^"]+)"/.exec(message.text())
+    if (m) skipped.push(m[1])
+  }
+  page.on('console', onConsole)
+  try {
+    await page.goto(p.base.app + '/')
+    await page.getByRole('button', { name: 'Help' }).click()
+    await page.getByRole('button', { name: /Take the tour|Pick up the tour/ }).first().click()
+    const seen = []
+    for (let i = 0; i < 20; i += 1) {
+      const card = page.locator('.tour-card')
+      await card.waitFor({ timeout: 25000 })
+      await page.waitForTimeout(250)
+      const progress = await textOf(card.locator('.tour-card__progress'))
+      const title = await textOf(card.locator('.tour-card__title'))
+      const body = await textOf(card.locator('.tour-card__body'))
+      check(!/undefined|\{\{|—/.test(body), `${label}: step "${title}" has an unfilled number: ${body}`)
+      check((await page.locator('.tour-spot').count()) === 1, `${label}: step "${title}" has no light on its anchor`)
+      seen.push({ progress, title })
+      const last = (await card.getByRole('button', { name: 'Done' }).count()) > 0
+      await card.getByRole('button', { name: last ? 'Done' : 'Next' }).click()
+      if (last) return { seen, skipped }
+    }
+    throw new Error(`${label}: the tour did not end`)
+  } finally {
+    page.off('console', onConsole)
+  }
 }
 
 // ------------------------------------------------------------------------------------------------ Journey A
@@ -186,6 +272,34 @@ async function journeyA() {
     equal(left, needing.length - 3, 'cases still needing an owner after assigning three')
   })
   await ledger(manager, 'Manager scenes')
+  await step('A9 Manager is welcomed, and the welcome goes away for good once dismissed', manager, async () => {
+    await mp.goto(`${manager.base.app}/`)
+    await mp.getByRole('region', { name: 'Welcome' }).waitFor({ timeout: 15000 })
+    check(/You\u2019re signed in as Manager at Water Board \(demo\)\./.test(await textOf(mp.getByRole('region', { name: 'Welcome' }))), 'the welcome should say who and where')
+    await mp.getByRole('button', { name: 'Dismiss' }).click()
+    await mp.waitForTimeout(800)
+    await mp.reload()
+    await mp.getByRole('heading', { level: 1 }).waitFor()
+    await mp.waitForTimeout(800)
+    equal(await mp.getByRole('region', { name: 'Welcome' }).count(), 0, 'welcome regions after dismissing and reloading')
+  })
+  await step('A10 The user menu names the role, offers the theme, and signing out says so', manager, async () => {
+    await mp.getByRole('button', { name: 'Account menu' }).click()
+    const menu = mp.locator('.user-menu')
+    check(/Manager/.test(await textOf(menu)) && (await menu.getByRole('group', { name: 'Theme' }).count()) === 1, 'the menu should show the role and the theme choice')
+    await menu.getByRole('button', { name: 'Dark' }).click()
+    equal(await mp.evaluate(() => document.documentElement.dataset.theme), 'dark', 'the theme after choosing Dark')
+    await menu.getByRole('button', { name: 'System' }).click()
+    await menu.getByRole('button', { name: /Sign out/ }).click()
+    await mp.getByText('You\u2019ve been signed out.').waitFor({ timeout: 15000 })
+  })
+  await step('A11 Journey A\u2019s tour runs to its end and every step found its anchor', manager, async () => {
+    const again = await person('water', 'ayesha.khan')
+    const { seen, skipped } = await runTour(again, 'water tour')
+    equal(seen.length, 8, 'steps in the water tour as a Manager')
+    equal(skipped.length, 0, `steps skipped (${skipped.join(', ')})`)
+    await ledger(again, 'Tour scenes (water)')
+  })
 }
 
 // ------------------------------------------------------------------------------------------------ Journey B
@@ -259,8 +373,70 @@ async function journeyB() {
   })
   await ledger(accounts, 'Accounts scenes')
 
+  await step('B6a Sign-in: a wrong password and an unknown name read the same, and the right one returns you to where you were', coordinator, async () => {
+    equal(await signInScreen('clearance', 'mehwish.rauf'), '/clearance/job?view=module%3Aby_stage', 'where signing in lands')
+    equal(await evilReturnPath('clearance', 'mehwish.rauf'), 'localhost:5274/', 'where an off-site return address lands')
+  })
+  const welcome = await person('clearance', 'ibrahim.qazi')
+  await step('B6b Accounts is welcomed with the 6 disbursements still waiting for their approval', welcome, async () => {
+    await welcome.page.goto(`${welcome.base.app}/`)
+    const strip = welcome.page.getByRole('region', { name: 'Waiting for you' })
+    await strip.waitFor({ timeout: 15000 })
+    check(/6\s*disbursements/.test(await textOf(strip)), `the strip should read 6 disbursements: ${await textOf(strip)}`)
+    await strip.getByRole('link', { name: /disbursements/ }).click()
+    await welcome.page.waitForURL(/\/clearance\/disbursement\?filter=state/)
+    await settle(welcome.page)
+    equal((await rows(welcome)).length, 6, 'rows in the list the card opens')
+  })
+  await step('B6c A Field agent is told only of their own jobs, and never of an approval', agent, async () => {
+    await openList(agent, 'clearance/job')
+    const own = (await rows(agent)).length
+    await agent.page.goto(`${agent.base.app}/`)
+    await agent.page.getByRole('heading', { level: 1 }).waitFor()
+    await agent.page.waitForTimeout(1200)
+    const strip = agent.page.getByRole('region', { name: 'Waiting for you' })
+    const said = (await strip.count()) ? await textOf(strip) : ''
+    check(!/disbursement|invoice|bill/i.test(said), `a Field agent should not be told of approvals or invoices: ${said}`)
+    const counted = [...said.matchAll(/(\d+)\s*jobs/g)].reduce((sum, m) => sum + Number(m[1]), 0)
+    check(counted <= own, `the strip counts ${counted} jobs but the Field agent owns ${own}`)
+  })
+  await ledger(welcome, 'Accounts scenes (home)')
+
   const owner = await person('clearance', 'hamza.farooqui')
   let jobId
+  await step('B6d Journey B\u2019s tour runs to its end; only the step about an invoice not yet drafted may be skipped', owner, async () => {
+    const touring = await person('clearance', 'hamza.farooqui')
+    const { seen, skipped } = await runTour(touring, 'clearance tour')
+    equal(seen.length, 8, `steps shown in the clearance tour as the Owner (the invoice step waits for a gate-out): ${seen.map((x) => x.title).join(' / ')}`)
+    equal(skipped.join(','), 'automation', 'steps skipped')
+    // Skipping is remembered: start again, skip, reload, and it is offered as a fresh start, not a pick-up.
+    await touring.page.getByRole('button', { name: 'Account menu' }).waitFor()
+    await touring.page.getByRole('button', { name: 'Help' }).click()
+    await touring.page.getByRole('button', { name: /Take the tour|Pick up the tour|Start the tour again/ }).first().click()
+    await touring.page.locator('.tour-card').waitFor({ timeout: 25000 })
+    await touring.page.getByRole('button', { name: 'Skip tour' }).click()
+    equal(await touring.page.locator('.tour-card').count(), 0, 'tour cards after Skip')
+    await touring.page.waitForTimeout(800)
+    await touring.page.reload()
+    await touring.page.getByRole('button', { name: 'Help' }).click()
+    // The menu fills in once the tour and the person's progress have been fetched: wait for the offer, then read it.
+    await touring.page.getByRole('button', { name: 'Take the tour' }).waitFor({ timeout: 15000 })
+    equal(await touring.page.getByRole('button', { name: 'Pick up the tour' }).count(), 0, 'a Pick up offer after Skip')
+    equal(await touring.page.getByRole('button', { name: 'Take the tour' }).count(), 1, 'Take the tour offers after Skip')
+    // Esc puts it down, and it can be picked up where it was.
+    await touring.page.keyboard.press('Escape')
+    await touring.page.getByRole('button', { name: 'Help' }).click()
+    await touring.page.getByRole('button', { name: 'Take the tour' }).click()
+    await touring.page.locator('.tour-card').waitFor({ timeout: 25000 })
+    await touring.page.getByRole('button', { name: 'Next' }).click()
+    await touring.page.keyboard.press('Escape')
+    equal(await touring.page.locator('.tour-card').count(), 0, 'tour cards after Esc')
+    await touring.page.waitForTimeout(800)
+    await touring.page.getByRole('button', { name: 'Help' }).click()
+    await touring.page.getByRole('button', { name: 'Pick up the tour' }).waitFor({ timeout: 15000 })
+    equal(await touring.page.getByRole('button', { name: 'Pick up the tour' }).count(), 1, 'Pick up the tour offers after Esc')
+    await ledger(touring, 'Tour scenes (clearance)')
+  })
   await step('B7 Owner gates out JOB-2026-0007: one draft bill, Rs 17,10,500.00, the left-out disbursement named', owner, async () => {
     jobId = await openRecord(owner, 'clearance/job', 'JOB-2026-0007')
     const p = owner.page

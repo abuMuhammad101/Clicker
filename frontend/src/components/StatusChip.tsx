@@ -9,7 +9,7 @@ import './StatusChip.css'
  */
 export function StatusChip({ label, tone = 'neutral', className }: { label: string; tone?: Tone; className?: string }) {
   return (
-    <span className={cn('status-chip', `status-chip--${tone}`, className)} title={label}>
+    <span className={cn('status-chip', `status-chip--${tone}`, className)} title={label} data-tour="status-chip">
       <span className="status-chip__dot" aria-hidden />
       {label}
     </span>

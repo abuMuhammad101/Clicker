@@ -146,7 +146,9 @@ def _field_schema(field, overrides):
     if base_type in ('many_to_one', 'many_to_many'):
         related_meta = field.related_model._meta
         entry['target'] = {'app_label': related_meta.app_label, 'model': related_meta.model_name}
-        if field.related_model is get_user_model():
+        # A person is named, never linked: there is no page for them (a user, or a model whose records are only
+        # named where referenced, like the team).
+        if field.related_model is get_user_model() or getattr(getattr(field.related_model, 'Schema', None), 'names_where_referenced', False):
             entry['person'] = True
         domain = overrides['domains'].get(name)
         if domain:

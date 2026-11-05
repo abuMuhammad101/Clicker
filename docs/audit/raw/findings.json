@@ -1,0 +1,41 @@
+[
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
+    "detail": "paddingRight 34px",
+    "count": 200,
+    "where": [
+      "Bills, all / ayesha.khan / light / 1280x720",
+      "Bills, aging view / ayesha.khan / light / 1280x720",
+      "Payments / ayesha.khan / light / 1280x720",
+      "Adjustments, waiting / ayesha.khan / light / 1280x720"
+    ]
+  },
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
+    "detail": "paddingLeft 34px",
+    "count": 200,
+    "where": [
+      "Bills, all / ayesha.khan / light / 1280x720",
+      "Bills, aging view / ayesha.khan / light / 1280x720",
+      "Payments / ayesha.khan / light / 1280x720",
+      "Adjustments, waiting / ayesha.khan / light / 1280x720"
+    ]
+  },
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "input#service_fee.h-8.w-full",
+    "detail": "paddingLeft 36.6px",
+    "count": 8,
+    "where": [
+      "JOB-2026-0007 / hamza.farooqui / light / 1280x720",
+      "JOB-2026-0007 / hamza.farooqui / dark / 1280x720",
+      "JOB-2026-0007 / hamza.farooqui / light / 1366x768",
+      "JOB-2026-0007 / hamza.farooqui / dark / 1366x768"
+    ]
+  }
+]

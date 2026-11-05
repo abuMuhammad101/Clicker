@@ -13,7 +13,7 @@ import './RecordSummaries.css'
 export function RecordSummaries({ summaries }: { summaries: RecordSummary[] | undefined }) {
   if (!summaries || summaries.length === 0) return null
   return (
-    <dl className="record-summaries" aria-label="Key figures">
+    <dl className="record-summaries" aria-label="Key figures" data-tour="record-summaries">
       {summaries.map((summary) => {
         const empty = summary.value == null
         return (

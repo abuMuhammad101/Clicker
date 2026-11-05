@@ -147,7 +147,7 @@ export function ActivityList({
   const showAll = expanded ?? all
   const visible = showAll ? entries : entries.slice(0, SHOWN)
   return (
-    <section className="activity" aria-label="Activity">
+    <section className="activity" aria-label="Activity" data-tour="activity-trail">
       <header className="activity__head">
         <h2 className="activity__title">
           Activity

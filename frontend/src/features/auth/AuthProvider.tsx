@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { apiGet, apiSend, ApiError, onUnauthorized, setCsrfToken } from '@/lib/api'
 import { setOrganisation, type Organisation } from '@/lib/organisation'
 import { AuthContext, type AuthState, type User } from './authContext'
+import { markSignedOut, safeNext } from './redirects'
 
 interface SessionResponse {
   user: User
   /** Currency and time zone every screen formats by. */
   organisation?: Organisation
   csrf_token: string
+  /** Where to go next, as the server checked it (same-site path or Home). */
+  redirect?: string
 }
 
 async function fetchCsrfToken() {
@@ -53,24 +56,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const login = useCallback(async (username: string, password: string) => {
+  // Checks the password and starts the session, and says where to go; changes nothing on screen. The sign-in screen
+  // uses this alone, so it stays up long enough to show its check before the page is loaded afresh.
+  const authenticate = useCallback(async (username: string, password: string, next?: string) => {
     // A token issued for the old session is no good after it ended; a fresh
     // one is cheap and makes the login POST independent of what came before.
     await fetchCsrfToken()
-    const { user, organisation, csrf_token } = await apiSend<SessionResponse>('POST', '/auth/login/', {
-      username,
-      password,
-    })
-    setOrganisation(organisation)
-    setCsrfToken(csrf_token)
-    setState({ status: 'authenticated', user, expired: false })
+    const response = await apiSend<SessionResponse>('POST', '/auth/login/', { username, password, next })
+    setOrganisation(response.organisation)
+    setCsrfToken(response.csrf_token)
+    return response
   }, [])
+
+  const login = useCallback(
+    async (username: string, password: string, next?: string) => {
+      const { user, redirect } = await authenticate(username, password, next)
+      setState({ status: 'authenticated', user, expired: false })
+      return safeNext(redirect ?? null)
+    },
+    [authenticate],
+  )
 
   const logout = useCallback(async (then: string) => {
     // A session that already ended is as logged out as it gets; a failed
     // logout request must never leave the user stuck signed in on screen.
     await apiSend('POST', '/auth/logout/').catch(() => undefined)
     setCsrfToken(null)
+    // The sign-in screen says so once, and nothing of this person stays in memory (the page is about to go).
+    markSignedOut()
     // Navigate rather than flip state to anonymous: the page is going away
     // anyway, and an anonymous state would race this navigation with the
     // app's own "send anonymous users to login" redirect.
@@ -82,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAttempt((n) => n + 1)
   }, [])
 
-  const value = useMemo(() => ({ state, login, logout, retry }), [state, login, logout, retry])
+  const value = useMemo(
+    () => ({ state, login, authenticate: async (u: string, p: string, n?: string) => safeNext((await authenticate(u, p, n)).redirect ?? null), logout, retry }),
+    [state, login, authenticate, logout, retry],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

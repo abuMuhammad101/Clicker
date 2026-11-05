@@ -62,7 +62,7 @@ export function FilterBar({
   }
 
   return (
-    <div className="filter-bar" role="group" aria-label="Filters">
+    <div className="filter-bar" role="group" aria-label="Filters" data-tour="filter-bar">
       {filters.map((raw, index) => (
         <FilterChip
           key={`${raw}-${index}`}

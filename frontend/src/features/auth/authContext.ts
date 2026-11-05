@@ -7,6 +7,8 @@ export interface User {
   email: string
   /** May see the app as another role (Owner and Manager). */
   can_view_as_role?: boolean
+  /** The role as the team page names it ("Accounts"), or empty. */
+  role?: string
 }
 
 export type AuthState =
@@ -20,7 +22,9 @@ export type AuthState =
 export interface AuthContextValue {
   state: AuthState
   /** Resolves on success; rejects with ApiError (400 = wrong credentials). */
-  login: (username: string, password: string) => Promise<void>
+  login: (username: string, password: string, next?: string) => Promise<string>
+  /** Like `login`, but the screen stays as it is: the caller loads the page afresh when it is ready. */
+  authenticate: (username: string, password: string, next?: string) => Promise<string>
   /** Ends the session server-side, then navigates to `then`. */
   logout: (then: string) => Promise<void>
   retry: () => void

@@ -1,0 +1,88 @@
+{
+  "id": "clearance",
+  "title": "Harbour Gate Clearing in five minutes",
+  "steps": [
+    {
+      "id": "stage-strip",
+      "route": "/clearance/job?view=module%3Aby_stage",
+      "requires": ["clearance.job"],
+      "target": "summary-strip",
+      "title": "Where the work stands",
+      "body": "{{summary:Open jobs}} open jobs, {{summary:At risk}} at risk of demurrage and {{summary:To be invoiced}} waiting to be invoiced. Read straight from the records, never typed in.",
+      "placement": "bottom"
+    },
+    {
+      "id": "stages",
+      "requires": ["clearance.job"],
+      "target": "group-header",
+      "match": "Assessed",
+      "title": "Every job, by stage",
+      "body": "Jobs sit in the stage they have reached, and the money is added up per stage: {{group:Assessed}}.",
+      "placement": "bottom"
+    },
+    {
+      "id": "demurrage",
+      "requires": ["clearance.job"],
+      "target": "status-chip",
+      "match": "Accruing",
+      "title": "The demurrage clock",
+      "body": "Once a container is past its free days it starts costing money. The red chip says which jobs are costing you now.",
+      "placement": "right"
+    },
+    {
+      "id": "stepper",
+      "open_record": { "model": "clearance.job", "filter": "state:in:released" },
+      "requires": ["clearance.job"],
+      "target": "workflow-bar",
+      "title": "A job knows its next step",
+      "body": "The path is ten stages long, and Clicker offers only the step your role may take. Anyone else sees whose move it is.",
+      "placement": "bottom"
+    },
+    {
+      "id": "costs",
+      "requires": ["clearance.job", "clearance.disbursement"],
+      "target": "related-list",
+      "match": "Disbursements",
+      "title": "Costs paid on the client's behalf",
+      "body": "Each one is approved by Accounts before it can be billed, and whoever recorded it can't approve it.",
+      "placement": "top"
+    },
+    {
+      "id": "gate-out",
+      "requires": ["clearance.job", "billing.bill"],
+      "target": "workflow-primary",
+      "title": "Gate-out drafts the invoice",
+      "body": "One click, and Clicker drafts the client's invoice from the service fee and every approved cost. Press Gate out and confirm it, or press Next to carry on.",
+      "placement": "bottom",
+      "until": { "type": "present", "target": "activity-trail", "match": "Created by automation" }
+    },
+    {
+      "id": "automation",
+      "optional": true,
+      "requires": ["clearance.job"],
+      "target": "activity-trail",
+      "match": "Created by automation",
+      "title": "Nobody typed that invoice",
+      "body": "The trail says who moved the job, and that Clicker drafted the invoice itself. Anything not yet approved is named in its notes.",
+      "placement": "top"
+    },
+    {
+      "id": "field-agent",
+      "requires": ["core.view_as_role"],
+      "target": "user-menu",
+      "title": "See it as someone else",
+      "body": "Choose View as role to see exactly what a Field agent sees. Their jobs only, no money. The same rules the server enforces.",
+      "placement": "bottom-end"
+    },
+    {
+      "id": "team",
+      "requires": ["core.staff"],
+      "target": "sidebar-item",
+      "match": "Team",
+      "title": "Who can do what",
+      "body": "Roles live on the Team page, and changing one changes what that person sees the next time they open a screen.",
+      "placement": "right"
+    }
+  ],
+  "ending": "What Clicker did that you did not have to: sum every stage, count every free day, draft the invoice, and keep each person to what their role allows."
+}

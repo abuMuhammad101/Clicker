@@ -6,6 +6,7 @@ import type { User } from '@/features/auth/authContext'
 import { Link } from '@/lib/Link'
 import { RecordRef } from '@/records'
 import type { RegistryApp } from './useRegistry'
+import { useWaiting, useWelcome, WaitingStrip, WelcomeNote } from './Welcome'
 import './recents.css'
 
 /** Mirrors backend/userstate/views.py's RecentsView. */
@@ -41,6 +42,11 @@ export function RecentsPage({
 }) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const welcome = useWelcome()
+  const waiting = useWaiting()
+  // The page is drawn once, whole: the welcome and the strip are asked for before the list below them appears,
+  // so nothing slides down when they arrive.
+  const settled = welcome.ready && waiting !== null
 
   useEffect(() => {
     onLabelChange('Recent')
@@ -73,8 +79,10 @@ export function RecentsPage({
         {greeting()}, {firstName(user.display_name)}
       </h1>
       <p className="recents__sub">Pick up where you left off.</p>
+      <WelcomeNote user={user} dismissed={welcome} />
+      <WaitingStrip cards={waiting} />
 
-      {state.status === 'loading' && (
+      {settled && state.status === 'loading' && (
         <div className="recents__table" aria-busy="true" aria-label="Loading recent records">
           <div className="recents__row recents__head">
             <Skeleton className="h-3 w-28" />
@@ -103,7 +111,7 @@ export function RecentsPage({
         </div>
       )}
 
-      {state.status === 'ready' && state.items.length === 0 && (
+      {state.status === 'ready' && settled && state.items.length === 0 && (
         <div className="recents__empty">
           <div className="recents__ghost" aria-hidden="true">
             {[72, 56, 64, 48].map((width, i) => (
@@ -122,13 +130,13 @@ export function RecentsPage({
         </div>
       )}
 
-      {state.status === 'ready' && state.items.length > 0 && (
-        <div className="recents__table" role="table" aria-label="Recently viewed records">
-          <div className="recents__row recents__head" role="row">
-            <span role="columnheader">Recently viewed</span>
-            <span role="columnheader">Type</span>
-            <span role="columnheader">Module</span>
-            <span role="columnheader" className="recents__when">
+      {state.status === 'ready' && settled && state.items.length > 0 && (
+        <section className="recents__table" aria-label="Recently viewed records">
+          <div className="recents__row recents__head" aria-hidden="true">
+            <span>Recently viewed</span>
+            <span>Type</span>
+            <span>Module</span>
+            <span className="recents__when">
               When
             </span>
           </div>
@@ -138,23 +146,22 @@ export function RecentsPage({
               model={{ app_label: item.app_label, model: item.model }}
               id={item.id}
               className="recents__row recents__link"
-              role="row"
             >
-              <span role="cell" className="recents__name" title={item.display}>
+              <span className="recents__name" title={item.display}>
                 {item.display}
               </span>
-              <span role="cell" className="recents__muted">
+              <span className="recents__muted">
                 {item.model_label}
               </span>
-              <span role="cell" className="recents__muted">
+              <span className="recents__muted">
                 {item.app}
               </span>
-              <time role="cell" className="recents__when" dateTime={item.viewed_at} title={new Date(item.viewed_at).toLocaleString()}>
+              <time className="recents__when" dateTime={item.viewed_at} title={new Date(item.viewed_at).toLocaleString()}>
                 {relativeTime(item.viewed_at)}
               </time>
             </RecordRef>
           ))}
-        </div>
+        </section>
       )}
     </div>
   )

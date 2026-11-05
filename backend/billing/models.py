@@ -734,7 +734,7 @@ class Adjustment(ClickerModel):
             'locked': ['requested', 'approved_once', 'approved', 'rejected'],
             'transitions': {
                 'request': {
-                    'label': 'Request approval', 'waiting_verb': 'request approval for {this}',
+                    'label': 'Request approval', 'waiting_verb': 'request approval for {this}', 'action': 'request approval',
                     'from': ['draft'],
                     'to': 'requested',
                     'records_actor': 'requested_by',

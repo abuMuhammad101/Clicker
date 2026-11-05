@@ -167,3 +167,10 @@ pre {
     background: var(--skeleton-base);
   }
 }
+
+/* Breadcrumb links are click targets (24px minimum), in a bar tall enough to hold them. */
+.breadcrumbs__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}

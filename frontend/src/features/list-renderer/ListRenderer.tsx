@@ -1,5 +1,5 @@
 import { archiveVerbs } from '@/lib/archiveVerbs'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   columnResizingFeature,
   columnSizingFeature,
@@ -134,6 +134,8 @@ const SEARCH_DEBOUNCE_MS = 250
  * model; the first column (the record's name, by convention) gets extra.
  */
 const TYPE_WIDTH: Record<string, number> = {
+  // A linked record leads with its number (JOB-2026-0007 · Makran…): keep enough of it to tell two apart.
+  many_to_one: 1.9,
   boolean: 0.5,
   selection: 0.7,
   integer: 0.65,
@@ -153,10 +155,12 @@ const TYPE_WIDTH: Record<string, number> = {
  * The least a column of this type may be squeezed to. A date or an amount cut with an ellipsis is wrong
  * data ("12 Nov 2…"), not a long name: they keep their whole value (a crore-sized amount included).
  */
-const IDENTIFIER_MIN = 132
+const IDENTIFIER_MIN = 124
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
-const PERSON_MIN = 136
-const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
+const PERSON_MIN = 124
+/** A linked record's name (the customer on a bill) is why the row exists: on a page list it keeps room to be read. */
+const LINK_MIN = 88
+const TYPE_MIN: Record<string, number> = { date: 100, datetime: 148, currency: 136, decimal: 100, integer: 64 }
 
 /**
  * Column widths that use the room they're given. Wider viewport: every column
@@ -181,12 +185,16 @@ function fitSizes(sizes: number[], mins: number[], available: number): number[] 
  * "Assessed" to "Assessec" and it reads as a typo. A column of chips never goes narrower than its longest
  * label (a rough 6.6px a letter at 12px, plus the chip's padding and the cell's).
  */
-function chipColumnMin(labels: string[], floor: number): number {
+function chipColumnMin(labels: string[], floor: number, cap: number): number {
   const longest = labels.reduce((max, label) => Math.max(max, label.length), 0)
   // Capped: a very long label ("Examination labour") ellipsizes inside its chip, which is by design; it must
   // not take the room the other columns need in a narrow table (a related list is 660px wide).
-  return longest === 0 ? floor : Math.max(floor, Math.min(112, Math.ceil(longest * 6.6) + 52))
+  return longest === 0 ? floor : Math.max(floor, Math.min(cap, Math.ceil(longest * 6.6) + 56))
 }
+/** The strip at a row's right edge that holds its hover actions, so they never sit on top of a figure. */
+const ACTIONS_ROOM = 28
+/** The row's tick box (24px) and the gap after it, inside the first column. */
+const SELECT_ROOM = 32
 const OVERSCAN_ROWS = 12
 
 export function ListRenderer(props: ListRendererProps) {
@@ -533,7 +541,11 @@ function ListView({
       const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
       // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0))
+      // The tick box sits inside the first column of a list with bulk actions: it takes its own room.
+      const selectRoom = selectable && columnIndex === 0 ? SELECT_ROOM : 0
+      const floor = selectRoom + Math.max(TYPE_MIN[field.type] ?? minWidth, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
+      // A related list is 660px wide: its chips may be cut (and say their full value on hover); a page list's never are.
+      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], floor, embedded ? 112 : 196)
       return {
         id: name,
         header: field.label,
@@ -607,9 +619,12 @@ function ListView({
   // The room the table has, and whether the person has taken over sizing.
   const [viewportWidth, setViewportWidth] = useState(0)
   const [userSized, setUserSized] = useState(false)
-  useEffect(() => {
+  // Measured before the first paint (a layout effect), so the columns are drawn at their fitted widths and do not
+  // jump sideways a moment later (the layout shift the audit found on every list).
+  useLayoutEffect(() => {
     const element = scrollRef.current
     if (!element) return
+    setViewportWidth(element.clientWidth)
     const observer = new ResizeObserver(([entry]) => setViewportWidth(entry.contentRect.width))
     observer.observe(element)
     return () => observer.disconnect()
@@ -640,9 +655,9 @@ function ListView({
     : fitSizes(
         headers.map((header) => header.getSize()),
         headers.map((header) => header.column.columnDef.minSize ?? minColumnWidth),
-        viewportWidth,
+        Math.max(0, viewportWidth - ACTIONS_ROOM),
       )
-  const totalWidth = widths.reduce((a, b) => a + b, 0)
+  const totalWidth = widths.reduce((a, b) => a + b, 0) + ACTIONS_ROOM
   const widthOf = (columnId: string) => widths[headers.findIndex((h) => h.column.id === columnId)]
   // Taking over the sizing freezes what the person is looking at first, so the
   // first drag starts from the width on screen, not from the unfitted default.
@@ -1117,6 +1132,7 @@ function ListView({
                 return (
                   <div
                     key={virtualRow.key}
+                    data-tour="row"
                     role="row"
                     aria-rowindex={virtualRow.index + 1}
                     aria-selected={open || undefined}
@@ -1208,7 +1224,7 @@ function ListView({
                       )
                     })}
                     {loaded && (
-                      <div className="list-row__actions">
+                      <div role="cell" className="list-row__actions">
                         <RecordRef
                           model={modelRef}
                           id={record.id}
@@ -1269,8 +1285,8 @@ export function GroupRow({
   return (
     <div
       role="row"
+      data-tour="group-header"
       aria-rowindex={index + 1}
-      aria-expanded={openable ? !collapsed : undefined}
       data-row-index={index}
       tabIndex={tabIndex}
       className={cn('list-group', collapsed && 'list-group--collapsed', !openable && 'list-group--closed', group.muted && 'list-group--muted')}
@@ -1281,15 +1297,19 @@ export function GroupRow({
       title={openable ? undefined : 'These records fall outside every range, so they can’t be listed as one group.'}
     >
       <div role="cell" className="list-group__lead" style={{ width: leadWidth }}>
-        <ChevronRight className={cn('list-group__chevron', !openable && 'invisible')} aria-hidden />
-        <span className={cn('list-group__label', group.restricted && 'restricted-value')}>
-          {group.restricted ? 'Restricted' : group.label}
-        </span>
-        {loading ? (
-          <Skeleton className="h-3 w-8" />
-        ) : (
-          <span className="list-group__count">{group.count.toLocaleString()}</span>
-        )}
+        {/* The expanded state lives on a button, not on the row (a row in a table may not carry it). It takes no tab
+            stop of its own: the row is the focus target, and a click on the button bubbles to the row. */}
+        <button type="button" tabIndex={-1} className="list-group__toggle" aria-expanded={openable ? !collapsed : undefined} disabled={!openable}>
+          <ChevronRight className={cn('list-group__chevron', !openable && 'invisible')} aria-hidden />
+          <span className={cn('list-group__label', group.restricted && 'restricted-value')}>
+            {group.restricted ? 'Restricted' : group.label}
+          </span>
+          {loading ? (
+            <Skeleton className="h-3 w-8" />
+          ) : (
+            <span className="list-group__count">{group.count.toLocaleString()}</span>
+          )}
+        </button>
       </div>
       {columns.slice(lead).map((column) => (
         <div key={column.name} role="cell" className="list-group__cell" style={{ width: column.width }}>

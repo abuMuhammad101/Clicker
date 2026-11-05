@@ -4,13 +4,10 @@
    a 168px label column, so the card narrows those same tokens locally
    rather than introducing a second field layout. */
 .login-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-8);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto;
   min-height: 100vh;
-  padding: var(--space-8) var(--space-6) 12vh;
   background: var(--ground);
 }
 
@@ -18,6 +15,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  padding: var(--space-8) var(--space-8) 0;
 }
 
 .login-brand__name {
@@ -25,6 +23,33 @@
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--text);
+}
+
+/* The panel: below 1024px only the headline, above the form. */
+.login-panel {
+  padding: var(--space-9) var(--space-8) 0;
+}
+
+.login-panel__headline {
+  margin: 0;
+  max-width: 18em;
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  text-wrap: balance;
+}
+
+.login-panel__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.proof-strip {
+  display: none;
 }
 
 .login-card,
@@ -52,21 +77,180 @@
   max-width: none;
 }
 
+/* The form sits on the page surface itself, not in a card: the left column is the surface. */
 .login-card {
   --form-field-max-width: none;
   width: 100%;
-  max-width: 360px;
-  padding: var(--space-9) var(--space-8) var(--space-8);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  max-width: 400px;
+  padding: var(--space-9) var(--space-8);
+  align-self: start;
 }
 
 .login-card__title {
-  margin: 0 0 var(--space-7);
+  margin: 0 0 var(--space-2);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.login-help {
+  align-self: end;
+  max-width: 400px;
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.login-help summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.login-help summary:hover {
+  color: var(--text);
+}
+
+.login-help summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.login-help p {
+  margin: var(--space-3) 0 0;
+}
+
+@media (min-width: 1024px) {
+  .login-page {
+    grid-template-columns: 480px minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    height: 100vh;
+    min-height: 640px;
+  }
+
+  .login-brand {
+    grid-column: 1;
+    grid-row: 1;
+    padding: var(--space-9) var(--space-10) 0;
+  }
+
+  .login-card {
+    grid-column: 1;
+    grid-row: 2;
+    align-self: center;
+    padding: var(--space-8) var(--space-10);
+    max-width: none;
+  }
+
+  .login-help {
+    grid-column: 1;
+    grid-row: 3;
+    max-width: none;
+    padding: var(--space-6) var(--space-10) var(--space-9);
+  }
+
+  /* A calm panel in a soft ink-violet tint, built from the accent tokens so it follows the theme. */
+  .login-panel {
+    grid-column: 2;
+    grid-row: 1 / -1;
+    display: flex;
+    align-items: center;
+    padding: var(--space-11);
+    background: var(--accent-subtle);
+    border-left: 1px solid var(--accent-border);
+    overflow: hidden;
+  }
+
+  .login-panel__inner {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-11);
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .login-panel__headline {
+    font-size: var(--text-display);
+    line-height: 1.08;
+  }
+
+  .proof-strip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.proof-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-5);
+  max-width: 440px;
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.proof-card:nth-child(2) {
+  margin-left: var(--space-9);
+}
+
+.proof-card__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.proof-card__chip--warning {
+  background: var(--warning-subtle);
+  border-color: var(--warning-border);
+  color: var(--warning);
+}
+
+.proof-card__chip--info {
+  background: var(--info-subtle);
+  border-color: var(--info-border);
+  color: var(--info);
+}
+
+.proof-card__chip--positive {
+  background: var(--positive-subtle);
+  border-color: var(--positive-border);
+  color: var(--positive);
+}
+
+.proof-card__chip--danger {
+  background: var(--danger-subtle);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.proof-card__text {
+  flex: 1 1 12em;
+  min-width: 0;
+}
+
+.proof-card__figure {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-medium);
   color: var(--text);
 }
 
@@ -201,4 +385,38 @@
   text-align: center;
   font-size: var(--text-sm);
   color: var(--text-muted);
+}
+
+/* The organisation, the screen's name, and one line of promise: calm, in that order. */
+.login-card__org {
+  margin: 0 0 var(--space-7);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+
+.login-card__notice {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.sign-in-form__caps {
+  margin: calc(-1 * var(--space-3)) 0 0;
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+
+/* Pressing Sign in must not change its width: "Signing in…" is the longer label. */
+.sign-in-form__submit {
+  min-width: 104px;
+}
+
+.sign-in-form__check {
+  width: 16px;
+  height: 16px;
 }

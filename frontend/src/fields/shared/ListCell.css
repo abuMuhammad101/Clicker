@@ -56,3 +56,20 @@
   color: var(--cell-strong-text);
   font-weight: var(--cell-strong-weight);
 }
+
+/* A link in a cell is a click target of at least 24px, centred in its row. It stays a block, so a name that does not
+   fit ends in an ellipsis instead of being cut mid-letter. */
+a.list-cell__text {
+  display: block;
+  align-self: center;
+  height: 24px;
+  max-width: 100%;
+  line-height: 24px;
+}
+
+/* A link in a cell shows the same focus ring as every other control (not the browser's dotted line). */
+a.list-cell__text:focus-visible {
+  border-radius: var(--radius-sm);
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}

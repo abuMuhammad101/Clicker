@@ -182,7 +182,7 @@ class LabAdjustment(ClickerModel):
             'transitions': {
                 # Its hint is written for it: "This goes to a Manager for approval."
                 'request': {
-                    'label': 'Request approval', 'waiting_verb': 'request approval for {this}',
+                    'label': 'Request approval', 'waiting_verb': 'request approval for {this}', 'action': 'request approval',
                     'from': ['draft'],
                     'to': 'requested',
                     'records_actor': 'requested_by',

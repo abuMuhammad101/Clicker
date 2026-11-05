@@ -58,6 +58,8 @@ export function onUnauthorized(listener: UnauthorizedListener) {
 
 const NO_CONNECTION = 'Can’t reach the server. Check your connection and try again.'
 const SESSION_ENDED = 'Your session has ended. Sign in again, then try once more.'
+// A server fault says only that it was the server's, never what the server said (that can be a stack trace).
+const SERVER_FAULT = 'Something went wrong on our side. Try again; if it keeps happening, tell your administrator.'
 
 interface RequestOptions extends RequestInit {
   /** Don't announce a 401: the caller is checking whether a session exists. */
@@ -95,7 +97,7 @@ async function request<T>(path: string, { probe, ...init }: RequestOptions = {})
       response.status === 400 && body && typeof body === 'object' && !('detail' in body)
         ? (body as ValidationErrors)
         : undefined
-    throw new ApiError(response.status, body?.detail ?? response.statusText, validation)
+    throw new ApiError(response.status, response.status >= 500 ? SERVER_FAULT : (body?.detail ?? response.statusText), validation)
   }
 
   if (response.status === 204) return undefined as T

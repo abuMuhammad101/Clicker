@@ -37,7 +37,7 @@ export function SummaryStrip({
   }
   if (summaries.length === 0) return null
   return (
-    <div className={cn('summary-strip', loading && 'summary-strip--updating')} role="group" aria-label="Summaries">
+    <div className={cn('summary-strip', loading && 'summary-strip--updating')} role="group" aria-label="Summaries" data-tour="summary-strip">
       {summaries.map((summary) => {
         const { short, exact } = aggregateDisplay(summary.type, summary.value, summary.aggregate)
         const clickable = onApply && summary.filter.length > 0

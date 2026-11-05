@@ -18,6 +18,9 @@ export interface Currency {
 export interface Organisation {
   currency: Currency
   time_zone: string
+  /** The organisation's name and one line of promise (sign-in screen and welcome). */
+  name?: string
+  promise?: string
 }
 
 let current: Organisation = {

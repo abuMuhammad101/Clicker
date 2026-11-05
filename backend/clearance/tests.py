@@ -546,3 +546,115 @@ class StateSentenceTests(ClearanceWorld, TestCase):
         # (Every role exists in tests; in the clearance journey the Manager is not one of them.)
         self.assertTrue(waiting.startswith('Waiting for a Coordinator'), waiting)
         self.assertTrue(waiting.endswith(' to gate out or cancel this job.'), waiting)
+
+
+class WaitingForYouTests(ClearanceWorld, TestCase):
+    """The home strip: only what this person can move forward, scoped to what they may see."""
+
+    URL = '/api/home/waiting/'
+
+    def setUp(self):
+        self.build_world()
+        self.mine = self.make_job(assigned=self.staff['agent'])
+        self.theirs = self.make_job(assigned=self.staff['agent2'])
+        self.d1 = self.make_disbursement(self.mine, '1000.00', 'transport', 'A-1', client=self.agent_client)
+        self.d2 = self.make_disbursement(self.theirs, '2000.00', 'transport', 'B-1', client=self.agent2_client)
+
+    def cards(self, client, **extra):
+        return client.get(self.URL, **extra).json()['cards']
+
+    def card(self, client, model):
+        return next((c for c in self.cards(client) if c['model'] == model), None)
+
+    def test_accounts_sees_the_disbursements_waiting_for_approval_with_the_real_count(self):
+        card = self.card(self.accounts_client, 'disbursement')
+        self.assertEqual(card['count'], 2)
+        self.assertEqual(card['actions'], ['approve'])
+        # The schema's own words for one and for many, so a card can say "1 disbursement" and "2 disbursements".
+        self.assertEqual((card['singular'], card['plural']), ('disbursement', 'disbursements'))
+        self.assertEqual(card['filter'], 'state:in:recorded')
+
+    def test_a_role_without_the_transition_permission_sees_no_card_and_no_count(self):
+        for client in (self.agent_client, self.documentation_client):
+            self.assertIsNone(self.card(client, 'disbursement'), 'no Approve grant, no card')
+
+    def test_a_field_agents_counts_never_include_jobs_they_cannot_see(self):
+        # Documentation moves a booked job forward; a Field agent has no such grant, so none of them.
+        self.assertTrue(all(c['model'] != 'job' for c in self.cards(self.agent_client)))
+        card = self.card(self.documentation_client, 'job')
+        self.assertEqual(card['count'], 2)  # Documentation sees every job at Booked
+
+    def test_the_person_who_recorded_a_disbursement_does_not_wait_on_themselves(self):
+        # Whoever recorded it cannot approve it: for them it is not waiting on them. Accounts approves one; one remains.
+        self.accounts_client.post(f'{DISBURSEMENTS}{self.d1.pk}/transitions/approve/', format='json')
+        self.assertEqual(self.card(self.accounts_client, 'disbursement')['count'], 1)  # the singular case
+
+    def test_a_card_that_is_zero_is_not_returned(self):
+        for disbursement in (self.d1, self.d2):
+            self.accounts_client.post(f'{DISBURSEMENTS}{disbursement.pk}/transitions/approve/', format='json')
+        self.assertIsNone(self.card(self.accounts_client, 'disbursement'))
+
+    def test_it_requires_a_session(self):
+        self.assertEqual(APIClient().get(self.URL).status_code, 401)
+
+    def test_view_as_role_answers_as_that_role(self):
+        as_accounts = self.cards(self.owner_client, HTTP_X_VIEW_AS_ROLE='Accounts')
+        self.assertIn('disbursement', {c['model'] for c in as_accounts})
+        as_agent = self.cards(self.owner_client, HTTP_X_VIEW_AS_ROLE='Field agent')
+        self.assertNotIn('disbursement', {c['model'] for c in as_agent})
+
+
+class TourEndpointTests(ClearanceWorld, TestCase):
+    """A tour step about something a role cannot see is never sent."""
+
+    def setUp(self):
+        self.build_world()
+
+    def steps(self, client, **extra):
+        from django.test import override_settings
+
+        with override_settings(CLICKER_JOURNEY='clearance'):
+            body = client.get('/api/tour/', **extra).json()['tour']
+        return {s['id'] for s in body['steps']}
+
+    def test_the_owner_gets_every_step(self):
+        self.assertEqual(
+            self.steps(self.owner_client),
+            {'stage-strip', 'stages', 'demurrage', 'stepper', 'costs', 'gate-out', 'automation', 'field-agent', 'team'},
+        )
+
+    def test_a_field_agent_gets_no_step_about_billing_the_team_or_viewing_as_a_role(self):
+        got = self.steps(self.agent_client)
+        self.assertTrue({'gate-out', 'field-agent', 'team'}.isdisjoint(got), got)
+        self.assertIn('stage-strip', got)
+
+    def test_documentation_has_no_invoice_step(self):
+        self.assertNotIn('gate-out', self.steps(self.documentation_client))
+
+    def test_view_as_field_agent_gets_that_roles_tour(self):
+        got = self.steps(self.owner_client, HTTP_X_VIEW_AS_ROLE='Field agent')
+        self.assertTrue({'gate-out', 'field-agent', 'team'}.isdisjoint(got), got)
+
+    def test_no_journey_no_tour_and_a_session_is_required(self):
+        self.assertIsNone(self.owner_client.get('/api/tour/').json()['tour'])
+        self.assertEqual(APIClient().get('/api/tour/').status_code, 401)
+
+
+class ValidationCopyTests(ClearanceWorld, TestCase):
+    def test_a_missing_required_value_says_what_to_do_not_what_the_framework_says(self):
+        self.build_world()
+        body = self.owner_client.post(JOBS, {'goods': 'Cotton yarn'}, format='json').json()
+        self.assertEqual(body['client'], ['Choose a client.'])
+        self.assertNotIn('may not be', str(body))
+
+
+class WaitingActionWordsTests(TestCase):
+    """The verb on a card is the transition's own action, never a label chopped by hand."""
+
+    def test_a_label_is_taken_off_its_record_name_and_a_declared_action_wins(self):
+        from foundation.workflow import action_verb
+
+        self.assertEqual(action_verb(Job, {'label': 'Close job'}), 'close')
+        self.assertEqual(action_verb(Job, {'label': 'Gate out'}), 'gate out')
+        self.assertEqual(action_verb(Job, {'label': 'File GD', 'action': 'file the GD'}), 'file the GD')
+        self.assertEqual(action_verb(Disbursement, {'label': 'Approve'}), 'approve')
