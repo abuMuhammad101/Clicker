@@ -407,7 +407,7 @@ async function journeyB() {
   await step('B6d Journey B\u2019s tour runs to its end; only the step about an invoice not yet drafted may be skipped', owner, async () => {
     const touring = await person('clearance', 'hamza.farooqui')
     const { seen, skipped } = await runTour(touring, 'clearance tour')
-    equal(seen.length, 8, 'steps shown in the clearance tour as the Owner (the invoice step waits for a gate-out)')
+    equal(seen.length, 8, `steps shown in the clearance tour as the Owner (the invoice step waits for a gate-out): ${seen.map((x) => x.title).join(' / ')}`)
     equal(skipped.join(','), 'automation', 'steps skipped')
     // Skipping is remembered: start again, skip, reload, and it is offered as a fresh start, not a pick-up.
     await touring.page.getByRole('button', { name: 'Account menu' }).waitFor()
