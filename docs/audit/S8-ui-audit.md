@@ -81,6 +81,7 @@ The first S-8b pass (above) opened 21 of 116 images. This pass went on from rege
 | --- | --- | --- | --- | --- | --- |
 | S8c-01 | P0 | Jobs (all), 1280; Aging, 1280; every related list with a date (Statement bills, Job containers) | Dates cut: "14 Aug 20…", "15 Dec 20…", "12 Nov 20…". The script had reported one finding, ×32 across screens; the date column's floor (96px) was 4px short of "16 Nov 2026" plus the cell's padding | date floor 100px; a linked name's floor 88px so the tables still fit at 1280 without scrolling sideways | fixed, rechecked at 1280 and 1440 |
 | S8c-02 | P1 | Containers, 1280 | The linked Job read "JOB-2026-00…": the digits that tell one job from the next were the part cut | a linked record's column takes a larger share of the room when there is room (the floor in a tight table is unchanged); now "JOB-2026-0032 · …" | fixed |
+| S8c-09 | P0 | Needs an owner, 1280 | Found by the full audit (not by eye): the document number "RC-2026-00074" cut (94 > 91px) because the row's tick box sits inside the first column and took 32px of it | the first column of a list with tick boxes keeps room for the box | fixed (cf7f218), whole chain re-run |
 | S8c-03 | P2 | Owner home (Manager home, water) | "to send the second notice or agree an instalment plan or mark settled": three actions joined with "or" twice | commas, then one "or" (test added) | fixed |
 | S8c-04 | P2 | Lists | Column headers cut with an ellipsis when the column is narrow: "Issue d…", "Payme…", "Days…", "Oldest o…", "Next acti…", "Assessed monthl…" | not fixed (the full label is in the header's title and sorts the same) | deferred |
 | S8c-05 | P2 | Job record | The embedded Containers list cuts the container number ("TGHU7002…") in the 660px related list | not fixed | deferred |
@@ -88,5 +89,5 @@ The first S-8b pass (above) opened 21 of 116 images. This pass went on from rege
 | S8c-07 | P2 | Owner home, empty | The empty state offers "Browse contacts" in a clearing agency, whose work is Jobs | not fixed | deferred |
 | S8c-08 | P2 | Search box, amount input | Padding 34px and 36.6px are off the spacing scale (the icon and the currency symbol) | same as S8-18, S8-19 | deferred |
 
-**Counts of this pass:** found P0 1 (32 instances), P1 1, P2 6; fixed P0 1, P1 1, P2 1; deferred 5 (all P2).
-**Counts of S-8b in all (both passes):** found P0 1, P1 8, P2 11; fixed P0 1, P1 8, P2 2; deferred all the rest (P2).
+**Counts of this pass:** found P0 2 (32 + 1 instances), P1 1, P2 6; fixed P0 2, P1 1, P2 1; deferred 5 (all P2).
+**Counts of S-8b in all (both passes):** found P0 2, P1 8, P2 11; fixed P0 2, P1 8, P2 2; deferred 9 (all P2).
