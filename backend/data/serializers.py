@@ -32,8 +32,12 @@ class ModelRecordSerializer(serializers.ModelSerializer):
         fields = super().get_fields()
         # Say what to do, not what DRF says: "Choose a client." and "Goods can't be empty.", never
         # "This field may not be null.".
-        for field in fields.values():
-            label = str(field.label or '').strip()
+        for name, field in fields.items():
+            try:
+                fallback = self.Meta.model._meta.get_field(name).verbose_name
+            except Exception:  # noqa: BLE001 - a serializer-only field has no model field
+                fallback = name.replace('_', ' ')
+            label = str(field.label or fallback).strip()
             relation = isinstance(field, serializers.PrimaryKeyRelatedField)
             sentence = f'Choose a {label.lower()}.' if relation else f'{label[:1].upper()}{label[1:]} can’t be empty.'
             for key in ('null', 'blank', 'required'):
