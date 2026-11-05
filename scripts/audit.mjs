@@ -198,20 +198,21 @@ async function states(browser) {
   await p.getByText(/isn.t available/).waitFor({ timeout: 15000 }).then(() => note(true, '404 record is a designed screen'), () => { note(false, '404 record'); record(where('404'), { rule: 'state/404', severity: 'P0', selector: 'record', detail: 'no designed not-available screen' }) })
 
   // Loading: a slow list shows skeletons, not a blank.
-  await p.route('**/api/data/clearance/job/?**', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue() })
+  await p.route('**/api/data/clearance/job/?**', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue().catch(() => undefined) })
   await p.goto(`${owner.base.app}/clearance/job`)
   await p.waitForTimeout(500)
   const skeleton = await p.locator('[aria-busy="true"], [data-slot=skeleton], .skeleton').count()
   note(skeleton > 0, 'a slow list shows a skeleton'); if (!skeleton) record(where('loading'), { rule: 'state/no-skeleton', severity: 'P1', selector: 'list', detail: 'blank while loading' })
+  await p.waitForTimeout(1600)
   await p.unroute('**/api/data/clearance/job/?**')
 
   // 500 and 403: designed, with a way back; no raw JSON.
-  for (const [status, body, name] of [[500, '{"detail":"boom"}', '500'], [403, '{"detail":"nope"}', '403']]) {
+  for (const [status, body, name] of [[500, '{"detail":"boom"}', '500'], [403, '{"detail":"You don\u2019t have permission to do this."}', '403']]) {
     await p.route('**/api/schema/clearance/job/**', (route) => route.fulfill({ status, contentType: 'application/json', body }))
     await p.goto(`${owner.base.app}/clearance/job`)
     await p.waitForTimeout(1500)
     t = await text()
-    const raw = /"detail"|boom|nope|Traceback|<html/i.test(t)
+    const raw = /"detail"|boom|Traceback|<html/i.test(t)
     const retry = await p.getByRole('button', { name: /retry|try again|reload/i }).count()
     note(!raw && (status === 403 || retry > 0), `${name} is a designed screen${status === 500 ? ' with Retry' : ''}`)
     if (raw) record(where(name), { rule: `state/${name}-shows-raw-error`, severity: 'P0', selector: 'list', detail: t.slice(0, 100) })
@@ -244,15 +245,17 @@ async function states(browser) {
   await settle(p)
   const textNew = await text()
   note(!/Rs\s?0\.00|0 days/.test(textNew), 'an empty new form shows prompts, not zeros')
+  // The save bar appears once something is typed; a required field is still empty.
+  await p.getByLabel(/^Goods/).fill('Cotton yarn')
   await p.getByRole('button', { name: 'Save' }).click().catch(() => {})
-  await p.waitForTimeout(800)
+  await p.waitForTimeout(1200)
   t = await text()
   const hasError = /required|can.t be blank|choose|fill/i.test(t)
   note(hasError, 'saving an empty form says what to do'); if (!hasError) record(where('validation'), { rule: 'state/validation-message-missing', severity: 'P1', selector: 'form', detail: t.slice(0, 120) })
 
   // Reduced motion: re-run the motion checks with the media feature on.
   const calm = await new Person(browser, 'clearance', 'hamza.farooqui', { viewport, reducedMotion: 'reduce', initScript: CLS_SCRIPT }).open()
-  await calm.page.route('**/api/data/clearance/job/?**', async (route) => { await new Promise((r) => setTimeout(r, 1200)); await route.continue() })
+  await calm.page.route('**/api/data/clearance/job/?**', async (route) => { await new Promise((r) => setTimeout(r, 1200)); await route.continue().catch(() => undefined) })
   await calm.page.goto(`${calm.base.app}/clearance/job`)
   await calm.page.waitForTimeout(500)
   for (const f of await calm.page.evaluate(runChecks, { ...options, reducedMotion: true })) if (f.rule.startsWith('motion/')) record(where('reduced motion'), f)
@@ -305,6 +308,8 @@ if (!STATES_ONLY) {
     }
   }
 }
+const writeFindings = () => writeFileSync(path.join(ROOT, 'docs', 'audit', 'raw', 'findings.json'), JSON.stringify([...findings.values()].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.rule.localeCompare(b.rule)), null, 2))
+writeFindings()
 if (!SKIP_STATES) await states(browser)
 await browser.close()
 

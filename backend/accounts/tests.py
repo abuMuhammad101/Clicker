@@ -75,7 +75,9 @@ class ProvidersTests(TestCase):
     def test_anyone_can_list_the_ways_to_sign_in(self):
         response = APIClient().get('/api/auth/providers/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'providers': [{'id': 'password', 'label': 'Username and password'}]})
+        body = response.json()
+        self.assertEqual(body['providers'], [{'id': 'password', 'label': 'Username and password'}])
+        self.assertEqual(set(body['organisation']), {'name', 'promise'})
 
 
 class SignInCopyAndRedirectTests(TestCase):

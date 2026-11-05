@@ -30,15 +30,14 @@ from rest_framework.views import APIView
 
 from foundation.middleware import mark_session_start
 
+from .lockout import LOCKED_OUT_MINUTES, minutes_until_unlocked
+
 # One message for every failure. Saying which half was wrong tells an
 # attacker which usernames exist.
 INVALID_CREDENTIALS = 'That sign-in didn’t work. Check your details and try again.'
 
 # After too many failures for one username from one address. It says nothing
 # about whether that username exists: the lock applies to any name typed.
-LOCKED_OUT_MINUTES = int(settings.AXES_COOLOFF_TIME.total_seconds() // 60)
-
-
 def locked_message(minutes):
     """Plain time: "Try again in 12 minutes." (never "in 0 minutes", never a fractional one)."""
     minutes = max(1, int(minutes))
@@ -46,17 +45,6 @@ def locked_message(minutes):
 
 
 LOCKED_OUT = locked_message(LOCKED_OUT_MINUTES)
-
-
-def minutes_until_unlocked(username):
-    """How long this name stays locked: the cool-off from its latest failed attempt (the full cool-off if unknown)."""
-    from axes.models import AccessAttempt
-
-    latest = AccessAttempt.objects.filter(username=username).order_by('-attempt_time').first()
-    if latest is None:
-        return LOCKED_OUT_MINUTES
-    remaining = latest.attempt_time + settings.AXES_COOLOFF_TIME - timezone.now()
-    return max(1, -(-int(remaining.total_seconds()) // 60))
 
 
 def safe_redirect(raw):

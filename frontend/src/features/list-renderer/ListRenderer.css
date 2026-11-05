@@ -856,6 +856,7 @@
   gap: var(--space-3);
   min-width: 0;
   height: 100%;
+  min-height: 24px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -871,6 +872,7 @@
 }
 
 .list-group__lead {
+  align-self: stretch;
   display: flex;
   flex: none;
   align-items: center;

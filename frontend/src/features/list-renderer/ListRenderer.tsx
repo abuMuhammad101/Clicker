@@ -1214,7 +1214,7 @@ function ListView({
                       )
                     })}
                     {loaded && (
-                      <div className="list-row__actions">
+                      <div role="cell" className="list-row__actions">
                         <RecordRef
                           model={modelRef}
                           id={record.id}

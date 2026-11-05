@@ -636,3 +636,11 @@ class TourEndpointTests(ClearanceWorld, TestCase):
     def test_no_journey_no_tour_and_a_session_is_required(self):
         self.assertIsNone(self.owner_client.get('/api/tour/').json()['tour'])
         self.assertEqual(APIClient().get('/api/tour/').status_code, 401)
+
+
+class ValidationCopyTests(ClearanceWorld, TestCase):
+    def test_a_missing_required_value_says_what_to_do_not_what_the_framework_says(self):
+        self.build_world()
+        body = self.owner_client.post(JOBS, {'goods': 'Cotton yarn'}, format='json').json()
+        self.assertEqual(body['client'], ['Choose a client.'])
+        self.assertNotIn('may not be', str(body))
