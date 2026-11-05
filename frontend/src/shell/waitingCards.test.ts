@@ -24,6 +24,12 @@ describe('how many cards show', () => {
   it('shows four and says how many more', () => {
     expect(capCards(cards)).toEqual({ shown: [0, 1, 2, 3], more: 3 })
   })
+  it('lists three actions with commas and one "or"', () => {
+    expect(cardSentence({ count: 23, singular: 'recovery case', plural: 'recovery cases', actions: ['send the second notice', 'agree an instalment plan', 'mark settled'] })).toBe(
+      '23 recovery cases to send the second notice, agree an instalment plan or mark settled',
+    )
+  })
+
   it('shows all when there are four or fewer, and says nothing more', () => {
     expect(capCards([1, 2, 3, 4])).toEqual({ shown: [1, 2, 3, 4], more: 0 })
     expect(capCards([])).toEqual({ shown: [], more: 0 })

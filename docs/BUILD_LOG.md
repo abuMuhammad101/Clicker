@@ -2077,3 +2077,17 @@ Cloud session (local Postgres on 5433, generated `.env`, no Neon). **Not merged.
 - Missing: the human-style audit pass over all 28 screens; long-content records; Urdu expansion; the Windows PowerShell reset steps of S-7 are still untested on Windows.
 - Half-finished: nothing.
 - **Next single action:** Hassan, before deciding to merge `s8-polish`: sign in on the demo laptop as `hamza.farooqui`, press Help > Take the tour on the clearing agency, and read every card aloud. If any sentence is wrong for what you say on stage, say which; if the tour or the home page feels like too much, present from `demo-safe`.
+
+## 2026-11-05 | cloud container | S-8b: sign-in redesign, the fixes, a second human pass, re-rehearsal (branch `s8-polish`)
+
+**Not merged.** `demo-safe` untouched.
+
+**Sign-in (Part 1).** Two columns from 1024px: the form column (480px, on the page surface; wordmark top-left, form centred, "Need help signing in?" at the bottom as a native `<details>`) and a calm panel in `--accent-subtle` (violet in light, deep indigo in dark, no new colour) with the headline in Instrument Serif and a proof strip. The headline is the organisation's promise line; the proof strip is `login_proof` in the organisation setting (`CLICKER_LOGIN_PROOF`, up to three `{tone, chip, text, figure}` cards per journey, sent by the public providers endpoint). Under 1024px the panel goes and the headline sits above the form. The `h1` is the headline, the form's title is an `h2`; the strip is `aria-hidden`, with nothing to focus. The button keeps its width, says "Signing in…", then shows a check for `--duration-slow` and the page loads (under reduced motion: no check, straight on). To let the check show, `AuthProvider` gained `authenticate` (starts the session and says where to go, without changing what is on screen); the screen then loads the destination afresh. A new token `--text-display` (the headline's size). Mobbin: Mercury, Linear, Attio, Stripe returned screens; Cofounder and Ramp returned nothing (said in `docs/design/s8/references.md`). Screenshots: `docs/design/s8/signin-v2-*` from `scripts/shots-signin.mjs`, which also checks 390, 1280, 1366, 1440 and 1920 wide, both themes, for sideways scroll and clipped text.
+
+**Fixes (Part 2).** Waiting cards ("8 jobs to record duty paid", singular and plural from the schema, at most four and "+N more", three actions joined with commas); the tour card's placement (an `audit.mjs` check at every step, four viewports, both themes); one gap token between groups and related lists; the second human pass of the screens (`docs/audit/S8-ui-audit.md`, honest scope there): one P0 (dates cut in narrow date columns, ×32) and one P1 (a linked job's number cut) fixed.
+
+**Departures from the brief:** the "Demurrage · 2 days" card carries a line of text beside the chip, because a chip alone is not a card; the second card is offset 32px to the right (a calm stagger), not aligned; the form column is vertically centred, so it moves up a little when an error line appears; the success check keeps the button's colour (a green button was tried and lost to the button's own disabled styling, and was removed rather than forced).
+
+- Missing: the human pass did not open every image at full size (the audit doc says which); the Windows steps are still untested on Windows.
+- Half-finished: nothing.
+- **Next single action:** Hassan: open `http://localhost:5274/login` (and `5273`) on the laptop in light and dark, read the headline and the three cards aloud, then sign in as `hamza.farooqui` and watch the button.

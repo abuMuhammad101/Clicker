@@ -134,6 +134,8 @@ const SEARCH_DEBOUNCE_MS = 250
  * model; the first column (the record's name, by convention) gets extra.
  */
 const TYPE_WIDTH: Record<string, number> = {
+  // A linked record leads with its number (JOB-2026-0007 · Makran…): keep enough of it to tell two apart.
+  many_to_one: 1.9,
   boolean: 0.5,
   selection: 0.7,
   integer: 0.65,
@@ -157,8 +159,8 @@ const IDENTIFIER_MIN = 124
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 124
 /** A linked record's name (the customer on a bill) is why the row exists: on a page list it keeps room to be read. */
-const LINK_MIN = 96
-const TYPE_MIN: Record<string, number> = { date: 96, datetime: 148, currency: 136, decimal: 100, integer: 64 }
+const LINK_MIN = 88
+const TYPE_MIN: Record<string, number> = { date: 100, datetime: 148, currency: 136, decimal: 100, integer: 64 }
 
 /**
  * Column widths that use the room they're given. Wider viewport: every column
