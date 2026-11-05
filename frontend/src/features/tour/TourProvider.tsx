@@ -43,6 +43,8 @@ export function useTour() {
 }
 
 const ANCHOR_WAIT_MS = 4000
+/** A step that may not apply to the live data (it says so in the manifest) is not waited for long. */
+const OPTIONAL_WAIT_MS = 1200
 
 async function openRecordPath(step: TourStep): Promise<string | null> {
   const spec = step.open_record
@@ -171,7 +173,7 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
           found.scrollIntoView({ block: 'center', behavior: 'auto' })
           setBody(fillNumbers(step.body))
           setAnchor(found)
-        } else if (Date.now() - started > ANCHOR_WAIT_MS) {
+        } else if (Date.now() - started > (step.optional ? OPTIONAL_WAIT_MS : ANCHOR_WAIT_MS)) {
           window.clearInterval(poll)
           give(false)
         }
@@ -222,7 +224,10 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
       document.addEventListener('click', onClick, true)
       return () => document.removeEventListener('click', onClick, true)
     }
-    const timer = window.setInterval(() => window.location.pathname.startsWith(until.value) && move(1), 250)
+    const timer = window.setInterval(() => {
+      const done = until.type === 'route' ? window.location.pathname.startsWith(until.value) : findAnchors(until).length > 0
+      if (done) move(1)
+    }, 250)
     return () => window.clearInterval(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [anchor, index])

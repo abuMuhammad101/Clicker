@@ -18,7 +18,7 @@ export interface TourStep {
   /** The step is skipped silently when its anchor never appears (a state the live data is not in). */
   optional?: boolean
   /** The step moves on by itself when the person does the thing. */
-  until?: { type: 'click'; target?: string } | { type: 'route'; value: string }
+  until?: { type: 'click'; target?: string } | { type: 'route'; value: string } | { type: 'present'; target: string; match?: string }
 }
 
 export interface Tour {

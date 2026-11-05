@@ -52,9 +52,9 @@
       "requires": ["clearance.job", "billing.bill"],
       "target": "workflow-primary",
       "title": "Gate-out drafts the invoice",
-      "body": "One click, and Clicker drafts the client's invoice from the service fee and every approved cost. Try it, or press Next to carry on.",
+      "body": "One click, and Clicker drafts the client's invoice from the service fee and every approved cost. Press Gate out and confirm it, or press Next to carry on.",
       "placement": "bottom",
-      "until": { "type": "click", "target": "workflow-primary" }
+      "until": { "type": "present", "target": "activity-trail", "match": "Created by automation" }
     },
     {
       "id": "automation",

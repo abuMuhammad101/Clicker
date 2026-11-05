@@ -34,7 +34,7 @@ export function WelcomeNote({ user }: { user: User }) {
   return (
     <div className="welcome" role="region" aria-label="Welcome">
       <p className="welcome__line">
-        {user.role ? `You\u2019re signed in as ${user.role}${name ? ` at ${name}` : ''}.` : name ? `Welcome to ${name}.` : 'Welcome.'}
+        {user.role ? `You’re signed in as ${user.role}${name ? ` at ${name}` : ''}.` : name ? `Welcome to ${name}.` : 'Welcome.'}
       </p>
       <div className="welcome__actions">
         {tour && (
