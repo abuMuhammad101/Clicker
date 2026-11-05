@@ -156,6 +156,8 @@ const TYPE_WIDTH: Record<string, number> = {
 const IDENTIFIER_MIN = 132
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 136
+/** A linked record's name (the customer on a bill) is why the row exists: on a page list it keeps room to be read. */
+const LINK_MIN = 120
 const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
 
 /**
@@ -535,7 +537,7 @@ function ListView({
       const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
       // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      const floor = Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0)
+      const floor = Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
       // A related list is 660px wide: its chips may be cut (and say their full value on hover); a page list's never are.
       const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], floor, embedded ? 112 : 196)
       return {
