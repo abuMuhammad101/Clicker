@@ -1,12 +1,1 @@
-[
-  {
-    "rule": "state/validation-message-missing",
-    "severity": "P1",
-    "selector": "form",
-    "detail": "Clicker Recent Contacts Contacts Countries Team Catalog Products Billing Adjustments Bills Payments Clearing agency Cont",
-    "count": 1,
-    "where": [
-      "validation / Owner / light / 1440x900"
-    ]
-  }
-]
+[]

@@ -26,8 +26,7 @@ interface WaitingCard {
  * and a quiet way into the tour. Nothing modal, nothing that comes back after it is dismissed. The tour stays in
  * the Help menu either way.
  */
-export function WelcomeNote({ user }: { user: User }) {
-  const dismissed = usePreference<boolean>('welcome.dismissed', false)
+export function WelcomeNote({ user, dismissed }: { user: User; dismissed: ReturnType<typeof useWelcome> }) {
   const { tour, canResume, start, resume } = useTour()
   const name = organisation().name
   if (!dismissed.ready || dismissed.value) return null
@@ -57,12 +56,13 @@ export function WelcomeNote({ user }: { user: User }) {
   )
 }
 
-/**
- * What is waiting for this person: records in a state they can move forward, counted as they may see them
- * (the server derives it from each model's workflow and this person's grants). Hidden when there is nothing:
- * no card, no zero, no urgency that is not real.
- */
-export function WaitingStrip() {
+/** Whether the welcome has been put away (per person, on the server). */
+export function useWelcome() {
+  return usePreference<boolean>('welcome.dismissed', false)
+}
+
+/** What is waiting for this person, or null until it has been asked. */
+export function useWaiting(): WaitingCard[] | null {
   const [cards, setCards] = useState<WaitingCard[] | null>(null)
   useEffect(() => {
     let cancelled = false
@@ -73,6 +73,15 @@ export function WaitingStrip() {
       cancelled = true
     }
   }, [])
+  return cards
+}
+
+/**
+ * What is waiting for this person: records in a state they can move forward, counted as they may see them
+ * (the server derives it from each model's workflow and this person's grants). Hidden when there is nothing:
+ * no card, no zero, no urgency that is not real.
+ */
+export function WaitingStrip({ cards }: { cards: WaitingCard[] | null }) {
   if (!cards || cards.length === 0) return null
   return (
     <section className="waiting" aria-label="Waiting for you" data-tour="waiting">

@@ -356,6 +356,7 @@
 
 /* The identifier is a button that copies itself: it reads as it did, and says what it will do on hover. */
 button.form-header__id {
+  min-width: 24px;
   min-height: 24px;
   font-size: inherit;
   color: inherit;
