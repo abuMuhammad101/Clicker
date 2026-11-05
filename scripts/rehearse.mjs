@@ -31,6 +31,92 @@ async function ledger(p, label) {
   })
 }
 
+
+// ------------------------------------------------------------------------------------------------ S-8 helpers
+
+const WRONG = 'That sign-in didn’t work. Check your details and try again.'
+
+/** The sign-in screen, as a stranger sees it: nobody signed in, nothing remembered. */
+async function signInScreen(journey, username) {
+  const { app } = JOURNEYS[journey]
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  const fill = async (name, password) => {
+    await page.getByLabel('Username').fill(name)
+    await page.locator('input[name="password"]').fill(password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+  }
+  try {
+    // A wrong password, and a name that does not exist, read exactly the same.
+    await page.goto(`${app}/login?next=${encodeURIComponent('/clearance/job?view=module%3Aby_stage')}`)
+    await page.getByRole('heading', { name: 'Sign in' }).waitFor()
+    await fill(username, 'not-the-password')
+    await page.getByRole('alert').waitFor()
+    const wrongPassword = await textOf(page.getByRole('alert'))
+    await fill('nobody.here', 'not-the-password')
+    await page.waitForTimeout(600)
+    const unknownName = await textOf(page.getByRole('alert'))
+    equal(wrongPassword, WRONG, 'a wrong password reads')
+    equal(unknownName, WRONG, 'an unknown name reads')
+    // The right one lands where the person was going, not on Home.
+    await fill(username, passwordFor(username))
+    await page.waitForURL(/\/clearance\/job\?view=module%3Aby_stage/, { timeout: 20000 })
+    return page.url().replace(app, '')
+  } finally {
+    await context.close()
+  }
+}
+
+async function evilReturnPath(journey, username) {
+  const { app } = JOURNEYS[journey]
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  try {
+    await page.goto(`${app}/login?next=${encodeURIComponent('//evil.example/steal')}`)
+    await page.getByLabel('Username').fill(username)
+    await page.locator('input[name="password"]').fill(passwordFor(username))
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await page.getByRole('navigation').first().waitFor({ timeout: 20000 })
+    return new URL(page.url()).host + new URL(page.url()).pathname
+  } finally {
+    await context.close()
+  }
+}
+
+/** Run the tour to its end by pressing Next; returns the steps seen and the ones skipped for want of an anchor. */
+async function runTour(p, label) {
+  const page = p.page
+  const skipped = []
+  const onConsole = (message) => {
+    const m = /\[tour\] skipping "([^"]+)"/.exec(message.text())
+    if (m) skipped.push(m[1])
+  }
+  page.on('console', onConsole)
+  try {
+    await page.goto(p.base.app + '/')
+    await page.getByRole('button', { name: 'Help' }).click()
+    await page.getByRole('button', { name: /Take the tour|Pick up the tour/ }).first().click()
+    const seen = []
+    for (let i = 0; i < 20; i += 1) {
+      const card = page.locator('.tour-card')
+      await card.waitFor({ timeout: 25000 })
+      await page.waitForTimeout(250)
+      const progress = await textOf(card.locator('.tour-card__progress'))
+      const title = await textOf(card.locator('.tour-card__title'))
+      const body = await textOf(card.locator('.tour-card__body'))
+      check(!/undefined|\{\{|—/.test(body), `${label}: step "${title}" has an unfilled number: ${body}`)
+      check((await page.locator('.tour-spot').count()) === 1, `${label}: step "${title}" has no light on its anchor`)
+      seen.push({ progress, title })
+      const last = (await card.getByRole('button', { name: 'Done' }).count()) > 0
+      await card.getByRole('button', { name: last ? 'Done' : 'Next' }).click()
+      if (last) return { seen, skipped }
+    }
+    throw new Error(`${label}: the tour did not end`)
+  } finally {
+    page.off('console', onConsole)
+  }
+}
+
 // ------------------------------------------------------------------------------------------------ Journey A
 
 async function journeyA() {
