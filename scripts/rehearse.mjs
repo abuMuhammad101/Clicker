@@ -271,6 +271,7 @@ async function journeyA() {
     const left = (await rows(manager)).length
     equal(left, needing.length - 3, 'cases still needing an owner after assigning three')
   })
+  await ledger(manager, 'Manager scenes')
   await step('A9 Manager is welcomed, and the welcome goes away for good once dismissed', manager, async () => {
     await mp.goto(`${manager.base.app}/`)
     await mp.getByRole('region', { name: 'Welcome' }).waitFor({ timeout: 15000 })
@@ -299,7 +300,6 @@ async function journeyA() {
     equal(skipped.length, 0, `steps skipped (${skipped.join(', ')})`)
     await ledger(again, 'Tour scenes (water)')
   })
-  await ledger(manager, 'Manager scenes')
 }
 
 // ------------------------------------------------------------------------------------------------ Journey B
