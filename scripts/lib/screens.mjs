@@ -2,7 +2,7 @@
 import { openList, openRecord, pickView, settle } from './steps.mjs'
 
 export const SCREENS = [
-  { journey: 'water', who: 'ayesha.khan', label: 'Manager', go: async (p) => { await p.page.goto(p.base.app + '/'); await settle(p.page) }, name: 'Recent (home)' },
+  { journey: 'water', who: 'ayesha.khan', label: 'Manager', go: async (p) => { await p.page.goto(p.base.app + '/'); await settle(p.page) }, name: 'Manager home (water board)' },
   { journey: 'water', who: 'ayesha.khan', name: 'Bills, all', go: (p) => openList(p, 'billing/bill') },
   { journey: 'water', who: 'ayesha.khan', name: 'Bills, aging view', go: async (p) => { await openList(p, 'billing/bill'); await pickView(p, 'Aging') } },
   { journey: 'water', who: 'ayesha.khan', name: 'Federal Steel statement', go: (p) => openRecord(p, 'core/contact', 'Federal Steel') },
@@ -14,6 +14,7 @@ export const SCREENS = [
   { journey: 'water', who: 'ayesha.khan', name: 'Billing runs', go: (p) => openList(p, 'water/billingrun') },
   { journey: 'water', who: 'ayesha.khan', name: 'Connections', go: (p) => openList(p, 'water/connection') },
   { journey: 'water', who: 'ayesha.khan', name: 'Team', go: (p) => openList(p, 'core/staff') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Owner home (clearing agency)', go: async (p) => { await p.page.goto(p.base.app + '/'); await settle(p.page) } },
   { journey: 'clearance', who: 'hamza.farooqui', name: 'Jobs, all', go: (p) => openList(p, 'clearance/job') },
   { journey: 'clearance', who: 'hamza.farooqui', name: 'Jobs by stage', go: async (p) => { await openList(p, 'clearance/job'); await pickView(p, 'Jobs by stage') } },
   { journey: 'clearance', who: 'hamza.farooqui', name: 'Demurrage at risk', go: async (p) => { await openList(p, 'clearance/job'); await pickView(p, 'Demurrage at risk') } },

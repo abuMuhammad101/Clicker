@@ -32,6 +32,16 @@ export function runChecks(options) {
   const doc = document.documentElement
   if (doc.scrollWidth > doc.clientWidth + 1) add('layout/page-scrolls-sideways', 'P0', doc, `${doc.scrollWidth} > ${doc.clientWidth}`)
 
+  // ---- form spacing: every gap between groups, and between the last group and a related list, is the same
+  {
+    const blocks = [...document.querySelectorAll('.form-sheet .form-section, .form-sheet .related-lists')]
+      .map((e) => e.getBoundingClientRect())
+      .filter((r) => r.height > 0)
+      .sort((a, b) => a.top - b.top)
+    const gaps = blocks.slice(1).map((r, i) => Math.round(r.top - blocks[i].bottom)).filter((g) => g >= 0 && g < 80)
+    if (gaps.length > 1 && Math.max(...gaps) - Math.min(...gaps) > 1) add('layout/group-gaps-differ', 'P1', document.querySelector('.form-sheet'), `gaps ${[...new Set(gaps)].join(', ')}px`)
+  }
+
   // ---- target size and overlap (24x24 CSS px; inline links inside a sentence are exempt, per WCAG 2.5.8)
   const targetSelector = 'button, a[href], [role=button], [role=menuitem], [role=tab], [role=checkbox], [role=combobox], input:not([type=hidden]), select, textarea, [tabindex]:not([tabindex="-1"])'
   const targets = [...document.querySelectorAll(targetSelector)].filter((e) => visible(e) && inViewportChain(e) && !e.disabled)

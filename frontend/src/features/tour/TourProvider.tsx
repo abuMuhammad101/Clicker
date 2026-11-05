@@ -252,7 +252,17 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
     if (anchor) card.current?.focus({ preventScroll: true })
   }, [anchor, index])
 
-  const placed = rect ? place(rect, cardSize, { width: window.innerWidth, height: window.innerHeight }, step.placement ?? 'bottom') : null
+  // The navigation is not covered either (the sidebar and the top bar), and a sidebar item is spoken about from its right.
+  const protectedBoxes = anchor
+    ? [...document.querySelectorAll<HTMLElement>('nav.sidebar, header.top-bar')]
+        .filter((element) => !element.contains(anchor) || element.matches('nav.sidebar'))
+        .map((element) => element.getBoundingClientRect())
+        .map((r) => ({ left: r.left, top: r.top, width: r.width, height: r.height }))
+    : []
+  const inSidebar = !!anchor?.closest('nav.sidebar')
+  const placed = rect
+    ? place(rect, cardSize, { width: window.innerWidth, height: window.innerHeight }, inSidebar ? 'right' : (step.placement ?? 'bottom'), 12, 12, protectedBoxes)
+    : null
   const titleId = `tour-title-${step.id}`
   const pad = 4
   return (

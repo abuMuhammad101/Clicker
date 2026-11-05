@@ -7,19 +7,8 @@ import { Link } from '@/lib/Link'
 import { organisation } from '@/lib/organisation'
 import { usePreference } from '@/lib/usePreference'
 import type { User } from '@/features/auth/authContext'
+import { capCards, cardRest, cardSentence, type WaitingCard } from './waitingCards'
 import './welcome.css'
-
-/** One card of "Waiting for you", as GET /api/home/waiting/ describes it. */
-interface WaitingCard {
-  app_label: string
-  model: string
-  plural: string
-  state: string
-  state_label: string
-  count: number
-  actions: string[]
-  filter: string
-}
 
 /**
  * The welcome, shown until it is put away (once, remembered per person on the server): who you are signed in as,
@@ -82,27 +71,35 @@ export function useWaiting(): WaitingCard[] | null {
  * no card, no zero, no urgency that is not real.
  */
 export function WaitingStrip({ cards }: { cards: WaitingCard[] | null }) {
+  const [all, setAll] = useState(false)
   if (!cards || cards.length === 0) return null
+  const { shown, more } = capCards(cards)
+  const visible = all ? cards : shown
   return (
     <section className="waiting" aria-label="Waiting for you" data-tour="waiting">
       <h2 className="waiting__title">Waiting for you</h2>
       <ul className="waiting__list">
-        {cards.map((card) => (
+        {visible.map((card) => (
           <li key={`${card.app_label}.${card.model}.${card.state}`}>
             <Link
               to={`/${card.app_label}/${card.model}?filter=${encodeURIComponent(card.filter)}`}
               className="waiting__card"
-              title={`${card.count} ${card.plural} at ${card.state_label}. Your next step: ${card.actions.join(' or ').toLowerCase()}.`}
+              title={`${cardSentence(card)} (now ${card.state_label})`}
             >
               <span className="waiting__count">{card.count.toLocaleString()}</span>
               <span className="waiting__what">
-                <span className="waiting__plural">{card.plural}</span>
-                <span className="waiting__next">{card.state_label} · {card.actions.join(' or ')}</span>
+                <span className="waiting__plural">{cardRest(card)}</span>
+                <span className="waiting__next">Now {card.state_label.toLowerCase()}</span>
               </span>
             </Link>
           </li>
         ))}
       </ul>
+      {more > 0 && (
+        <button type="button" className="waiting__more" aria-expanded={all} onClick={() => setAll((open) => !open)}>
+          {all ? 'Show fewer' : `+${more} more`}
+        </button>
+      )}
     </section>
   )
 }

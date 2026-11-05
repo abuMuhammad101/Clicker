@@ -246,6 +246,19 @@ def _phrase(model, spec):
     return f'{label} {this}'
 
 
+def action_verb(model, spec):
+    """
+    What a transition does, without its object, for a count of records waiting on it: 'approve', 'gate out',
+    'close'. A label that is not a verb on its own declares `action` ('file the GD'); otherwise it is the label
+    with the record's own name taken off the end ('Close job' on a job: 'close').
+    """
+    if spec.get('action'):
+        return spec['action']
+    label = spec['label'].lower()
+    noun = model._meta.verbose_name.lower()
+    return label[: -len(noun)].rstrip() if label.endswith(f' {noun}') else label
+
+
 def _either_phrases(phrases):
     """['approve this bill', 'reject this bill'] → 'approve or reject this bill' when they end the same way."""
     phrases = list(dict.fromkeys(phrases))

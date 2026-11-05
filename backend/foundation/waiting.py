@@ -20,7 +20,7 @@ from foundation import workflow
 from foundation.permissions import can
 from schema.engine import is_exposed
 
-MAX_CARDS = 8
+MAX_CARDS = 12  # the home page shows four and says how many more; this only keeps the answer small
 
 
 def waiting_for(user):
@@ -67,11 +67,13 @@ def waiting_for(user):
             cards.append({
                 'app_label': meta.app_label,
                 'model': meta.model_name,
+                # The schema's own words for one and for many (a model's verbose_name and its plural), never a guess.
+                'singular': str(meta.verbose_name),
                 'plural': str(meta.verbose_name_plural),
                 'state': state,
                 'state_label': workflow.state_label(model, state),
                 'count': count,
-                'actions': list(dict.fromkeys(spec['label'] for spec in specs)),
+                'actions': list(dict.fromkeys(workflow.action_verb(model, spec) for spec in specs)),
                 'filter': f'{field}:in:{state}',
             })
     cards.sort(key=lambda card: (-card['count'], card['plural'], card['state']))

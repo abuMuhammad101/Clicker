@@ -569,7 +569,9 @@ class WaitingForYouTests(ClearanceWorld, TestCase):
     def test_accounts_sees_the_disbursements_waiting_for_approval_with_the_real_count(self):
         card = self.card(self.accounts_client, 'disbursement')
         self.assertEqual(card['count'], 2)
-        self.assertEqual(card['actions'], ['Approve'])
+        self.assertEqual(card['actions'], ['approve'])
+        # The schema's own words for one and for many, so a card can say "1 disbursement" and "2 disbursements".
+        self.assertEqual((card['singular'], card['plural']), ('disbursement', 'disbursements'))
         self.assertEqual(card['filter'], 'state:in:recorded')
 
     def test_a_role_without_the_transition_permission_sees_no_card_and_no_count(self):
@@ -585,7 +587,7 @@ class WaitingForYouTests(ClearanceWorld, TestCase):
     def test_the_person_who_recorded_a_disbursement_does_not_wait_on_themselves(self):
         # Whoever recorded it cannot approve it: for them it is not waiting on them. Accounts approves one; one remains.
         self.accounts_client.post(f'{DISBURSEMENTS}{self.d1.pk}/transitions/approve/', format='json')
-        self.assertEqual(self.card(self.accounts_client, 'disbursement')['count'], 1)
+        self.assertEqual(self.card(self.accounts_client, 'disbursement')['count'], 1)  # the singular case
 
     def test_a_card_that_is_zero_is_not_returned(self):
         for disbursement in (self.d1, self.d2):
@@ -644,3 +646,15 @@ class ValidationCopyTests(ClearanceWorld, TestCase):
         body = self.owner_client.post(JOBS, {'goods': 'Cotton yarn'}, format='json').json()
         self.assertEqual(body['client'], ['Choose a client.'])
         self.assertNotIn('may not be', str(body))
+
+
+class WaitingActionWordsTests(TestCase):
+    """The verb on a card is the transition's own action, never a label chopped by hand."""
+
+    def test_a_label_is_taken_off_its_record_name_and_a_declared_action_wins(self):
+        from foundation.workflow import action_verb
+
+        self.assertEqual(action_verb(Job, {'label': 'Close job'}), 'close')
+        self.assertEqual(action_verb(Job, {'label': 'Gate out'}), 'gate out')
+        self.assertEqual(action_verb(Job, {'label': 'File GD', 'action': 'file the GD'}), 'file the GD')
+        self.assertEqual(action_verb(Disbursement, {'label': 'Approve'}), 'approve')

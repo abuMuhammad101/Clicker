@@ -94,33 +94,59 @@ export function fillNumbers(body: string, root: ParentNode = document): string {
 
 export type Placement = NonNullable<TourStep['placement']>
 
-/** Where the step's card goes: the wanted side if it fits, the opposite side if not, always inside the window. */
+export interface Box {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
+const overlapArea = (a: Box, b: Box) => {
+  const w = Math.min(a.left + a.width, b.left + b.width) - Math.max(a.left, b.left)
+  const h = Math.min(a.top + a.height, b.top + b.height) - Math.max(a.top, b.top)
+  return w > 0 && h > 0 ? w * h : 0
+}
+
+/**
+ * Where the step's card goes. It never covers the thing it is talking about (nor the navigation, `avoid`), and
+ * stays wholly inside the window: the wanted side first, then the opposite, then the rest; the first side where
+ * it covers nothing wins, and if none is clear the one that covers least.
+ */
 export function place(
-  anchor: { left: number; top: number; width: number; height: number },
+  anchor: Box,
   card: { width: number; height: number },
   viewport: { width: number; height: number },
   wanted: Placement = 'bottom',
   gap = 12,
   margin = 12,
+  avoid: Box[] = [],
 ): { left: number; top: number; side: Placement } {
-  const fits = (side: Placement) => {
-    if (side === 'bottom' || side === 'bottom-end') return anchor.top + anchor.height + gap + card.height <= viewport.height - margin
-    if (side === 'top') return anchor.top - gap - card.height >= margin
-    if (side === 'right') return anchor.left + anchor.width + gap + card.width <= viewport.width - margin
-    return anchor.left - gap - card.width >= margin
-  }
   const opposite: Record<Placement, Placement> = { bottom: 'top', 'bottom-end': 'top', top: 'bottom', right: 'left', left: 'right' }
-  const order: Placement[] = [wanted, opposite[wanted], 'bottom', 'top', 'right', 'left']
-  const side = order.find(fits) ?? wanted
-  let left = anchor.left
-  let top = anchor.top + anchor.height + gap
-  if (side === 'bottom-end') left = anchor.left + anchor.width - card.width
-  if (side === 'top') top = anchor.top - gap - card.height
-  if (side === 'right' || side === 'left') {
-    top = anchor.top + anchor.height / 2 - card.height / 2
-    left = side === 'right' ? anchor.left + anchor.width + gap : anchor.left - gap - card.width
+  const order = [...new Set<Placement>([wanted, opposite[wanted], 'bottom', 'top', 'right', 'left'])]
+  const at = (side: Placement) => {
+    let left = anchor.left
+    let top = anchor.top + anchor.height + gap
+    if (side === 'bottom-end') left = anchor.left + anchor.width - card.width
+    if (side === 'top') top = anchor.top - gap - card.height
+    if (side === 'right' || side === 'left') {
+      top = anchor.top + anchor.height / 2 - card.height / 2
+      left = side === 'right' ? anchor.left + anchor.width + gap : anchor.left - gap - card.width
+    }
+    left = Math.min(Math.max(left, margin), Math.max(margin, viewport.width - card.width - margin))
+    top = Math.min(Math.max(top, margin), Math.max(margin, viewport.height - card.height - margin))
+    return { left, top, side }
   }
-  left = Math.min(Math.max(left, margin), Math.max(margin, viewport.width - card.width - margin))
-  top = Math.min(Math.max(top, margin), Math.max(margin, viewport.height - card.height - margin))
-  return { left, top, side }
+  let best = at(wanted)
+  let bestCovered = Infinity
+  for (const side of order) {
+    const candidate = at(side)
+    const box = { left: candidate.left, top: candidate.top, width: card.width, height: card.height }
+    const covered = overlapArea(box, anchor) * 4 + avoid.reduce((sum, other) => sum + overlapArea(box, other), 0)
+    if (covered === 0) return candidate
+    if (covered < bestCovered) {
+      best = candidate
+      bestCovered = covered
+    }
+  }
+  return best
 }

@@ -29,6 +29,8 @@ const THEMES = flag('themes', 'light,dark').split(',')
 const ONLY = flag('screens', null)
 const STATES_ONLY = args.includes('--states-only')
 const SKIP_STATES = args.includes('--no-states')
+const TOUR_ONLY = args.includes('--tour-only')
+const SKIP_TOUR = args.includes('--no-tour')
 
 // ------------------------------------------------------------------------------------------ tokens
 const css = readFileSync(path.join(ROOT, 'tokens.css'), 'utf8')
@@ -264,13 +266,73 @@ async function states(browser) {
   await owner.close()
 }
 
+
+// ------------------------------------------------------------------------------------------ tour placement
+/**
+ * Every step of both tours, at every viewport and theme: the card is wholly inside the window, never covers the
+ * element it lights, never covers the navigation (the sidebar and the top bar) unless the card is beside the very
+ * item being lit, and a sidebar item is spoken about from its right.
+ */
+async function tourPlacement(browser) {
+  console.log('Tour cards: placement at every step')
+  const note = (ok, message) => { if (!ok) console.log(`  FAIL ${message}`) }
+  let steps = 0
+  for (const viewport of VIEWPORTS) {
+    for (const theme of THEMES) {
+      for (const [journey, who] of [['clearance', 'hamza.farooqui'], ['water', 'ayesha.khan']]) {
+        const person = await new Person(browser, journey, who, { theme, viewport, initScript: CLS_SCRIPT }).open()
+        const p = person.page
+        const context = { screen: `${journey} tour`, role: who, theme, viewport: `${viewport.width}x${viewport.height}` }
+        try {
+          await p.getByRole('button', { name: 'Help' }).click()
+          await p.getByRole('button', { name: /Take the tour|Pick up the tour|Start the tour again/ }).first().click()
+          for (let i = 0; i < 12; i += 1) {
+            const card = p.locator('.tour-card')
+            await card.waitFor({ timeout: 25000 })
+            await p.waitForTimeout(350)
+            const title = (await card.locator('.tour-card__title').innerText()).trim()
+            const geometry = await p.evaluate(() => {
+              const box = (e) => { const r = e.getBoundingClientRect(); return { left: r.left, top: r.top, right: r.right, bottom: r.bottom } }
+              const card = document.querySelector('.tour-card')
+              const spot = document.querySelector('.tour-spot')
+              const sidebar = document.querySelector('nav.sidebar')
+              const bar = document.querySelector('header.top-bar')
+              const s = spot ? box(spot) : null
+              // The spot is the anchor plus 4px on every side.
+              const anchor = s ? { left: s.left + 4, top: s.top + 4, right: s.right - 4, bottom: s.bottom - 4 } : null
+              return { card: box(card), anchor, sidebar: sidebar ? box(sidebar) : null, bar: bar ? box(bar) : null, w: innerWidth, h: innerHeight }
+            })
+            const { card: c, anchor: a, sidebar: sb, bar: tb, w, h } = geometry
+            const hit = (x, y) => x && y && x.left < y.right && x.right > y.left && x.top < y.bottom && x.bottom > y.top
+            const inside = (x, y) => y && x.left >= y.left - 1 && x.right <= y.right + 1 && x.top >= y.top - 1 && x.bottom <= y.bottom + 1
+            steps += 1
+            if (c.left < 0 || c.top < 0 || c.right > w || c.bottom > h) record(context, { rule: 'tour/card-outside-the-window', severity: 'P1', selector: title, detail: JSON.stringify(c) })
+            if (hit(c, a)) record(context, { rule: 'tour/card-covers-what-it-lights', severity: 'P1', selector: title, detail: `card ${Math.round(c.left)},${Math.round(c.top)} over ${Math.round(a.left)},${Math.round(a.top)}` })
+            if (hit(c, sb)) record(context, { rule: 'tour/card-covers-the-sidebar', severity: 'P1', selector: title, detail: '' })
+            if (hit(c, tb) && !(a && inside(a, tb) && !hit(c, a) && false)) record(context, { rule: 'tour/card-covers-the-top-bar', severity: 'P1', selector: title, detail: '' })
+            if (a && sb && inside(a, sb) && c.left < a.right) record(context, { rule: 'tour/sidebar-item-not-spoken-of-from-its-right', severity: 'P1', selector: title, detail: '' })
+            const last = (await card.getByRole('button', { name: 'Done' }).count()) > 0
+            await card.getByRole('button', { name: last ? 'Done' : 'Next' }).click()
+            if (last) break
+          }
+        } catch (error) {
+          record(context, { rule: 'tour/did-not-run', severity: 'P1', selector: context.screen, detail: error.message.split('\n')[0] })
+        }
+        await person.close()
+      }
+    }
+  }
+  note(true, '')
+  console.log(`  ${steps} step placements checked`)
+}
+
 // ------------------------------------------------------------------------------------------ main
 const started = Date.now()
 const browser = await launch()
 mkdirSync(path.join(ROOT, 'docs', 'audit', 'raw'), { recursive: true })
 mkdirSync(path.join(ROOT, 'docs', 'audit', 'shots'), { recursive: true })
 
-if (!STATES_ONLY) {
+if (!STATES_ONLY && !TOUR_ONLY) {
   const screens = SCREENS.filter((s) => !ONLY || s.name.toLowerCase().includes(ONLY.toLowerCase()))
   for (const viewport of VIEWPORTS) {
     for (const theme of THEMES) {
@@ -310,7 +372,8 @@ if (!STATES_ONLY) {
 }
 const writeFindings = () => writeFileSync(path.join(ROOT, 'docs', 'audit', 'raw', 'findings.json'), JSON.stringify([...findings.values()].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.rule.localeCompare(b.rule)), null, 2))
 writeFindings()
-if (!SKIP_STATES) await states(browser)
+if (!SKIP_STATES && !TOUR_ONLY) await states(browser)
+if (!SKIP_TOUR) await tourPlacement(browser)
 await browser.close()
 
 const list = [...findings.values()].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] || a.rule.localeCompare(b.rule))

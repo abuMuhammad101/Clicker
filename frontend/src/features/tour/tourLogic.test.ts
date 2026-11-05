@@ -45,6 +45,39 @@ describe('placing the card', () => {
     expect(placed.top).toBeGreaterThanOrEqual(0)
   })
 
+  it('never covers what it is talking about', () => {
+    const anchors = [
+      { left: 300, top: 120, width: 700, height: 80 },
+      { left: 240, top: 300, width: 900, height: 360 },
+      { left: 1100, top: 8, width: 160, height: 28 },
+      { left: 8, top: 200, width: 200, height: 28 },
+    ]
+    for (const anchor of anchors) {
+      for (const side of ['top', 'bottom', 'left', 'right', 'bottom-end'] as const) {
+        const placed = place(anchor, card, viewport, side)
+        const overlaps = placed.left < anchor.left + anchor.width && placed.left + card.width > anchor.left && placed.top < anchor.top + anchor.height && placed.top + card.height > anchor.top
+        expect(overlaps, `${JSON.stringify(anchor)} wanted ${side}`).toBe(false)
+        expect(placed.left).toBeGreaterThanOrEqual(0)
+        expect(placed.top).toBeGreaterThanOrEqual(0)
+        expect(placed.left + card.width).toBeLessThanOrEqual(viewport.width)
+        expect(placed.top + card.height).toBeLessThanOrEqual(viewport.height)
+      }
+    }
+  })
+
+  it('speaks about a sidebar item from its right and keeps off the navigation', () => {
+    const sidebar = { left: 0, top: 44, width: 232, height: 676 }
+    const placed = place({ left: 8, top: 200, width: 216, height: 28 }, card, viewport, 'right', 12, 12, [sidebar])
+    expect(placed.side).toBe('right')
+    expect(placed.left).toBeGreaterThanOrEqual(sidebar.width)
+  })
+
+  it('goes round a protected strip when the wanted side is covered by it', () => {
+    const bar = { left: 232, top: 0, width: 1048, height: 44 }
+    const placed = place({ left: 400, top: 60, width: 300, height: 30 }, card, viewport, 'top', 12, 12, [bar])
+    expect(placed.top).toBeGreaterThanOrEqual(bar.top + bar.height)
+  })
+
   it('lines the card up with the right edge for a menu in the corner', () => {
     const placed = place({ left: 1100, top: 8, width: 160, height: 28 }, card, viewport, 'bottom-end')
     expect(placed.left + card.width).toBeLessThanOrEqual(viewport.width)
