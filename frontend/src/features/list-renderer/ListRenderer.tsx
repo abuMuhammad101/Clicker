@@ -187,6 +187,8 @@ function chipColumnMin(labels: string[], floor: number, cap: number): number {
   // not take the room the other columns need in a narrow table (a related list is 660px wide).
   return longest === 0 ? floor : Math.max(floor, Math.min(cap, Math.ceil(longest * 6.6) + 52))
 }
+/** The strip at a row's right edge that holds its hover actions, so they never sit on top of a figure. */
+const ACTIONS_ROOM = 32
 const OVERSCAN_ROWS = 12
 
 export function ListRenderer(props: ListRendererProps) {
@@ -645,9 +647,9 @@ function ListView({
     : fitSizes(
         headers.map((header) => header.getSize()),
         headers.map((header) => header.column.columnDef.minSize ?? minColumnWidth),
-        viewportWidth,
+        Math.max(0, viewportWidth - ACTIONS_ROOM),
       )
-  const totalWidth = widths.reduce((a, b) => a + b, 0)
+  const totalWidth = widths.reduce((a, b) => a + b, 0) + ACTIONS_ROOM
   const widthOf = (columnId: string) => widths[headers.findIndex((h) => h.column.id === columnId)]
   // Taking over the sizing freezes what the person is looking at first, so the
   // first drag starts from the width on screen, not from the unfitted default.

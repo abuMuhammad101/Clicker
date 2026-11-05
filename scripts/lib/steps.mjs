@@ -65,7 +65,8 @@ export async function openRecord(person, appModel, text, { search = true, view =
   if (view) await pickView(person, view)
   const found = page.locator('.list-row', { hasText: text }).first()
   await found.waitFor({ timeout: 15000 })
-  await found.click()
+  // The first cell, not the middle of the row: the middle can be an editable cell, and a click there starts an edit.
+  await found.locator('.list-row__cell').first().click({ position: { x: 6, y: 6 } })
   await page.waitForURL(/peek=/)
   const id = new URL(page.url()).searchParams.get('peek').split('.').pop()
   await page.goto(`${person.base.app}/${appModel}/${id}`)

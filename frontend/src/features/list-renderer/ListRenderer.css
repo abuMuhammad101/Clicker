@@ -588,7 +588,7 @@
 .list-row__actions {
   position: absolute;
   top: 50%;
-  right: var(--space-4);
+  right: var(--space-3);
   display: none;
   transform: translateY(-50%);
 }
@@ -601,8 +601,8 @@
 
 .list-row__action {
   display: grid;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   place-items: center;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -938,4 +938,11 @@
 .list-group--muted .list-group__count {
   color: var(--text-muted);
   font-weight: var(--weight-regular, 400);
+}
+
+/* The tick boxes that select rows are click targets of 24px (the box itself, so nothing about the hit area is a pseudo-element). */
+.list-header__select [data-slot='checkbox'],
+.list-row__select [data-slot='checkbox'] {
+  width: 24px;
+  height: 24px;
 }

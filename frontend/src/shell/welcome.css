@@ -36,6 +36,7 @@
 
 .waiting__list {
   display: grid;
+  align-items: stretch;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
   margin: 0;
@@ -78,10 +79,10 @@
 }
 
 .waiting__plural {
-  overflow: hidden;
+  /* The sentence is the point of the card ("jobs to record the examination"): it wraps, it is never cut. */
   font-size: var(--text-base);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: var(--leading-tight);
+  overflow-wrap: anywhere;
 }
 
 .waiting__next {
@@ -104,4 +105,12 @@
 
 .waiting__more:hover {
   text-decoration: underline;
+}
+
+.waiting__list > li {
+  display: flex;
+}
+
+.waiting__list > li > .waiting__card {
+  flex: 1;
 }
