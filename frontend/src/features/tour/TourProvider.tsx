@@ -147,9 +147,14 @@ interface StageProps {
 
 function TourStage({ tour, index, skipped, direction, move, pause, skip }: StageProps) {
   const step = tour.steps[index]
-  const [anchor, setAnchor] = useState<HTMLElement | null>(null)
-  const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
-  const [body, setBody] = useState(step.body)
+  // What is known about the *current* step only: every piece is stamped with the step it belongs to, so for the one
+  // render between "moved to the next step" and "found its anchor" the previous step's light and card never show
+  // under the next step's title.
+  const [found, setFound] = useState<{ index: number; element: HTMLElement; body: string } | null>(null)
+  const [measured, setMeasured] = useState<{ index: number; rect: { left: number; top: number; width: number; height: number } } | null>(null)
+  const anchor = found && found.index === index ? found.element : null
+  const body = found && found.index === index ? found.body : step.body
+  const rect = measured && measured.index === index ? measured.rect : null
   const card = useRef<HTMLDivElement>(null)
   const [cardSize, setCardSize] = useState({ width: 340, height: 190 })
   const last = index === tour.steps.length - 1
@@ -157,8 +162,6 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
   // Go to the step's screen, then wait for its anchor; a step whose anchor never comes is skipped without a word.
   useEffect(() => {
     let cancelled = false
-    setAnchor(null)
-    setRect(null)
     const run = async () => {
       const wanted = step.open_record ? await openRecordPath(step) : step.route ?? null
       if (cancelled) return
@@ -167,12 +170,11 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
       const started = Date.now()
       const poll = window.setInterval(() => {
         if (cancelled) return window.clearInterval(poll)
-        const found = findAnchors(step)[0]
-        if (found) {
+        const foundElement = findAnchors(step)[0]
+        if (foundElement) {
           window.clearInterval(poll)
-          found.scrollIntoView({ block: 'center', behavior: 'auto' })
-          setBody(fillNumbers(step.body))
-          setAnchor(found)
+          foundElement.scrollIntoView({ block: 'center', behavior: 'auto' })
+          setFound({ index, element: foundElement, body: fillNumbers(step.body) })
         } else if (Date.now() - started > (step.optional ? OPTIONAL_WAIT_MS : ANCHOR_WAIT_MS)) {
           window.clearInterval(poll)
           give(false)
@@ -198,7 +200,7 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
     const measure = () => {
       if (!anchor.isConnected) return
       const r = anchor.getBoundingClientRect()
-      setRect({ left: r.left, top: r.top, width: r.width, height: r.height })
+      setMeasured({ index, rect: { left: r.left, top: r.top, width: r.width, height: r.height } })
       if (card.current) setCardSize({ width: card.current.offsetWidth, height: card.current.offsetHeight })
     }
     measure()
@@ -210,7 +212,7 @@ function TourStage({ tour, index, skipped, direction, move, pause, skip }: Stage
       window.removeEventListener('resize', measure)
       window.removeEventListener('scroll', measure, true)
     }
-  }, [anchor])
+  }, [anchor, index])
 
   // The step moves on by itself when the person does the thing it asked for.
   useEffect(() => {
