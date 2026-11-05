@@ -1,4 +1,5 @@
 import { Check, Clock, LockKeyhole, X } from 'lucide-react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { RecordWorkflow } from '@/types/record'
@@ -13,7 +14,7 @@ import './WorkflowBar.css'
  * Only transitions the user's schema allows ever appear, and only the ones
  * available on this record now. A step that belongs to someone else is
  * never a disabled button; it's a sentence saying whose it is ("Waiting for
- * a Manager to approve or reject it.").
+ * a Manager to approve or reject this adjustment.").
  */
 export function WorkflowBar({
   workflow,
@@ -120,14 +121,14 @@ function NextStep({
     if (dirty) {
       return (
         <Sentence
-          lead={`Save your changes before you ${either(available.map((t) => t.label))}.`}
+          lead={`Save your changes before you ${either(available)}.`}
           detail={primary?.hint}
         />
       )
     }
     return (
       <Sentence
-        lead={`Ready to ${either(available.map((t) => t.label))}.`}
+        lead={`Ready to ${either(available)}.`}
         detail={[primary?.hint, ...(status.held_back ?? [])].filter(Boolean).join(' ') || null}
       />
     )
@@ -187,11 +188,38 @@ export function stepsFor(workflow: WorkflowSchema, state: string): Step[] {
 function Stepper({ workflow, state }: { workflow: WorkflowSchema; state: string }) {
   const steps = stepsFor(workflow, state)
   const last = steps.length - 1
+  const list = useRef<HTMLOListElement>(null)
+  // A long pipeline (ten stages) can be wider than the form. Rather than overflow the card or wrap into two
+  // lines, only the current step keeps its label and the rest are markers (their names stay on hover and for
+  // screen readers). It turns on only when the full stepper does not fit, and off again when it does.
+  const [compact, setCompact] = useState(false)
+  const fullWidth = useRef(0)
+  useLayoutEffect(() => {
+    const element = list.current
+    const container = element?.parentElement
+    if (!element || !container) return
+    const fit = () => {
+      if (!compact) {
+        if (element.scrollWidth > container.clientWidth + 1) {
+          fullWidth.current = element.scrollWidth
+          setCompact(true)
+        }
+      } else if (container.clientWidth >= fullWidth.current) {
+        setCompact(false)
+      }
+    }
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(fit)
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [compact, steps.length])
   return (
-    <ol className="workflow-steps" aria-label="Progress">
+    <ol ref={list} className={cn('workflow-steps', compact && 'workflow-steps--compact')} aria-label="Progress">
       {steps.map((step, i) => (
         <li
           key={step.state.value}
+          title={step.state.label}
           className={cn('workflow-step', `workflow-step--${step.status}`, `workflow-step--${step.state.tone}`)}
           aria-current={step.status === 'current' || step.status === 'exit' ? 'step' : undefined}
         >
@@ -213,9 +241,17 @@ function stateOf(workflow: WorkflowSchema, value: string): WorkflowState {
 }
 
 /** ['Post', 'Cancel'] → 'post or cancel'. */
-function either(labels: string[]) {
-  const lower = labels.map((label) => label.charAt(0).toLowerCase() + label.slice(1))
-  return lower.length < 2 ? (lower[0] ?? '') : `${lower.slice(0, -1).join(', ')} or ${lower[lower.length - 1]}`
+/** 'gate out or cancel this job': the server's phrases, merged when they end on the same record. */
+function either(transitions: WorkflowTransition[]) {
+  const phrases = transitions.map((t) => t.phrase ?? t.label.charAt(0).toLowerCase() + t.label.slice(1))
+  if (phrases.length < 2) return phrases[0] ?? ''
+  const split = phrases.map((p) => p.split(' this '))
+  const tails = new Set(split.map((parts) => (parts.length > 1 ? parts.slice(1).join(' this ') : null)))
+  if (tails.size === 1 && !tails.has(null)) {
+    const verbs = split.map((parts) => parts[0])
+    return `${verbs.length < 2 ? verbs[0] : `${verbs.slice(0, -1).join(', ')} or ${verbs[verbs.length - 1]}`} this ${[...tails][0]}`
+  }
+  return `${phrases.slice(0, -1).join(', ')} or ${phrases[phrases.length - 1]}`
 }
 
 function article(word: string) {

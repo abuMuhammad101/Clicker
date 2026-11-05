@@ -455,10 +455,14 @@ def record_summaries(queryset, model, fields, today=None):
     return summaries(queryset, model, fields, today, specs=declared_record_summaries(model), keep_empty=True)
 
 
-def summaries(queryset, model, fields, today=None, specs=None, keep_empty=False):
+def summaries(queryset, model, fields, today=None, specs=None, keep_empty=False, whole=None):
     """
     The model's declared summaries over `queryset`, in one query. A summary
     over an unreadable field, or filtered by one, is left out entirely.
+
+    A summary with `ignore_view_filters: True` totals over `whole` (everything the reader may
+    see, whatever view, filter or search the table has) instead of `queryset`, so a card can
+    answer "how much is waiting" while the table shows only part of it. Its own `filter` still applies.
     """
     today = today or computed.today()
     usable = []
@@ -475,18 +479,22 @@ def summaries(queryset, model, fields, today=None, specs=None, keep_empty=False)
         return []
 
     aggregates = {}
+    whole_aggregates = {}
     for index, spec, filters in usable:
         where = Q()
         for item in filters:
             where &= condition(item, fields, today)
         kind = spec['aggregate']
+        target = whole_aggregates if spec.get('ignore_view_filters') and whole is not None else aggregates
         if kind == 'count':
-            aggregates[f's{index}'] = Count('pk', filter=where)
+            target[f's{index}'] = Count('pk', filter=where)
         elif kind == 'sum':
-            aggregates[f's{index}'] = Sum(spec['field'], filter=where)
+            target[f's{index}'] = Sum(spec['field'], filter=where)
         else:
-            aggregates[f's{index}'] = Avg(spec['field'], filter=where)
-    values = queryset.order_by().aggregate(**aggregates)
+            target[f's{index}'] = Avg(spec['field'], filter=where)
+    values = queryset.order_by().aggregate(**aggregates) if aggregates else {}
+    if whole_aggregates:
+        values.update(whole.order_by().aggregate(**whole_aggregates))
 
     result = []
     for index, spec, filters in usable:

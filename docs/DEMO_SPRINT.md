@@ -16,7 +16,7 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | **S-6** | Journey B: Karachi port clearing agency (Jobs with stages and a demurrage countdown, Containers, Disbursements; the invoice drafts itself at gate-out); team and roles page with "View as role" | Gate-out drafts exactly one invoice (test); "View as role" shows exactly what that role's schema allows, using the same permission function as the API; Journey B runs end to end in the browser |
 | **S-7** | Freeze and rehearse | Two full rehearsals without a code change; `check --deploy`, `pip-audit`, `npm audit` clean; nothing new merged |
 
-## Status (3 Nov 2026)
+## Status (4 Nov 2026)
 
 | # | Gate |
 | --- | --- |
@@ -26,13 +26,29 @@ Clicker is an Odoo **replacement**, never a "replica". Clean-room: Odoo's docs a
 | S-4 | Passed (3 Nov): filters on readable fields only, group sums equal a database aggregate (tests), a saved view survives reload (browser) and lives in the shared database, so it follows to the other machine. **Board view cut** (to the Parking Lot). |
 | S-5 | Passed (4 Nov): oldest-first allocation, locked posted bills, one bill per connection (tests); Journey A walked through as Manager, Billing officer, Cashier and Recovery officer on the local database; slowest screen 122 ms. **Neon not seeded**: the demo runs on local Postgres (see Demo machine). |
 | S-6 | Passed (4 Nov), nothing cut: Journey B on its own database (`clicker_port`), the invoice drafts itself at gate-out (one bill, also under a race), team page and View as role (equality test over every role and model), lakh grouping, statement header, second approver above Rs 1 crore, bulk Assign owner. |
-| S-7 | Next. Re-measure on the demo laptop in S-7 (the timings below the Demo machine steps were taken in the cloud container). |
+| S-7 | Passed in the cloud (4 Nov): both journeys rehearsed twice from a fresh seed through the browser with no code change between (`scripts/rehearse.sh`, 27/27 steps each), 95 fail-safe checks (no external host, offline, four viewports, zero console errors), `check --deploy`, `pip-audit` and `npm audit` clean. **Still to do: Hassan's rehearsal on the demo laptop**, and re-measuring the timings there (those below were taken in the cloud container). Code is frozen: only fixes to a failure found in rehearsal merge. |
 
 ## Demo machine
 
 The demo runs on the laptop it is presented from, on a **local Postgres**, not Neon: no network, no latency, nothing shared. **There are two demos and two databases**: the water board (`clicker_demo`) and the clearing agency, Harbour Gate Clearing (`clicker_port`). They never share a database (contacts are shared, so a port owner would otherwise see federal ministries), and each backend exposes only its own journey's models and roles (`CLICKER_JOURNEY`). Setting a laptop up from nothing takes about **3 minutes of computer time** (measured: database 1 s, migrate 6 s, seed 170 s) plus the installs. Do it on the machine you will present from, then again the evening before, to prove it.
 
 **Linux or macOS: one script.** With Postgres running, `backend/.venv` and `frontend/node_modules` installed, and `DEMO_DATABASE_SERVER` in `.env`, `scripts/demo_setup.sh` creates `clicker_demo` and `clicker_port` (`--fresh` drops them first), migrates, seeds both journeys and prints each one's headline numbers. It creates a `.env` with a generated `SECRET_KEY` if there is none. Cloud run, fresh databases: **227 s** (water 216 s, clearing agency 11 s, migrations included). It ends by printing the two commands that run each journey on its own ports; on Windows keep using the steps below and `scripts\demo-stack.ps1 water|clearance`, which switches journeys in a few seconds.
+
+**Linux or macOS, from nothing** (needs Git, Python 3.12 or newer, Node 20 or newer, and a Postgres you can create databases in; the Windows steps below download one that needs no installer):
+
+```bash
+git clone https://github.com/abuMuhammad101/Clicker.git && cd Clicker
+python3 -m venv backend/.venv && backend/.venv/bin/pip install -r backend/requirements.txt
+npm --prefix frontend install
+# Postgres: macOS `brew install postgresql@17 && brew services start postgresql@17`; Debian or Ubuntu `sudo apt install postgresql`.
+# Put its address in .env (add `user:password@` if your server asks for one), with a secret key:
+printf 'DEMO_DATABASE_SERVER=postgresql://postgres@127.0.0.1:5432\nSECRET_KEY=%s\nDEBUG=True\nALLOWED_HOSTS=localhost,127.0.0.1\n' \
+  "$(backend/.venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(50))')" > .env
+scripts/demo_setup.sh          # about 4 minutes, prints each journey's headline numbers
+scripts/demo_stack.sh clearance    # http://localhost:5274 ; water: http://localhost:5273
+```
+
+`scripts/demo_stack.sh` waits until the app answers, and `scripts/rehearse.sh` runs both journeys end to end through the browser from a fresh seed (about 5 minutes, exits non-zero on any failure; it needs Playwright, which is not a project dependency: once, in the repo folder, `npm install --no-save playwright && npx playwright install chromium`).
 
 **Timings, cloud (measured 4 Nov in the build container, local Postgres with fsync off, median of 7). Re-measure on the demo laptop in S-7.**
 
@@ -108,7 +124,7 @@ backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance
 
 `--confirm` must repeat the database's name, so it can never write somewhere you didn't mean. It prints no passwords. It ends with a line like `outstanding Rs 314.4 crore; 163.3 crore (52%) is more than 180 days overdue…` and `Done.`
 
-It is **idempotent**: running it again adds nothing. Run it again on the morning of the demo and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments), so "this month" is always true.
+It is **idempotent**: running it again adds nothing. Run it again and it adds whatever the calendar has moved on by (a new month's billing run, this week's payments); but for demo morning use a fresh seed (see below), not a re-run or a rebase.
 
 **5. Run it: one command, either journey** (switching takes a few seconds; it stops whichever journey was running)
 
@@ -119,14 +135,7 @@ scripts\demo-stack.ps1 clearance    # http://localhost:5274  (API :8201, databas
 
 It reads `DEMO_DATABASE_SERVER` from `.env`, starts the backend with `CLICKER_JOURNEY` and `DATABASE_URL` for that journey, and the frontend with `VITE_API_URL` pointing at the right backend.
 
-**On the morning of the demo**, move the story to today (every calendar date shifts by the days since the seed; the activity trail keeps its real times):
-
-```powershell
-$env:CLICKER_JOURNEY = "clearance"; $env:DATABASE_URL = "postgresql://postgres@127.0.0.1:5434/clicker_port"
-backend\.venv\Scripts\python.exe backend\manage.py seed_demo --journey clearance --confirm clicker_port --rebase-dates
-```
-
-(the same with `water` and `clicker_demo` for the water board.)
+**On the morning of the demo, reset with a fresh seed, not a rebase.** `scripts/demo_setup.sh --fresh` (Linux, macOS, Git Bash) drops and rebuilds both databases; on Windows follow `docs/DEMO_RESET.md`, which has the PowerShell commands. A fresh seed is the only reset that makes everything consistent with today, including the activity trail. `seed_demo ... --rebase-dates` still exists and moves every calendar date by the days since the seed, but **it does not move the activity trail** (it keeps its real times, so the trail reads "3 days ago" beside records dated today) and it prints a warning saying so. Use it only to nudge a database you cannot reseed.
 
 **6. Who can sign in.** The seed creates seven fictional staff (all of them in `.env` as `DEMO_PASSWORD_<NAME>`, generated, never printed):
 
@@ -172,6 +181,8 @@ Cut **whole items, in this order**, never half-build one. Cut items go to the No
 6. Setup checklist
 7. Team page
 8. Board view
+
+**Cut in S-7:** nothing from the list above, and nothing started that was not a fix. Not done, on purpose: a hand-written "Deactivate" (the verb is the schema's `archive_verbs`) and any change to the 760 px form width (the ten-stage stepper compacts to markers instead; see the build log).
 
 **Never cut security.** S-1's rules hold for every later session; nothing ships that bypasses them to save time.
 

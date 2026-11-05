@@ -309,7 +309,7 @@ class Bill(ClickerModel):
         self.recalculate(ctx)
         self.refresh_from_db()
         if self.amount_total <= 0:
-            raise actions.Refused('A bill needs a total above zero to be posted.')
+            raise actions.Refused('This bill needs a total above zero before it can be posted.')
         services.apply_advances(ctx, self)
 
     def check_cancel(self, user):
@@ -665,7 +665,7 @@ class Adjustment(ClickerModel):
             'bill_days_overdue': {
                 'label': 'Bill days overdue',
                 'type': 'integer',
-                'description': 'Days since the bill fell due',
+                'description': 'Days since this bill fell due',
                 'expression': over()(
                     lambda context: ExtractDay(
                         ExpressionWrapper(Value(context.today) - F('bill__due_date'), output_field=DurationField())
@@ -683,7 +683,7 @@ class Adjustment(ClickerModel):
             'balance_before': {
                 'label': 'Bill balance before',
                 'type': 'currency',
-                'description': 'The bill’s balance without this reduction',
+                'description': 'This bill’s balance without this reduction',
                 'expression': over('amount', 'state')(
                     lambda context: Case(
                         When(state='approved', then=_bill_balance() + F('amount')),
@@ -696,7 +696,7 @@ class Adjustment(ClickerModel):
             'balance_after': {
                 'label': 'Bill balance after',
                 'type': 'currency',
-                'description': 'The bill’s balance with this reduction applied',
+                'description': 'This bill’s balance with this reduction applied',
                 'expression': over('amount', 'state')(
                     lambda context: Case(
                         When(state='approved', then=_bill_balance()),
@@ -734,7 +734,7 @@ class Adjustment(ClickerModel):
             'locked': ['requested', 'approved_once', 'approved', 'rejected'],
             'transitions': {
                 'request': {
-                    'label': 'Request approval',
+                    'label': 'Request approval', 'waiting_verb': 'request approval for {this}',
                     'from': ['draft'],
                     'to': 'requested',
                     'records_actor': 'requested_by',
@@ -792,7 +792,7 @@ class Adjustment(ClickerModel):
             raise ValidationError({'bill': f'Only a posted bill can be reduced. This one is {self.bill.get_state_display()}.'})
         if self.state == 'draft' and self.amount is not None and self.amount > self.bill.balance_value:
             raise ValidationError(
-                {'amount': f'Can’t be more than the bill’s balance, {format_money(self.bill.balance_value)}.'}
+                {'amount': f'Can’t be more than this bill’s balance, {format_money(self.bill.balance_value)}.'}
             )
 
     def on_save(self, ctx, created):
@@ -826,7 +826,7 @@ class Adjustment(ClickerModel):
             return f'This bill is {bill.get_state_display()}, so it can no longer be reduced.'
         if self.amount > bill.balance_value:
             return (
-                f'The bill’s balance is now {format_money(bill.balance_value)}, less than this reduction. '
+                f'This bill’s balance is now {format_money(bill.balance_value)}, less than this reduction. '
                 'Reject it and request a new one.'
             )
         return None

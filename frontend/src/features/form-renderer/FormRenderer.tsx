@@ -9,6 +9,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { archiveVerbs } from '@/lib/archiveVerbs'
 import { Archive, ArchiveRestore, CloudOff, FileQuestion, LockKeyhole } from 'lucide-react'
 import { StatePanel } from '@/components/StatePanel'
 import { StatusChip } from '@/components/StatusChip'
@@ -532,6 +533,7 @@ function EditableForm({
 
   // --- Archive: an edit of the schema's archive field -----------------------
   const [confirmArchive, setConfirmArchive] = useState(false)
+  const verbs = archiveVerbs(schema)
 
   const setArchived = async (archive: boolean) => {
     if (!record || !archiveField) return
@@ -543,12 +545,12 @@ function EditableForm({
       accept(saved)
       toast(
         archive
-          ? { message: `${saved.display} archived`, action: { label: 'Undo', onClick: () => void setArchived(false) } }
-          : { message: `${saved.display} restored` },
+          ? { message: `${saved.display} ${verbs.archived.toLowerCase()}`, action: { label: 'Undo', onClick: () => void setArchived(false) } }
+          : { message: `${saved.display} ${verbs.restored.toLowerCase()}` },
       )
     } catch (error) {
       const message = error instanceof ApiError ? error.message : 'Could not reach the API.'
-      toast({ kind: 'error', message: `Couldn’t ${archive ? 'archive' : 'restore'} ${record.display}. ${message}` })
+      toast({ kind: 'error', message: `Couldn’t ${(archive ? verbs.archive : verbs.restore).toLowerCase()} ${record.display}. ${message}` })
     }
   }
 
@@ -632,7 +634,7 @@ function EditableForm({
                   />
                 )
               })}
-            {archived && <StatusChip label="Archived" />}
+            {archived && <StatusChip label={verbs.archived} />}
           </div>
           <p className="form-header__meta">
             <span className="form-header__model">{schema.verbose_name_plural}</span>
@@ -659,7 +661,7 @@ function EditableForm({
               className="h-[var(--control-height)] text-[color:var(--text-secondary)]"
             >
               <Archive className="size-4" aria-hidden />
-              Archive
+              {verbs.archive}
             </Button>
           )}
           {!viewing && actions === 'inline' && (
@@ -699,8 +701,8 @@ function EditableForm({
         <div className="form-notice" role="status">
           <Archive className="form-notice__icon" aria-hidden />
           <p className="form-notice__text">
-            Archived. It’s out of the {schema.verbose_name_plural} list and pickers, and read-only until it’s restored;
-            anything that points at it still does.
+            {verbs.notice ??
+              `${verbs.archived}. It’s out of the ${schema.verbose_name_plural} list and pickers, and read-only until it’s ${verbs.restored.toLowerCase()}; anything that points at it still does.`}
           </p>
           {schema.actions.archive && (
             <Button
@@ -710,7 +712,7 @@ function EditableForm({
               className="h-[var(--control-height)]"
             >
               <ArchiveRestore className="size-4" aria-hidden />
-              Restore
+              {verbs.restore}
             </Button>
           )}
         </div>
@@ -773,12 +775,14 @@ function EditableForm({
       <AlertDialog open={confirmArchive} onOpenChange={setConfirmArchive}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive {record?.display}?</AlertDialogTitle>
-            <AlertDialogDescription>{archiveConsequence(schema)}</AlertDialogDescription>
+            <AlertDialogTitle>
+              {verbs.archive} {record?.display}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>{verbs.consequence ?? archiveConsequence(schema)}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Go back</AlertDialogCancel>
-            <AlertDialogAction onClick={() => void setArchived(true)}>Archive</AlertDialogAction>
+            <AlertDialogAction onClick={() => void setArchived(true)}>{verbs.archive}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

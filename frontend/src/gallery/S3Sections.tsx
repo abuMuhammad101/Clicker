@@ -205,7 +205,7 @@ function AdjustmentStates() {
           status={status({
             locked: true,
             locked_reason: lockedAs(verbose, 'Requested'),
-            waiting: 'Waiting for a Manager to approve or reject it.',
+            waiting: 'Waiting for a Manager to approve or reject this adjustment.',
           })}
           verboseName={verbose}
         />
@@ -217,7 +217,7 @@ function AdjustmentStates() {
           status={status({
             locked: true,
             locked_reason: lockedAs(verbose, 'Requested'),
-            waiting: 'You’re its requester, so another Manager has to approve or reject it.',
+            waiting: 'You’re its requester, so another Manager has to approve or reject this adjustment.',
           })}
           verboseName={verbose}
         />

@@ -153,6 +153,8 @@ export interface WorkflowTransition {
   confirm?: string
   /** What it does, shown beside its button before anyone presses it. */
   hint?: string
+  /** The transition inside a sentence about its record: "gate out this job". */
+  phrase?: string
 }
 
 /** Schema.workflow: the states and the transitions this user may run. */
@@ -165,6 +167,17 @@ export interface WorkflowSchema {
   /** States in which the record can't be edited. */
   locked: string[]
   transitions: WorkflowTransition[]
+}
+
+export interface ArchiveVerbs {
+  archive?: string
+  restore?: string
+  archived?: string
+  restored?: string
+  /** The sentence under the confirmation, after the title `<archive> <record>?`. */
+  consequence?: string
+  /** The banner on an archived record. */
+  notice?: string
 }
 
 export interface ModelSchema {
@@ -187,5 +200,7 @@ export interface ModelSchema {
   workflow?: WorkflowSchema | null
   /** A boolean field where false means archived; null when the model can't be archived. */
   archive_field?: string | null
+  /** What archiving is called for this model (the schema's words); null means the generic ones. */
+  archive_verbs?: ArchiveVerbs | null
   actions: SchemaActions
 }

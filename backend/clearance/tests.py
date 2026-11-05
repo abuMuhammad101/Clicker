@@ -8,6 +8,7 @@ from rest_framework.test import APIClient
 
 from billing.models import Bill, BillLine
 from foundation.models import AuditEntry
+from foundation.test_roles import member_of
 
 from .models import Container, Disbursement, Job
 from .testing import BILLS, CONTAINERS, DISBURSEMENTS, JOBS, ClearanceWorld, money
@@ -434,3 +435,114 @@ class JourneyIsolationTests(ClearanceWorld, TestCase):
             self.assertEqual(manager_like.get('/api/data/clearance/job/').status_code, 404)
             apps = {app['app_label'] for app in manager_like.get('/api/registry/').json()['apps']}
             self.assertNotIn('clearance', apps)
+
+
+STAFF = '/api/data/core/staff/'
+
+
+class TeamAccessTests(ClearanceWorld, TestCase):
+    """The Team page is for Owner, Manager and Coordinator; everyone else only sees names on records."""
+
+    def setUp(self):
+        self.build_world()
+        self.manager, self.manager_client = member_of('Manager', 'manager')
+        self.job = self.make_job(assigned=self.staff['agent2'])
+        self.listed = lambda client: {(app['app_label'], m['model']) for app in client.get('/api/registry/').json()['apps'] for m in app['models']}
+
+    def test_owner_manager_and_coordinator_have_the_team(self):
+        for client in (self.owner_client, self.manager_client, self.coordinator_client):
+            self.assertEqual(client.get(STAFF).status_code, 200)
+            self.assertIn(('core', 'staff'), self.listed(client))
+
+    def test_field_agent_documentation_and_accounts_have_no_team(self):
+        record = self.staff['agent'].pk
+        for client in (self.agent_client, self.documentation_client, self.accounts_client):
+            # A hidden model is absent, not forbidden: the same 404 for the list, a record and its schema.
+            for path in (STAFF, f'{STAFF}{record}/', '/api/schema/core/staff/', f'{STAFF}search/?q=ras'):
+                self.assertEqual(client.get(path).status_code, 404, path)
+            self.assertNotIn(('core', 'staff'), self.listed(client))
+            self.assertEqual(client.patch(f'{STAFF}{record}/', {'role': 'Owner'}, format='json').status_code, 404)
+
+    def test_water_roles_have_no_team_either(self):
+        for role in ('Clerk', 'Billing officer', 'Cashier', 'Recovery officer'):
+            _, client = member_of(role, role.lower().replace(' ', '-'))
+            self.assertEqual(client.get(STAFF).status_code, 404, role)
+            self.assertNotIn(('core', 'staff'), self.listed(client))
+
+    def test_a_new_members_name_still_shows_on_their_jobs(self):
+        # Kamran Lashari is a Field agent with no Team page, and his own job still says who he is.
+        job = f'{JOBS}{self.job.pk}/'
+        for client in (self.agent2_client, self.coordinator_client):
+            body = client.get(job).json()
+            self.assertEqual(body['labels']['assigned_to'], 'Kamran Lashari')
+            self.assertNotIn('assigned_to', body.get('restricted', {}))
+
+    def test_view_as_field_agent_shows_no_team(self):
+        listed = {
+            (app['app_label'], m['model'])
+            for app in self.owner_client.get('/api/registry/', HTTP_X_VIEW_AS_ROLE='Field agent').json()['apps']
+            for m in app['models']
+        }
+        self.assertNotIn(('core', 'staff'), listed)
+        self.assertEqual(self.owner_client.get(STAFF, HTTP_X_VIEW_AS_ROLE='Field agent').status_code, 404)
+
+
+class DeactivateVerbTests(ClearanceWorld, TestCase):
+    def test_the_team_form_declares_its_own_words_and_other_models_do_not(self):
+        self.build_world()
+        team = self.owner_client.get('/api/schema/core/staff/').json()
+        self.assertEqual(team['archive_verbs']['archive'], 'Deactivate')
+        self.assertEqual(team['archive_verbs']['restore'], 'Reactivate')
+        self.assertEqual(
+            team['archive_verbs']['consequence'], 'They are signed out now and cannot sign in until you reactivate them.'
+        )
+        self.assertIsNone(self.owner_client.get('/api/schema/core/contact/').json()['archive_verbs'])
+
+
+class ToBeInvoicedCardTests(ClearanceWorld, TestCase):
+    """The card totals over released and gate-out jobs even on a view that excludes them."""
+
+    AGGREGATE = JOBS + 'aggregate/'
+    VIEW = ['demurrage_status:in:soon,urgent,accruing', 'state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released']
+
+    def setUp(self):
+        self.build_world()
+        self.released = self.make_job(assigned=self.staff['agent'], fee='125000.00')
+        self.make_disbursement(self.released, '500000.00', 'customs_duty', 'CUS-1', approve_by=self.accounts_client)
+        self.advance(self.released, 'released')
+        self.gate_out = self.make_job(fee='30000.00')
+        self.advance(self.gate_out, 'gate_out')
+        self.booked = self.make_job(fee='99999.00')
+
+    def card(self, client, filters=()):
+        cards = client.get(self.AGGREGATE, {'filter': list(filters)}).json()['summaries']
+        return next((c for c in cards if c['label'] == 'To be invoiced'), None)
+
+    def test_the_card_totals_released_and_gate_out_jobs_whatever_the_view_filters(self):
+        total = money('125000.00') + money('500000.00') + money('30000.00')
+        for filters in ([], self.VIEW, ['state:in:booked']):
+            card = self.card(self.owner_client, filters)
+            self.assertEqual(money(card['value']), total, filters)
+        self.assertGreater(total, 0)
+
+    def test_a_card_without_the_option_still_follows_the_view(self):
+        paid_out = next(
+            c for c in self.owner_client.get(self.AGGREGATE, {'filter': ['state:in:booked']}).json()['summaries']
+            if c['label'] == 'Paid out, open jobs'
+        )
+        self.assertEqual(money(paid_out['value']), 0)
+
+    def test_a_field_agents_card_is_hidden_because_they_cannot_read_money(self):
+        self.assertIsNone(self.card(self.agent_client, self.VIEW))
+
+
+class StateSentenceTests(ClearanceWorld, TestCase):
+    def test_a_released_job_waiting_on_gate_out_names_the_job(self):
+        self.build_world()
+        job = self.make_job(assigned=self.staff['agent'])
+        self.advance(job, 'released')
+        body = self.documentation_client.get(f'{JOBS}{job.pk}/').json()
+        waiting = (body.get('workflow') or {}).get('waiting')
+        # (Every role exists in tests; in the clearance journey the Manager is not one of them.)
+        self.assertTrue(waiting.startswith('Waiting for a Coordinator'), waiting)
+        self.assertTrue(waiting.endswith(' to gate out or cancel this job.'), waiting)

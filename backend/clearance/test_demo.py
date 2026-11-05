@@ -84,8 +84,12 @@ class SeedClearanceTests(TestCase):
         bill = Bill.objects.exclude(due_date=None).first()
         before = (container.discharged_on, bill.issue_date, bill.due_date, job.eta, job.stage_since)
         later = TODAY + datetime.timedelta(days=3)
+        out = StringIO()
         with mock.patch('foundation.computed.today', return_value=later):
-            call_command('seed_demo', journey='clearance', confirm=self.database, env_file=str(self.env_file), rebase_dates=True, stdout=StringIO())
+            call_command('seed_demo', journey='clearance', confirm=self.database, env_file=str(self.env_file), rebase_dates=True, stdout=out)
+        # It says plainly that the trail stays put and what to do on demo morning instead.
+        self.assertIn('activity trail is NOT moved', out.getvalue())
+        self.assertIn('scripts/demo_setup.sh --fresh', out.getvalue())
         container.refresh_from_db(), bill.refresh_from_db(), job.refresh_from_db()
         after = (container.discharged_on, bill.issue_date, bill.due_date, job.eta, job.stage_since)
         self.assertEqual([b + datetime.timedelta(days=3) for b in before], list(after))

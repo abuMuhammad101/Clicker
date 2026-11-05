@@ -366,7 +366,10 @@ class ModelAggregateView(APIView):
         schema = _user_schema(request.user, model)
         fields = schema['fields']
         queryset = _list_queryset(request, model, schema)
-        result = {'summaries': query.summaries(queryset, model, fields), 'groups': None}
+        # A card that ignores the view's filters totals over everything this reader may see
+        # (their own scope, archived records still left out), never over rows their scope hides.
+        whole = _unarchived(scoped_queryset(request.user, model, 'view'), schema, set())
+        result = {'summaries': query.summaries(queryset, model, fields, whole=whole), 'groups': None}
         group_by = request.GET.get('group_by')
         if group_by:
             result['groups'] = query.groups(

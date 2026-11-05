@@ -771,6 +771,9 @@
 .list-cell--identifier {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--cell-strong-text);
+  font-weight: var(--cell-strong-weight);
 }
 
 /* The archived switch, on: reads as selected, not as a primary action. */

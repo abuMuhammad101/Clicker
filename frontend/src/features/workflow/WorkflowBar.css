@@ -178,3 +178,18 @@
     gap: var(--space-2);
   }
 }
+
+/* The stepper did not fit: only where the record is keeps its name, and the rest are markers (titled, and still
+   read out). The connectors stay, so it still reads as a path. */
+.workflow-steps--compact .workflow-step:not(.workflow-step--current):not(.workflow-step--exit) .workflow-step__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.workflow-steps--compact .workflow-step__line {
+  width: 14px;
+}

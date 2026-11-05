@@ -84,6 +84,17 @@ def readable_fields(user, model):
     return readable | set(readable_computed(model, readable, user))
 
 
+def names_where_referenced(model):
+    """
+    True when the model's Schema says its records may be *named* wherever another record
+    points at them (`names_where_referenced = True`), whether or not the reader may open
+    the list or the record. Only the display label travels: the model's own list, schema
+    and record endpoints still answer by its permissions. For people, so a job shows who
+    its field agent is without the reader being allowed to browse the team.
+    """
+    return bool(getattr(getattr(model, 'Schema', None), 'names_where_referenced', False))
+
+
 def visible_related_ids(user, model, schema, records):
     """
     For each many_to_one in the user's schema, which of the linked ids in
@@ -99,7 +110,7 @@ def visible_related_ids(user, model, schema, records):
         field = meta.get_field(name)
         ids = {getattr(record, field.attname) for record in records} - {None}
         target = field.related_model
-        if target is get_user_model():
+        if target is get_user_model() or names_where_referenced(target):
             # A person is named wherever they act: who requested, who approved.
             visible[name] = ids
             continue
@@ -119,7 +130,7 @@ def visible_labels(user, model, name, ids):
     from schema.engine import display_label
 
     target = model._meta.get_field(name).related_model
-    if target is get_user_model():
+    if target is get_user_model() or names_where_referenced(target):
         return {obj.pk: display_label(obj) for obj in target._default_manager.filter(pk__in=ids)}
     if not ids or not can(user, target, 'view'):
         return {}

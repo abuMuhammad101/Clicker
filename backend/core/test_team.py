@@ -37,7 +37,11 @@ class TeamTests(TestCase):
         self.assertEqual(entry.changes['role'], {'before': 'Billing officer', 'after': 'Cashier'})
 
     def test_a_billing_officer_cannot_change_anyones_role(self):
+        # A billing officer has no Team at all (hidden: 404); a Coordinator may look but not change (403).
         response = self.patch(self.officer_client, self.manager_staff, role='Cashier')
+        self.assertEqual(response.status_code, 404)
+        _, coordinator_client, _ = person('Coordinator', 'mehwish', 'Mehwish Rauf')
+        response = self.patch(coordinator_client, self.manager_staff, role='Cashier')
         self.assertEqual(response.status_code, 403)
         self.assertEqual(self.groups(self.manager), {'Manager'})
 

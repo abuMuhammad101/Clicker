@@ -103,6 +103,18 @@ SESSION_SAVE_EVERY_REQUEST = True
 # And an absolute limit, which activity doesn't extend: however busy the
 # session, it ends this long after sign-in (foundation.middleware).
 CLICKER_SESSION_MAX_AGE = env.int('CLICKER_SESSION_MAX_AGE', default=60 * 60 * 24)
+# Demo machines only: one number, in hours, for both limits above, so a presentation never
+# signs out mid-sentence (or overnight, if the laptop is signed in the evening before). Unset
+# everywhere else. Production refuses to start with it set; its limits stay 12 hours idle and
+# 24 hours absolute.
+CLICKER_DEMO_SESSION_HOURS = env.int('CLICKER_DEMO_SESSION_HOURS', default=0)
+if CLICKER_DEMO_SESSION_HOURS:
+    if IS_PRODUCTION:
+        from django.core.exceptions import ImproperlyConfigured
+
+        raise ImproperlyConfigured('CLICKER_DEMO_SESSION_HOURS is for demo machines only; unset it in production.')
+    SESSION_COOKIE_AGE = CLICKER_DEMO_SESSION_HOURS * 60 * 60
+    CLICKER_SESSION_MAX_AGE = CLICKER_DEMO_SESSION_HOURS * 60 * 60
 
 # Login throttling (django-axes). Failed sign-ins are counted per username
 # *and* IP together: the 6th failure for the same name from the same address

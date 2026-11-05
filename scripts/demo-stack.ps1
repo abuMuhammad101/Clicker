@@ -34,6 +34,7 @@ foreach ($port in 8200, 8201, 5273, 5274) {
 
 $env:DATABASE_URL = "$server/$($plan.Database)"
 $env:CLICKER_JOURNEY = $Journey
+$env:CLICKER_DEMO_SESSION_HOURS = '36'   # a demo machine never signs out mid-presentation
 $env:CORS_ALLOWED_ORIGINS = "http://localhost:$($plan.Web),http://127.0.0.1:$($plan.Web)"
 $python = Join-Path $root 'backend\.venv\Scripts\python.exe'
 Start-Process -FilePath $python -ArgumentList @('backend\manage.py', 'runserver', "0.0.0.0:$($plan.Api)") `

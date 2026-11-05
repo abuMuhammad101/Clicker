@@ -274,12 +274,12 @@ class Contact(ClickerModel):
             {
                 'relation': 'bills',
                 'label': 'Bills',
-                'columns': ['number', 'issue_date', 'due_date', 'amount_total', 'balance', 'payment_status'],
+                'columns': ['number', 'due_date', 'amount_total', 'balance', 'payment_status'],
             },
             {
                 'relation': 'payments',
                 'label': 'Payments',
-                'columns': ['number', 'payment_date', 'method', 'reference', 'amount', 'advance'],
+                'columns': ['number', 'payment_date', 'reference', 'amount', 'advance'],
             },
             {'relation': 'adjustments', 'label': 'Adjustments', 'columns': ['number', 'kind', 'amount', 'state']},
             {
@@ -427,6 +427,15 @@ class Staff(ClickerModel):
         icon = 'id-card'
         display_field = 'display_name'
         archive_field = 'active'
+        # On the team page "archive" is deactivating a person's account, and says so.
+        archive_verbs = {
+            'archive': 'Deactivate',
+            'restore': 'Reactivate',
+            'archived': 'Deactivated',
+            'restored': 'Reactivated',
+            'consequence': 'They are signed out now and cannot sign in until you reactivate them.',
+            'notice': 'Deactivated. They are signed out and cannot sign in, and this record is read-only until you reactivate them.',
+        }
         on_save = 'on_save'
         read_only_fields = []
         field_choices = {'role': 'journey_roles'}
@@ -444,16 +453,11 @@ class Staff(ClickerModel):
                 'expression': _last_sign_in,
             },
         }
-        default_grants = {
-            'Clerk': ['view_staff'],
-            'Billing officer': ['view_staff'],
-            'Cashier': ['view_staff'],
-            'Recovery officer': ['view_staff'],
-            'Coordinator': ['view_staff'],
-            'Documentation': ['view_staff'],
-            'Field agent': ['view_staff'],
-            'Accounts': ['view_staff'],
-        }
+        # The team page is for Owner, Manager (every permission) and Coordinator. Everyone else
+        # still sees a person's *name* on the records that point at them (a job's field agent)
+        # but has no Team list, no Team item, and no way to open a team record.
+        names_where_referenced = True
+        default_grants = {'Coordinator': ['view_staff']}
 
     def __str__(self):
         return self.display_name

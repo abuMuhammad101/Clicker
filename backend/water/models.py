@@ -250,14 +250,14 @@ class BillingRun(ClickerModel):
             'locked': ['generated', 'posted'],
             'transitions': {
                 'generate': {
-                    'label': 'Generate bills',
+                    'label': 'Generate bills', 'waiting_verb': 'generate the bills for {this}',
                     'from': ['draft'],
                     'to': 'generated',
                     'run': 'generate_bills',
                     'hint': 'One draft bill for every active connection in scope. A month is billed once per connection.',
                 },
                 'post_all': {
-                    'label': 'Post all',
+                    'label': 'Post all', 'waiting_verb': 'post all the bills in {this}',
                     'from': ['generated'],
                     'to': 'posted',
                     'run': 'post_bills',
@@ -523,16 +523,16 @@ class RecoveryCase(ClickerModel):
             },
             'locked': ['settled', 'written_off'],
             'transitions': {
-                'notice_1': {'label': 'Send notice 1', 'from': ['open'], 'to': 'notice_1'},
-                'notice_2': {'label': 'Send notice 2', 'from': ['notice_1'], 'to': 'notice_2'},
-                'legal': {'label': 'Refer to legal', 'from': ['notice_2'], 'to': 'legal'},
+                'notice_1': {'label': 'Send notice 1', 'waiting_verb': 'send the first notice on {this}', 'from': ['open'], 'to': 'notice_1'},
+                'notice_2': {'label': 'Send notice 2', 'waiting_verb': 'send the second notice on {this}', 'from': ['notice_1'], 'to': 'notice_2'},
+                'legal': {'label': 'Refer to legal', 'waiting_verb': 'refer {this} to legal', 'from': ['notice_2'], 'to': 'legal'},
                 'instalment': {
-                    'label': 'Agree an instalment plan',
+                    'label': 'Agree an instalment plan', 'waiting_verb': 'agree an instalment plan on {this}',
                     'from': ['notice_1', 'notice_2', 'legal'],
                     'to': 'instalment',
                 },
                 'settle': {
-                    'label': 'Mark settled',
+                    'label': 'Mark settled', 'waiting_verb': 'mark {this} settled',
                     'from': ['open', 'notice_1', 'notice_2', 'legal', 'instalment'],
                     'to': 'settled',
                     'check': 'check_settled',
@@ -542,10 +542,10 @@ class RecoveryCase(ClickerModel):
                     'from': ['notice_2', 'legal', 'instalment'],
                     'to': 'written_off',
                     'check': 'check_written_off',
-                    'confirm': 'The case closes. The balance must already have been reduced by approved write-offs.',
+                    'confirm': 'This case closes. The balance must already have been reduced by approved write-offs.',
                 },
                 'order_disconnection': {
-                    'label': 'Order disconnection',
+                    'label': 'Order disconnection', 'waiting_verb': 'order disconnection on {this}',
                     'from': ['notice_2', 'legal', 'instalment'],
                     'to': 'disconnection_ordered',
                     'confirm': 'A Manager orders this. Nothing is disconnected automatically.',
