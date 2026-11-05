@@ -1122,6 +1122,7 @@ function ListView({
                 return (
                   <div
                     key={virtualRow.key}
+                    data-tour="row"
                     role="row"
                     aria-rowindex={virtualRow.index + 1}
                     aria-selected={open || undefined}
@@ -1274,6 +1275,7 @@ export function GroupRow({
   return (
     <div
       role="row"
+      data-tour="group-header"
       aria-rowindex={index + 1}
       data-row-index={index}
       tabIndex={tabIndex}

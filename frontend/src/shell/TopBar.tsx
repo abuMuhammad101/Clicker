@@ -1,3 +1,5 @@
+import { setThemeChoice, themeChoice, type ThemeChoice } from '@/lib/theme'
+import { HelpMenu } from './HelpMenu'
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Eye, LogOut } from 'lucide-react'
 import { SaveBar } from '@/components/SaveBar'
@@ -63,7 +65,10 @@ export function TopBar({ crumbs, user, unsaved }: TopBarProps) {
           })}
         </ol>
       </nav>
-      <UserMenu user={user} />
+      <div className="top-bar__tools">
+        <HelpMenu />
+        <UserMenu user={user} />
+      </div>
     </header>
   )
 }
@@ -72,13 +77,14 @@ function UserMenu({ user }: { user: User }) {
   const { logout } = useAuth()
   const [open, setOpen] = useState(false)
   const [viewAs, setViewAs] = useState(false)
+  const [theme, setTheme] = useState<ThemeChoice>(themeChoice)
 
   return (
     <>
     <ViewAsDialog open={viewAs} onOpenChange={setViewAs} />
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className="user-menu__trigger" aria-label="Account menu">
+        <button type="button" className="user-menu__trigger" aria-label="Account menu" data-tour="user-menu">
           <span className="user-menu__avatar" aria-hidden="true">
             {user.display_name.trim().charAt(0).toUpperCase()}
           </span>
@@ -89,9 +95,26 @@ function UserMenu({ user }: { user: User }) {
       <PopoverContent align="end" className="user-menu">
         <div className="user-menu__who">
           <p className="user-menu__who-name">{user.display_name}</p>
+          {user.role && <p className="user-menu__role">{user.role}</p>}
           {(user.email || user.username) && (
             <p className="user-menu__who-detail">{user.email || user.username}</p>
           )}
+        </div>
+        <div className="user-menu__theme" role="group" aria-label="Theme">
+          {(['system', 'light', 'dark'] as const).map((choice) => (
+            <button
+              key={choice}
+              type="button"
+              className="user-menu__theme-option"
+              aria-pressed={theme === choice}
+              onClick={() => {
+                setThemeChoice(choice)
+                setTheme(choice)
+              }}
+            >
+              {choice === 'system' ? 'System' : choice === 'light' ? 'Light' : 'Dark'}
+            </button>
+          ))}
         </div>
         {user.can_view_as_role && !viewingAs() && (
           <button

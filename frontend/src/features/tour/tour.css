@@ -1,0 +1,83 @@
+/* The guided tour: a soft light on the part being talked about, and one card beside it. It never blocks the page:
+   the light takes no clicks, and the card is the only thing that does. */
+.tour-spot {
+  position: fixed;
+  z-index: 60;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 9999px color-mix(in srgb, var(--scrim) 42%, transparent);
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  pointer-events: none;
+}
+
+.tour-card {
+  position: fixed;
+  z-index: 61;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  padding: var(--space-6);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--text);
+  box-shadow: var(--shadow-popover);
+  outline: none;
+}
+
+.tour-card:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.tour-card__progress {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.tour-card__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+}
+
+.tour-card__body {
+  margin: 0;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.tour-card__ending {
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text);
+}
+
+.tour-card__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.tour-card__spacer {
+  flex: 1;
+}
+
+.tour-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

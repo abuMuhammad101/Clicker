@@ -33,7 +33,7 @@ function RelatedList({ parent, list }: { parent: ModelRef & { id: number }; list
   const viewAll = `${listPath(list.target)}?${new URLSearchParams({ [list.field]: String(parent.id) }).toString()}`
 
   return (
-    <section className="related-list" aria-label={list.label}>
+    <section className="related-list" aria-label={list.label} data-tour="related-list">
       <header className="related-list__head">
         <h2 className="related-list__title">
           {list.label}

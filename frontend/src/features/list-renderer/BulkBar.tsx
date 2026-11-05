@@ -73,7 +73,7 @@ export function BulkBar({
   const field = open ? schema.fields[open.field] : null
   return (
     <>
-      <div className="bulk-bar" role="region" aria-label="Selected rows">
+      <div className="bulk-bar" role="region" aria-label="Selected rows" data-tour="bulk-bar">
         <span className="bulk-bar__count">
           {count} {noun} selected
         </span>

@@ -1,0 +1,93 @@
+/* The welcome and "Waiting for you": quiet, in the home page's own voice. Nothing here moves or insists. */
+.welcome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin: 0 0 var(--space-8);
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.welcome__line {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--text);
+}
+
+.welcome__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.waiting {
+  margin: 0 0 var(--space-9);
+}
+
+.waiting__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+.waiting__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.waiting__card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 56px;
+  padding: var(--space-4) var(--space-6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color var(--duration-instant) var(--ease), background-color var(--duration-instant) var(--ease);
+}
+
+.waiting__card:hover {
+  border-color: var(--border-control-hover);
+  background: var(--surface-hover);
+}
+
+.waiting__count {
+  flex: none;
+  min-width: 2ch;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--tracking-tight);
+}
+
+.waiting__what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.waiting__plural {
+  overflow: hidden;
+  font-size: var(--text-base);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiting__next {
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

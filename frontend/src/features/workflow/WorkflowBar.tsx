@@ -45,7 +45,7 @@ export function WorkflowBar({
   const secondary = available.filter((t) => t !== primary)
 
   return (
-    <div className="workflow-bar">
+    <div className="workflow-bar" data-tour="workflow-bar">
       <Stepper workflow={workflow} state={state} />
       <div className="workflow-bar__next">
         <NextStep
@@ -74,6 +74,7 @@ export function WorkflowBar({
             {primary && (
               <Button
                 type="button"
+                data-tour="workflow-primary"
                 disabled={running != null}
                 onClick={() => onRun?.(primary)}
                 className="h-[var(--control-height)]"

@@ -1,3 +1,4 @@
+import { TourProvider } from '@/features/tour/TourProvider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import type { User } from '@/features/auth/authContext'
@@ -119,6 +120,7 @@ export function AppShell({ user }: { user: User }) {
   const apps = registry.status === 'ready' ? registry.apps : null
 
   return (
+    <TourProvider>
     <div className="app-shell">
       <Sidebar
         registry={registry}
@@ -151,6 +153,7 @@ export function AppShell({ user }: { user: User }) {
       <PeekHost apps={apps} />
       <Toaster />
     </div>
+    </TourProvider>
   )
 }
 

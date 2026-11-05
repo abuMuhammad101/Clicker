@@ -6,6 +6,7 @@ import type { User } from '@/features/auth/authContext'
 import { Link } from '@/lib/Link'
 import { RecordRef } from '@/records'
 import type { RegistryApp } from './useRegistry'
+import { WaitingStrip, WelcomeNote } from './Welcome'
 import './recents.css'
 
 /** Mirrors backend/userstate/views.py's RecentsView. */
@@ -73,6 +74,8 @@ export function RecentsPage({
         {greeting()}, {firstName(user.display_name)}
       </h1>
       <p className="recents__sub">Pick up where you left off.</p>
+      <WelcomeNote user={user} />
+      <WaitingStrip />
 
       {state.status === 'loading' && (
         <div className="recents__table" aria-busy="true" aria-label="Loading recent records">

@@ -175,6 +175,7 @@ function NavLink({
       className={cn('sidebar__link', active && 'sidebar__link--active')}
       aria-current={active ? 'page' : undefined}
       aria-label={collapsed ? label : undefined}
+      data-tour="sidebar-item"
     >
       {children}
       {!collapsed && <span className="sidebar__label">{label}</span>}
