@@ -18,12 +18,14 @@ from django.contrib import admin
 from django.urls import include, path
 
 from foundation.viewas import RolesView, StartView
+from foundation.waiting import WaitingView
 from schema.views import RegistryView
 
 urlpatterns = [
     path('api/registry/', RegistryView.as_view(), name='registry'),
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
+    path('api/home/waiting/', WaitingView.as_view(), name='home-waiting'),
     path('api/view-as/roles/', RolesView.as_view(), name='view-as-roles'),
     path('api/view-as/start/', StartView.as_view(), name='view-as-start'),
     path('api/schema/', include('schema.urls')),

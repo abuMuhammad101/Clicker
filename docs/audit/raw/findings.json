@@ -1,0 +1,247 @@
+[
+  {
+    "rule": "axe/aria-required-children",
+    "severity": "P0",
+    "selector": "div[aria-rowindex=\"1\"]",
+    "detail": "Fix any of the following:   Element has children which are not allowed: a[aria-label]",
+    "count": 2,
+    "where": [
+      "Contacts, owing money / ayesha.khan / light / 1440x900",
+      "Contacts, owing money / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "overflow/clips-chip",
+    "severity": "P0",
+    "selector": "div.list-row__cell > div.list-row__value > div.list-cell > span.status-chip.status-chip--danger \"Disconnection ordered\"",
+    "detail": "157 > 142",
+    "count": 2,
+    "where": [
+      "Recovery officer: own cases / farhan.raza / light / 1440x900",
+      "Recovery officer: own cases / farhan.raza / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "layout/shift-while-loading",
+    "severity": "P1",
+    "selector": "Team",
+    "detail": "CLS 0.100",
+    "count": 4,
+    "where": [
+      "Team / ayesha.khan / light / 1440x900",
+      "Team / hamza.farooqui / light / 1440x900",
+      "Team / ayesha.khan / dark / 1440x900",
+      "Team / hamza.farooqui / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "layout/shift-while-loading",
+    "severity": "P1",
+    "selector": "Jobs, all",
+    "detail": "CLS 0.051",
+    "count": 2,
+    "where": [
+      "Jobs, all / hamza.farooqui / light / 1440x900",
+      "Jobs, all / hamza.farooqui / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "layout/shift-while-loading",
+    "severity": "P1",
+    "selector": "Coordinator: Jobs by stage",
+    "detail": "CLS 0.051",
+    "count": 2,
+    "where": [
+      "Coordinator: Jobs by stage / mehwish.rauf / light / 1440x900",
+      "Coordinator: Jobs by stage / mehwish.rauf / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-filterline > div.filter-bar > span.filter-chip > button.filter-chip__body \"Stateis Posted\"",
+    "detail": "98x22",
+    "count": 24,
+    "where": [
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Adjustments, waiting / ayesha.khan / light / 1440x900",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-body > div.list-group.list-group--collapsed > div.list-group__lead > button.list-group__toggle \"Not yet due234\"",
+    "detail": "116x17",
+    "count": 22,
+    "where": [
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-body > div.list-group > div.list-group__lead > button.list-group__toggle \"Over 180 days386\"",
+    "detail": "132x17",
+    "count": 12,
+    "where": [
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Recovery cases, by stage / ayesha.khan / light / 1440x900",
+      "Jobs by stage / hamza.farooqui / light / 1440x900",
+      "Jobs by stage / hamza.farooqui / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-header > div.list-header__cell > span.list-header__select > button.peer.relative",
+    "detail": "16x16",
+    "count": 2,
+    "where": [
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, needs an owner / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-row > div.list-row__cell > span.list-row__select > button.peer.relative",
+    "detail": "16x16",
+    "count": 46,
+    "where": [
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-body > div.list-row > div.list-row__cell > button.list-row__edit",
+    "detail": "20x20",
+    "count": 2,
+    "where": [
+      "Contacts, owing money / ayesha.khan / light / 1440x900",
+      "Contacts, owing money / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "target/size-under-24px",
+    "severity": "P1",
+    "selector": "div.list-body > div.list-row > div.list-row__actions > a.list-row__action",
+    "detail": "22x22",
+    "count": 2,
+    "where": [
+      "Contacts, owing money / ayesha.khan / light / 1440x900",
+      "Contacts, owing money / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href$=\"contact/1\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href$=\"staff/1\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href$=\"tariff/1\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href=\"/water/billingrun/12\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href=\"/water/recoverycase/73\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "axe/aria-allowed-role",
+    "severity": "P2",
+    "selector": "a[href$=\"recoverycase/5\"]",
+    "detail": "Fix any of the following:   ARIA role row is not allowed for given element",
+    "count": 2,
+    "where": [
+      "Recent (home) / ayesha.khan / light / 1440x900",
+      "Recent (home) / ayesha.khan / dark / 1440x900"
+    ]
+  },
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
+    "detail": "paddingRight 34px",
+    "count": 50,
+    "where": [
+      "Bills, all / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Payments / ayesha.khan / light / 1440x900",
+      "Adjustments, waiting / ayesha.khan / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
+    "detail": "paddingLeft 34px",
+    "count": 50,
+    "where": [
+      "Bills, all / ayesha.khan / light / 1440x900",
+      "Bills, aging view / ayesha.khan / light / 1440x900",
+      "Payments / ayesha.khan / light / 1440x900",
+      "Adjustments, waiting / ayesha.khan / light / 1440x900"
+    ]
+  },
+  {
+    "rule": "tokens/spacing-off-scale",
+    "severity": "P2",
+    "selector": "input#service_fee.h-8.w-full",
+    "detail": "paddingLeft 36.6px",
+    "count": 2,
+    "where": [
+      "JOB-2026-0007 / hamza.farooqui / light / 1440x900",
+      "JOB-2026-0007 / hamza.farooqui / dark / 1440x900"
+    ]
+  }
+]

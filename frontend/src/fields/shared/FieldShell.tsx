@@ -89,7 +89,7 @@ export function FieldMark({ icon: Icon, label }: { icon: LucideIcon; label: stri
   return (
     <TooltipProvider>
       <Tooltip label={label} side="top">
-        <span className="field-mark" tabIndex={0} aria-label={label}>
+        <span className="field-mark" tabIndex={0} role="img" aria-label={label}>
           <Icon aria-hidden />
         </span>
       </Tooltip>

@@ -123,12 +123,12 @@ export function RecentsPage({
       )}
 
       {state.status === 'ready' && state.items.length > 0 && (
-        <div className="recents__table" role="table" aria-label="Recently viewed records">
-          <div className="recents__row recents__head" role="row">
-            <span role="columnheader">Recently viewed</span>
-            <span role="columnheader">Type</span>
-            <span role="columnheader">Module</span>
-            <span role="columnheader" className="recents__when">
+        <section className="recents__table" aria-label="Recently viewed records">
+          <div className="recents__row recents__head" aria-hidden="true">
+            <span>Recently viewed</span>
+            <span>Type</span>
+            <span>Module</span>
+            <span className="recents__when">
               When
             </span>
           </div>
@@ -138,23 +138,22 @@ export function RecentsPage({
               model={{ app_label: item.app_label, model: item.model }}
               id={item.id}
               className="recents__row recents__link"
-              role="row"
             >
-              <span role="cell" className="recents__name" title={item.display}>
+              <span className="recents__name" title={item.display}>
                 {item.display}
               </span>
-              <span role="cell" className="recents__muted">
+              <span className="recents__muted">
                 {item.model_label}
               </span>
-              <span role="cell" className="recents__muted">
+              <span className="recents__muted">
                 {item.app}
               </span>
-              <time role="cell" className="recents__when" dateTime={item.viewed_at} title={new Date(item.viewed_at).toLocaleString()}>
+              <time className="recents__when" dateTime={item.viewed_at} title={new Date(item.viewed_at).toLocaleString()}>
                 {relativeTime(item.viewed_at)}
               </time>
             </RecordRef>
           ))}
-        </div>
+        </section>
       )}
     </div>
   )

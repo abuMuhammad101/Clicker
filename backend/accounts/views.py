@@ -11,12 +11,17 @@ The CSRF token travels in JSON rather than being read from the cookie by
 page scripts, so both cookies stay httpOnly. Django rotates the token on
 login, which is why login and me return a fresh one.
 """
+import json
+import re
+
 from axes.handlers.proxy import AxesProxyHandler
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -27,16 +32,61 @@ from foundation.middleware import mark_session_start
 
 # One message for every failure. Saying which half was wrong tells an
 # attacker which usernames exist.
-INVALID_CREDENTIALS = 'Username or password is incorrect.'
+INVALID_CREDENTIALS = 'That sign-in didn’t work. Check your details and try again.'
 
 # After too many failures for one username from one address. It says nothing
 # about whether that username exists: the lock applies to any name typed.
-LOCKED_OUT = 'Too many failed sign-ins. Wait 15 minutes, then try again.'
+LOCKED_OUT_MINUTES = int(settings.AXES_COOLOFF_TIME.total_seconds() // 60)
+
+
+def locked_message(minutes):
+    """Plain time: "Try again in 12 minutes." (never "in 0 minutes", never a fractional one)."""
+    minutes = max(1, int(minutes))
+    return f'Too many attempts. Try again in {minutes} minute{"" if minutes == 1 else "s"}.'
+
+
+LOCKED_OUT = locked_message(LOCKED_OUT_MINUTES)
+
+
+def minutes_until_unlocked(username):
+    """How long this name stays locked: the cool-off from its latest failed attempt (the full cool-off if unknown)."""
+    from axes.models import AccessAttempt
+
+    latest = AccessAttempt.objects.filter(username=username).order_by('-attempt_time').first()
+    if latest is None:
+        return LOCKED_OUT_MINUTES
+    remaining = latest.attempt_time + settings.AXES_COOLOFF_TIME - timezone.now()
+    return max(1, -(-int(remaining.total_seconds()) // 60))
+
+
+def safe_redirect(raw):
+    """
+    Where to go after signing in: a same-site path or Home, nothing else. The same rule as the browser's
+    (features/auth/redirects.ts), checked again here, because the browser's copy is a convenience and this one
+    is the guarantee. Anything with a scheme, a host, a backslash, a control character, an encoded slash that
+    could become one, or a second leading slash is refused.
+    """
+    if not isinstance(raw, str) or not raw.startswith('/') or raw.startswith('//') or len(raw) > 2000:
+        return '/'
+    if any(ord(c) < 32 or c in '\\' for c in raw) or re.search(r'%(2f|5c|0[0-9a-f]|1[0-9a-f])', raw, re.IGNORECASE):
+        return '/'
+    if not url_has_allowed_host_and_scheme(raw, allowed_hosts=None, require_https=False):
+        return '/'
+    if raw == '/login' or raw.startswith('/login?') or raw.startswith('/login/'):
+        return '/'
+    return raw
+
+
+def _username_of(request):
+    try:
+        return str(json.loads(request.body or b'{}').get('username', '')).strip()
+    except (ValueError, AttributeError):
+        return ''
 
 
 def locked_out_response(request, *args, **kwargs):
     """django-axes' lockout response (AXES_LOCKOUT_CALLABLE), as the API speaks it."""
-    return JsonResponse({'detail': LOCKED_OUT}, status=429)
+    return JsonResponse({'detail': locked_message(minutes_until_unlocked(_username_of(request)))}, status=429)
 
 
 def _user_payload(user):
@@ -92,7 +142,9 @@ class LoginView(APIView):
         # Already locked before this attempt: refuse without checking the
         # password at all, so a correct guess during the lock is worthless.
         if AxesProxyHandler.is_locked(django_request, credentials=credentials):
-            return Response({'detail': LOCKED_OUT}, status=status.HTTP_429_TOO_MANY_REQUESTS)
+            return Response(
+                {'detail': locked_message(minutes_until_unlocked(credentials['username']))}, status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
         user = authenticate(django_request, username=credentials['username'], password=password)
         # The failure that *reaches* the limit is still answered like any other
         # failure; the lock shows from the next attempt. (axes marks this
@@ -103,7 +155,12 @@ class LoginView(APIView):
 
         login(request, user)
         mark_session_start(request)
-        return Response({'user': _user_payload(user), 'organisation': _organisation(), 'csrf_token': get_token(request)})
+        return Response({
+            'user': _user_payload(user),
+            'organisation': _organisation(),
+            'csrf_token': get_token(request),
+            'redirect': safe_redirect(request.data.get('next')),
+        })
 
 
 @method_decorator(csrf_protect, name='dispatch')

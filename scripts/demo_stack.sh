@@ -24,7 +24,7 @@ stop() {
 
 start() { # journey database api web
   local journey=$1 db=$2 api=$3 web=$4
-  DATABASE_URL="$server/$db" CLICKER_JOURNEY="$journey" \
+  DATABASE_URL="$server/$db" CLICKER_JOURNEY="$journey" DB_CONN_MAX_AGE=0 \
     CORS_ALLOWED_ORIGINS="http://localhost:$web,http://127.0.0.1:$web" \
     CSRF_TRUSTED_ORIGINS="http://localhost:$web,http://127.0.0.1:$web" \
     nohup backend/.venv/bin/python backend/manage.py runserver "127.0.0.1:$api" --noreload > "$logs/api-$journey.log" 2>&1 &

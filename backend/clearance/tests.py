@@ -546,3 +546,57 @@ class StateSentenceTests(ClearanceWorld, TestCase):
         # (Every role exists in tests; in the clearance journey the Manager is not one of them.)
         self.assertTrue(waiting.startswith('Waiting for a Coordinator'), waiting)
         self.assertTrue(waiting.endswith(' to gate out or cancel this job.'), waiting)
+
+
+class WaitingForYouTests(ClearanceWorld, TestCase):
+    """The home strip: only what this person can move forward, scoped to what they may see."""
+
+    URL = '/api/home/waiting/'
+
+    def setUp(self):
+        self.build_world()
+        self.mine = self.make_job(assigned=self.staff['agent'])
+        self.theirs = self.make_job(assigned=self.staff['agent2'])
+        self.d1 = self.make_disbursement(self.mine, '1000.00', 'transport', 'A-1', client=self.agent_client)
+        self.d2 = self.make_disbursement(self.theirs, '2000.00', 'transport', 'B-1', client=self.agent2_client)
+
+    def cards(self, client, **extra):
+        return client.get(self.URL, **extra).json()['cards']
+
+    def card(self, client, model):
+        return next((c for c in self.cards(client) if c['model'] == model), None)
+
+    def test_accounts_sees_the_disbursements_waiting_for_approval_with_the_real_count(self):
+        card = self.card(self.accounts_client, 'disbursement')
+        self.assertEqual(card['count'], 2)
+        self.assertEqual(card['actions'], ['Approve'])
+        self.assertEqual(card['filter'], 'state:in:recorded')
+
+    def test_a_role_without_the_transition_permission_sees_no_card_and_no_count(self):
+        for client in (self.agent_client, self.documentation_client):
+            self.assertIsNone(self.card(client, 'disbursement'), 'no Approve grant, no card')
+
+    def test_a_field_agents_counts_never_include_jobs_they_cannot_see(self):
+        # Documentation moves a booked job forward; a Field agent has no such grant, so none of them.
+        self.assertTrue(all(c['model'] != 'job' for c in self.cards(self.agent_client)))
+        card = self.card(self.documentation_client, 'job')
+        self.assertEqual(card['count'], 2)  # Documentation sees every job at Booked
+
+    def test_the_person_who_recorded_a_disbursement_does_not_wait_on_themselves(self):
+        # Whoever recorded it cannot approve it: for them it is not waiting on them. Accounts approves one; one remains.
+        self.accounts_client.post(f'{DISBURSEMENTS}{self.d1.pk}/transitions/approve/', format='json')
+        self.assertEqual(self.card(self.accounts_client, 'disbursement')['count'], 1)
+
+    def test_a_card_that_is_zero_is_not_returned(self):
+        for disbursement in (self.d1, self.d2):
+            self.accounts_client.post(f'{DISBURSEMENTS}{disbursement.pk}/transitions/approve/', format='json')
+        self.assertIsNone(self.card(self.accounts_client, 'disbursement'))
+
+    def test_it_requires_a_session(self):
+        self.assertEqual(APIClient().get(self.URL).status_code, 401)
+
+    def test_view_as_role_answers_as_that_role(self):
+        as_accounts = self.cards(self.owner_client, HTTP_X_VIEW_AS_ROLE='Accounts')
+        self.assertIn('disbursement', {c['model'] for c in as_accounts})
+        as_agent = self.cards(self.owner_client, HTTP_X_VIEW_AS_ROLE='Field agent')
+        self.assertNotIn('disbursement', {c['model'] for c in as_agent})

@@ -850,6 +850,26 @@
   cursor: default;
 }
 
+.list-group__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-group__toggle:disabled {
+  cursor: default;
+}
+
 .list-group__lead {
   display: flex;
   flex: none;

@@ -1,0 +1,33 @@
+// The demo's screens, shared by the fail-safe and audit scripts: [{ journey, who, name, go(person) }].
+import { openList, openRecord, pickView, settle } from './steps.mjs'
+
+export const SCREENS = [
+  { journey: 'water', who: 'ayesha.khan', label: 'Manager', go: async (p) => { await p.page.goto(p.base.app + '/'); await settle(p.page) }, name: 'Recent (home)' },
+  { journey: 'water', who: 'ayesha.khan', name: 'Bills, all', go: (p) => openList(p, 'billing/bill') },
+  { journey: 'water', who: 'ayesha.khan', name: 'Bills, aging view', go: async (p) => { await openList(p, 'billing/bill'); await pickView(p, 'Aging') } },
+  { journey: 'water', who: 'ayesha.khan', name: 'Federal Steel statement', go: (p) => openRecord(p, 'core/contact', 'Federal Steel') },
+  { journey: 'water', who: 'ayesha.khan', name: 'Payments', go: (p) => openList(p, 'billing/payment') },
+  { journey: 'water', who: 'ayesha.khan', name: 'Adjustments, waiting', go: async (p) => { await openList(p, 'billing/adjustment'); await pickView(p, 'Waiting for approval') } },
+  { journey: 'water', who: 'ayesha.khan', name: 'Recovery cases, needs an owner', go: async (p) => { await openList(p, 'water/recoverycase'); await pickView(p, 'Needs an owner') } },
+  { journey: 'water', who: 'ayesha.khan', name: 'Recovery cases, by stage', go: async (p) => { await openList(p, 'water/recoverycase'); await pickView(p, 'By stage') } },
+  { journey: 'water', who: 'ayesha.khan', name: 'Contacts, owing money', go: async (p) => { await openList(p, 'core/contact'); await pickView(p, 'Owing money') } },
+  { journey: 'water', who: 'ayesha.khan', name: 'Billing runs', go: (p) => openList(p, 'water/billingrun') },
+  { journey: 'water', who: 'ayesha.khan', name: 'Connections', go: (p) => openList(p, 'water/connection') },
+  { journey: 'water', who: 'ayesha.khan', name: 'Team', go: (p) => openList(p, 'core/staff') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Jobs, all', go: (p) => openList(p, 'clearance/job') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Jobs by stage', go: async (p) => { await openList(p, 'clearance/job'); await pickView(p, 'Jobs by stage') } },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Demurrage at risk', go: async (p) => { await openList(p, 'clearance/job'); await pickView(p, 'Demurrage at risk') } },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'JOB-2026-0007', go: (p) => openRecord(p, 'clearance/job', 'JOB-2026-0007') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Containers', go: (p) => openList(p, 'clearance/container') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Disbursements, waiting', go: async (p) => { await openList(p, 'clearance/disbursement'); await pickView(p, 'Waiting for approval') } },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Bills', go: (p) => openList(p, 'billing/bill') },
+  { journey: 'clearance', who: 'hamza.farooqui', name: 'Team', go: (p) => openList(p, 'core/staff') },
+  { journey: 'clearance', who: 'rashid.baloch', name: 'Field agent: own jobs', go: (p) => openList(p, 'clearance/job') },
+  { journey: 'clearance', who: 'mehwish.rauf', name: 'Coordinator: Jobs by stage', go: async (p) => { await openList(p, 'clearance/job'); await pickView(p, 'Jobs by stage') } },
+  { journey: 'clearance', who: 'ibrahim.qazi', name: 'Accounts: Disbursements', go: (p) => openList(p, 'clearance/disbursement') },
+  { journey: 'water', who: 'imran.siddiqui', name: 'Cashier: Payments', go: (p) => openList(p, 'billing/payment') },
+  { journey: 'water', who: 'bilal.ahmed', name: 'Billing officer: Adjustments', go: (p) => openList(p, 'billing/adjustment') },
+  { journey: 'water', who: 'farhan.raza', name: 'Recovery officer: own cases', go: (p) => openList(p, 'water/recoverycase') },
+  { journey: 'water', who: 'zainab.qureshi', name: 'Auditor: Bills', go: (p) => openList(p, 'billing/bill') },
+  { journey: 'clearance', who: 'sadia.anwar', name: 'Documentation: Jobs', go: (p) => openList(p, 'clearance/job') },
+]

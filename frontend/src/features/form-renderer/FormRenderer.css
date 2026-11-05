@@ -341,7 +341,9 @@
 }
 
 .related-list__all {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   margin-top: var(--space-4);
   font-size: var(--text-sm);
   color: var(--accent);

@@ -56,3 +56,12 @@
   color: var(--cell-strong-text);
   font-weight: var(--cell-strong-weight);
 }
+
+/* A link in a cell is a click target as tall as the row, not as tall as its text (24px minimum, and easier to hit). */
+a.list-cell__text {
+  display: inline-flex;
+  align-items: center;
+  align-self: stretch;
+  min-height: 24px;
+  max-width: 100%;
+}

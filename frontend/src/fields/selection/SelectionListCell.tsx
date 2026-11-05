@@ -18,7 +18,7 @@ export function SelectionListCell({ value, choices, tones }: SelectionListCellPr
         (tones ? (
           <StatusChip label={selected.label} tone={tones[selected.value] ?? 'neutral'} />
         ) : (
-          <span className="list-cell__chip">{selected.label}</span>
+          <span className="list-cell__chip" title={selected.label}>{selected.label}</span>
         ))}
     </ListCell>
   )

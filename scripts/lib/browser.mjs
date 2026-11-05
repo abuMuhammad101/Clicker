@@ -24,7 +24,9 @@ export function passwordFor(username) {
 
 /** One signed-in person: their own browser context, and a log of everything the page did. */
 export class Person {
-  constructor(browser, journey, username, { theme = 'light', viewport = { width: 1440, height: 900 }, label } = {}) {
+  constructor(browser, journey, username, { theme = 'light', viewport = { width: 1440, height: 900 }, label, reducedMotion = 'no-preference', initScript = null } = {}) {
+    this.reducedMotion = reducedMotion
+    this.initScript = initScript
     this.journey = journey
     this.username = username
     this.label = label ?? username
@@ -40,7 +42,8 @@ export class Person {
   }
 
   async open() {
-    this.context = await this.browser.newContext({ viewport: this.viewport, colorScheme: this.theme, deviceScaleFactor: 1 })
+    this.context = await this.browser.newContext({ viewport: this.viewport, colorScheme: this.theme, deviceScaleFactor: 1, reducedMotion: this.reducedMotion })
+    if (this.initScript) await this.context.addInitScript(this.initScript)
     this.page = await this.context.newPage()
     const { page } = this
     page.on('request', (request) => {
