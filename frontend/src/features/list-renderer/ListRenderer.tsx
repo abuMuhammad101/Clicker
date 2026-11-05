@@ -153,12 +153,12 @@ const TYPE_WIDTH: Record<string, number> = {
  * The least a column of this type may be squeezed to. A date or an amount cut with an ellipsis is wrong
  * data ("12 Nov 2…"), not a long name: they keep their whole value (a crore-sized amount included).
  */
-const IDENTIFIER_MIN = 132
+const IDENTIFIER_MIN = 124
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
-const PERSON_MIN = 136
+const PERSON_MIN = 124
 /** A linked record's name (the customer on a bill) is why the row exists: on a page list it keeps room to be read. */
-const LINK_MIN = 120
-const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
+const LINK_MIN = 96
+const TYPE_MIN: Record<string, number> = { date: 96, datetime: 148, currency: 136, decimal: 100, integer: 64 }
 
 /**
  * Column widths that use the room they're given. Wider viewport: every column
@@ -187,10 +187,10 @@ function chipColumnMin(labels: string[], floor: number, cap: number): number {
   const longest = labels.reduce((max, label) => Math.max(max, label.length), 0)
   // Capped: a very long label ("Examination labour") ellipsizes inside its chip, which is by design; it must
   // not take the room the other columns need in a narrow table (a related list is 660px wide).
-  return longest === 0 ? floor : Math.max(floor, Math.min(cap, Math.ceil(longest * 6.6) + 52))
+  return longest === 0 ? floor : Math.max(floor, Math.min(cap, Math.ceil(longest * 6.6) + 56))
 }
 /** The strip at a row's right edge that holds its hover actions, so they never sit on top of a figure. */
-const ACTIONS_ROOM = 32
+const ACTIONS_ROOM = 28
 const OVERSCAN_ROWS = 12
 
 export function ListRenderer(props: ListRendererProps) {
@@ -537,7 +537,7 @@ function ListView({
       const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
       // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      const floor = Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
+      const floor = Math.max(TYPE_MIN[field.type] ?? minWidth, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
       // A related list is 660px wide: its chips may be cut (and say their full value on hover); a page list's never are.
       const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], floor, embedded ? 112 : 196)
       return {
