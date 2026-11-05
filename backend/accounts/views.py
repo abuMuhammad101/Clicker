@@ -89,6 +89,14 @@ def locked_out_response(request, *args, **kwargs):
     return JsonResponse({'detail': locked_message(minutes_until_unlocked(_username_of(request)))}, status=429)
 
 
+def _role_of(user):
+    staff = getattr(user, 'staff', None)
+    if staff is not None and staff.role:
+        return staff.role
+    group = user.groups.order_by('name').first()
+    return group.name if group else ''
+
+
 def _user_payload(user):
     full_name = user.get_full_name()
     return {
@@ -98,6 +106,8 @@ def _user_payload(user):
         'email': user.email,
         # Whether the person may see the app as another role (Owner and Manager).
         'can_view_as_role': user.has_perm('core.view_as_role'),
+        # The role as the team page names it (a person's account follows it), for the welcome sentence.
+        'role': _role_of(user),
     }
 
 
@@ -106,7 +116,12 @@ def _organisation():
     What every screen formats by: the organisation's currency and time zone
     ("today", "overdue", every date shown). One organisation for now.
     """
-    return {'currency': settings.CLICKER_CURRENCY, 'time_zone': settings.TIME_ZONE}
+    return {
+        'currency': settings.CLICKER_CURRENCY,
+        'time_zone': settings.TIME_ZONE,
+        'name': settings.CLICKER_ORG_NAME,
+        'promise': settings.CLICKER_ORG_PROMISE,
+    }
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
@@ -186,7 +201,11 @@ class ProvidersView(APIView):
     authentication_classes = []
 
     def get(self, request):
-        return Response({'providers': settings.CLICKER_SIGN_IN_PROVIDERS})
+        # The organisation's name and one line of promise, for the sign-in screen (public on purpose: no one's data).
+        return Response({
+            'providers': settings.CLICKER_SIGN_IN_PROVIDERS,
+            'organisation': {'name': settings.CLICKER_ORG_NAME, 'promise': settings.CLICKER_ORG_PROMISE},
+        })
 
 
 class MeView(APIView):

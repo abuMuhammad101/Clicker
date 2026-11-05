@@ -1,0 +1,77 @@
+{
+  "id": "water",
+  "title": "The water board in five minutes",
+  "steps": [
+    {
+      "id": "aging-strip",
+      "route": "/billing/bill?view=module%3Aaging",
+      "requires": ["billing.bill"],
+      "target": "summary-strip",
+      "title": "Where the money is",
+      "body": "{{summary:Outstanding}} is owed, and {{summary:Overdue}} of it is overdue. Every figure is added up by the database, not typed.",
+      "placement": "bottom"
+    },
+    {
+      "id": "oldest-debt",
+      "requires": ["billing.bill"],
+      "target": "group-header",
+      "match": "Over 180 days",
+      "title": "The oldest debt is the biggest",
+      "body": "Bills more than 180 days old: {{group:Over 180 days}}. Open the group to see who owes it.",
+      "placement": "bottom"
+    },
+    {
+      "id": "statement",
+      "open_record": { "model": "core.contact", "q": "Federal Steel" },
+      "requires": ["core.contact", "billing.bill"],
+      "target": "record-summaries",
+      "title": "A customer's statement",
+      "body": "What they owe, how late, what they hold on account, and below it every bill, payment and case. One page, no report to run.",
+      "placement": "bottom"
+    },
+    {
+      "id": "trail",
+      "requires": ["core.contact"],
+      "target": "activity-trail",
+      "title": "Every change, on the record",
+      "body": "Who changed what and when. Nobody can edit it, not even a Manager.",
+      "placement": "top"
+    },
+    {
+      "id": "write-off",
+      "route": "/billing/adjustment",
+      "requires": ["billing.adjustment"],
+      "target": "row",
+      "title": "A write-off needs a second pair of eyes",
+      "body": "Whoever asks for it can't approve it, and above the limit a second Manager has to as well. The approval is on the record too.",
+      "placement": "bottom"
+    },
+    {
+      "id": "own-cases",
+      "route": "/water/recoverycase",
+      "requires": ["water.recoverycase"],
+      "target": "row",
+      "title": "Your cases, and only yours",
+      "body": "A Recovery officer sees the cases they own. Another officer's case isn't just hidden: for them it doesn't exist.",
+      "placement": "bottom"
+    },
+    {
+      "id": "bulk-assign",
+      "route": "/water/recoverycase?view=module%3Aneeds_owner",
+      "requires": ["water.recoverycase"],
+      "target": "summary-strip",
+      "title": "Hand out work in one move",
+      "body": "Tick the cases that need an owner and assign them together: all or none, each one audited.",
+      "placement": "bottom"
+    },
+    {
+      "id": "view-as",
+      "requires": ["core.view_as_role"],
+      "target": "user-menu",
+      "title": "See it as someone else",
+      "body": "Choose View as role to see exactly what a Recovery officer sees. Their cases, nothing more. The same rules the server enforces.",
+      "placement": "bottom-end"
+    }
+  ],
+  "ending": "What Clicker did that you did not have to: age every bill, allocate every payment to the oldest debt first, and keep each person to what their role allows."
+}

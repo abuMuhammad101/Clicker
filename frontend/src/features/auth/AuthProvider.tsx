@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { apiGet, apiSend, ApiError, onUnauthorized, setCsrfToken } from '@/lib/api'
 import { setOrganisation, type Organisation } from '@/lib/organisation'
 import { AuthContext, type AuthState, type User } from './authContext'
+import { markSignedOut, safeNext } from './redirects'
 
 interface SessionResponse {
   user: User
   /** Currency and time zone every screen formats by. */
   organisation?: Organisation
   csrf_token: string
+  /** Where to go next, as the server checked it (same-site path or Home). */
+  redirect?: string
 }
 
 async function fetchCsrfToken() {
@@ -53,17 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string, next?: string) => {
     // A token issued for the old session is no good after it ended; a fresh
     // one is cheap and makes the login POST independent of what came before.
     await fetchCsrfToken()
-    const { user, organisation, csrf_token } = await apiSend<SessionResponse>('POST', '/auth/login/', {
+    const { user, organisation, csrf_token, redirect } = await apiSend<SessionResponse>('POST', '/auth/login/', {
       username,
       password,
+      next,
     })
     setOrganisation(organisation)
     setCsrfToken(csrf_token)
     setState({ status: 'authenticated', user, expired: false })
+    return safeNext(redirect ?? null)
   }, [])
 
   const logout = useCallback(async (then: string) => {
@@ -71,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // logout request must never leave the user stuck signed in on screen.
     await apiSend('POST', '/auth/logout/').catch(() => undefined)
     setCsrfToken(null)
+    // The sign-in screen says so once, and nothing of this person stays in memory (the page is about to go).
+    markSignedOut()
     // Navigate rather than flip state to anonymous: the page is going away
     // anyway, and an anonymous state would race this navigation with the
     // app's own "send anonymous users to login" redirect.

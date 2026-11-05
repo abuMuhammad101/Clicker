@@ -30,10 +30,10 @@ export function SessionExpiredDialog({ user }: { user: User }) {
     <AlertDialog open>
       <AlertDialogContent className="session-expired" onEscapeKeyDown={(event) => event.preventDefault()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Your session has ended</AlertDialogTitle>
+          <AlertDialogTitle>You were signed out</AlertDialogTitle>
           <AlertDialogDescription>
-            Sign in again to carry on. This page stays as it is, including anything you
-            haven’t saved yet.
+            You were signed out after a period of no activity. Sign in to pick up where you left off:
+            this page stays as it is, including anything you haven’t saved yet.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <SignInForm

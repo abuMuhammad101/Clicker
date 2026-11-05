@@ -600,3 +600,39 @@ class WaitingForYouTests(ClearanceWorld, TestCase):
         self.assertIn('disbursement', {c['model'] for c in as_accounts})
         as_agent = self.cards(self.owner_client, HTTP_X_VIEW_AS_ROLE='Field agent')
         self.assertNotIn('disbursement', {c['model'] for c in as_agent})
+
+
+class TourEndpointTests(ClearanceWorld, TestCase):
+    """A tour step about something a role cannot see is never sent."""
+
+    def setUp(self):
+        self.build_world()
+
+    def steps(self, client, **extra):
+        from django.test import override_settings
+
+        with override_settings(CLICKER_JOURNEY='clearance'):
+            body = client.get('/api/tour/', **extra).json()['tour']
+        return {s['id'] for s in body['steps']}
+
+    def test_the_owner_gets_every_step(self):
+        self.assertEqual(
+            self.steps(self.owner_client),
+            {'stage-strip', 'stages', 'demurrage', 'stepper', 'costs', 'gate-out', 'automation', 'field-agent', 'team'},
+        )
+
+    def test_a_field_agent_gets_no_step_about_billing_the_team_or_viewing_as_a_role(self):
+        got = self.steps(self.agent_client)
+        self.assertTrue({'gate-out', 'field-agent', 'team'}.isdisjoint(got), got)
+        self.assertIn('stage-strip', got)
+
+    def test_documentation_has_no_invoice_step(self):
+        self.assertNotIn('gate-out', self.steps(self.documentation_client))
+
+    def test_view_as_field_agent_gets_that_roles_tour(self):
+        got = self.steps(self.owner_client, HTTP_X_VIEW_AS_ROLE='Field agent')
+        self.assertTrue({'gate-out', 'field-agent', 'team'}.isdisjoint(got), got)
+
+    def test_no_journey_no_tour_and_a_session_is_required(self):
+        self.assertIsNone(self.owner_client.get('/api/tour/').json()['tour'])
+        self.assertEqual(APIClient().get('/api/tour/').status_code, 401)

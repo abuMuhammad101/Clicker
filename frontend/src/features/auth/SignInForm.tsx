@@ -10,7 +10,7 @@ import './auth.css'
 interface SignInFormProps {
   /** Re-authenticating an expired session: the account is fixed. */
   fixedUsername?: string
-  onSubmit: (username: string, password: string) => Promise<void>
+  onSubmit: (username: string, password: string) => Promise<unknown>
   /** Rendered beside the submit button, e.g. "Sign in as someone else". */
   secondaryAction?: ReactNode
 }
@@ -27,6 +27,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reveal, setReveal] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
   const passwordId = useId()
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -54,7 +55,7 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
         // 400: wrong credentials. 429: too many failed attempts, locked for a while.
         caught instanceof ApiError && (caught.status === 400 || caught.status === 429)
           ? caught.message
-          : 'Could not reach the server. Check your connection and try again.',
+          : 'Can’t reach Clicker. Check your connection and try again.',
       )
     } finally {
       setSubmitting(false)
@@ -95,6 +96,10 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={(event) => setCapsLock(event.getModifierState('CapsLock'))}
+              onKeyUp={(event) => setCapsLock(event.getModifierState('CapsLock'))}
+              onBlur={() => setCapsLock(false)}
+              aria-describedby={capsLock ? `${passwordId}-caps` : undefined}
             />
             <button
               type="button"
@@ -107,6 +112,11 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
             </button>
           </div>
         </FieldShell>
+        {capsLock && (
+          <p id={`${passwordId}-caps`} className="sign-in-form__caps" role="status">
+            Caps Lock is on.
+          </p>
+        )}
       </div>
       <div className="sign-in-form__actions">
         {secondaryAction}

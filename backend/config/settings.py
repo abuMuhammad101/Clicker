@@ -128,6 +128,15 @@ if CLICKER_DEMO_SESSION_HOURS:
 # anywhere: an SSO provider's subject can map onto any username.
 CLICKER_SIGN_IN_PROVIDERS = [{'id': 'password', 'label': 'Username and password'}]
 
+# The organisation's name and one line of promise, shown on the sign-in screen and in the welcome. One organisation
+# for now: the journey picks a default, and the environment can say anything else.
+_ORG_DEFAULTS = {
+    'clearance': ('Harbour Gate Clearing (demo)', 'Every container, every rupee, in one place.'),
+    'water': ('Water Board (demo)', 'Every bill, every payment, every overdue rupee, in one place.'),
+}
+CLICKER_ORG_NAME = env('CLICKER_ORG_NAME', default=_ORG_DEFAULTS.get(CLICKER_JOURNEY, ('Clicker', ''))[0])
+CLICKER_ORG_PROMISE = env('CLICKER_ORG_PROMISE', default=_ORG_DEFAULTS.get(CLICKER_JOURNEY, ('', 'Business software that builds itself from your data.'))[1])
+
 AUTHENTICATION_BACKENDS = [
     'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',

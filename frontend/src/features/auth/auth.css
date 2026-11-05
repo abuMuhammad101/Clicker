@@ -202,3 +202,41 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* The organisation, the screen's name, and one line of promise: calm, in that order. */
+.login-card__org {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.login-card__title {
+  margin-bottom: var(--space-3);
+}
+
+.login-card__promise {
+  margin: 0 0 var(--space-7);
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+.login-card__notice {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.sign-in-form__caps {
+  margin: calc(-1 * var(--space-3)) 0 0;
+  font-size: var(--text-sm);
+  color: var(--warning);
+}
+
+/* Pressing Sign in must not change its width: "Signing in…" is the longer label. */
+.sign-in-form__submit {
+  min-width: 104px;
+}
