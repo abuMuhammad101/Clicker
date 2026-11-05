@@ -77,7 +77,14 @@ class ProvidersTests(TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertEqual(body['providers'], [{'id': 'password', 'label': 'Username and password'}])
-        self.assertEqual(set(body['organisation']), {'name', 'promise'})
+        self.assertEqual(set(body['organisation']), {'name', 'promise', 'login_proof'})
+
+    def test_the_proof_strip_is_three_cards_at_most_and_each_has_a_known_tone(self):
+        proof = APIClient().get('/api/auth/providers/').json()['organisation']['login_proof']
+        self.assertLessEqual(len(proof), 3)
+        for card in proof:
+            self.assertTrue(set(card) <= {'tone', 'chip', 'text', 'figure'})
+            self.assertIn(card['tone'], {'warning', 'info', 'positive', 'danger'})
 
 
 class SignInCopyAndRedirectTests(TestCase):

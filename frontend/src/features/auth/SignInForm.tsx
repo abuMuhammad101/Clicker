@@ -1,4 +1,4 @@
-import { CircleAlert, Eye, EyeOff } from 'lucide-react'
+import { Check, CircleAlert, Eye, EyeOff } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,6 +11,11 @@ interface SignInFormProps {
   /** Re-authenticating an expired session: the account is fixed. */
   fixedUsername?: string
   onSubmit: (username: string, password: string) => Promise<unknown>
+  /**
+   * Called with what `onSubmit` returned once the button has shown its check (the slow motion token; straight away
+   * under reduced motion). The sign-in screen leaves from here; the session-expired dialog doesn't pass it.
+   */
+  onSigned?: (result: unknown) => void
   /** Rendered beside the submit button, e.g. "Sign in as someone else". */
   secondaryAction?: ReactNode
 }
@@ -21,12 +26,22 @@ interface SignInFormProps {
  * password. Password is not a registry type — no model stores one — so it
  * gets the field chrome without becoming a field component.
  */
-export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInFormProps) {
+/** The slow motion token, in milliseconds; zero when the person asked for less motion. */
+function successHold(): number {
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return 0
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--duration-slow').trim()
+  const value = parseFloat(raw)
+  if (Number.isNaN(value)) return 0
+  return raw.endsWith('ms') ? value : value * 1000
+}
+
+export function SignInForm({ fixedUsername, onSubmit, onSigned, secondaryAction }: SignInFormProps) {
   const [username, setUsername] = useState(fixedUsername ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reveal, setReveal] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
   const [capsLock, setCapsLock] = useState(false)
   const passwordId = useId()
   const formRef = useRef<HTMLFormElement>(null)
@@ -47,8 +62,20 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
     }
     setSubmitting(true)
     setError(null)
+    let leaving = false
     try {
-      await onSubmit(username.trim(), password)
+      const result = await onSubmit(username.trim(), password)
+      if (onSigned) {
+        // Success: the button turns to a check for the slow token, then the app loads. No morph under reduced motion.
+        const hold = successHold()
+        if (hold > 0) {
+          setSignedIn(true)
+          await new Promise((resolve) => window.setTimeout(resolve, hold))
+        }
+        leaving = true
+        onSigned(result)
+        return
+      }
     } catch (caught) {
       setPassword('')
       setError(
@@ -58,7 +85,8 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
           : 'Can’t reach Clicker. Check your connection and try again.',
       )
     } finally {
-      setSubmitting(false)
+      // Once leaving, the button stays as it is until the page goes.
+      if (!leaving) setSubmitting(false)
     }
   }
 
@@ -120,8 +148,22 @@ export function SignInForm({ fixedUsername, onSubmit, secondaryAction }: SignInF
       </div>
       <div className="sign-in-form__actions">
         {secondaryAction}
-        <Button type="submit" disabled={submitting} className="sign-in-form__submit h-[var(--control-height)]">
-          {submitting ? 'Signing in…' : 'Sign in'}
+        <Button
+          type="submit"
+          disabled={submitting}
+          data-state={signedIn ? 'signed-in' : submitting ? 'submitting' : 'idle'}
+          className="sign-in-form__submit h-[var(--control-height)]"
+        >
+          {signedIn ? (
+            <>
+              <Check className="sign-in-form__check" aria-hidden />
+              <span className="sr-only">Signed in</span>
+            </>
+          ) : submitting ? (
+            'Signing in…'
+          ) : (
+            'Sign in'
+          )}
         </Button>
       </div>
     </form>

@@ -23,6 +23,8 @@ export interface AuthContextValue {
   state: AuthState
   /** Resolves on success; rejects with ApiError (400 = wrong credentials). */
   login: (username: string, password: string, next?: string) => Promise<string>
+  /** Like `login`, but the screen stays as it is: the caller loads the page afresh when it is ready. */
+  authenticate: (username: string, password: string, next?: string) => Promise<string>
   /** Ends the session server-side, then navigates to `then`. */
   logout: (then: string) => Promise<void>
   retry: () => void

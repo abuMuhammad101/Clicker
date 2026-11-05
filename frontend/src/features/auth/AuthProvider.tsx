@@ -56,20 +56,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const login = useCallback(async (username: string, password: string, next?: string) => {
+  // Checks the password and starts the session, and says where to go; changes nothing on screen. The sign-in screen
+  // uses this alone, so it stays up long enough to show its check before the page is loaded afresh.
+  const authenticate = useCallback(async (username: string, password: string, next?: string) => {
     // A token issued for the old session is no good after it ended; a fresh
     // one is cheap and makes the login POST independent of what came before.
     await fetchCsrfToken()
-    const { user, organisation, csrf_token, redirect } = await apiSend<SessionResponse>('POST', '/auth/login/', {
-      username,
-      password,
-      next,
-    })
-    setOrganisation(organisation)
-    setCsrfToken(csrf_token)
-    setState({ status: 'authenticated', user, expired: false })
-    return safeNext(redirect ?? null)
+    const response = await apiSend<SessionResponse>('POST', '/auth/login/', { username, password, next })
+    setOrganisation(response.organisation)
+    setCsrfToken(response.csrf_token)
+    return response
   }, [])
+
+  const login = useCallback(
+    async (username: string, password: string, next?: string) => {
+      const { user, redirect } = await authenticate(username, password, next)
+      setState({ status: 'authenticated', user, expired: false })
+      return safeNext(redirect ?? null)
+    },
+    [authenticate],
+  )
 
   const logout = useCallback(async (then: string) => {
     // A session that already ended is as logged out as it gets; a failed
@@ -89,6 +95,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAttempt((n) => n + 1)
   }, [])
 
-  const value = useMemo(() => ({ state, login, logout, retry }), [state, login, logout, retry])
+  const value = useMemo(
+    () => ({ state, login, authenticate: async (u: string, p: string, n?: string) => safeNext((await authenticate(u, p, n)).redirect ?? null), logout, retry }),
+    [state, login, authenticate, logout, retry],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

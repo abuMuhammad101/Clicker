@@ -192,7 +192,11 @@ class ProvidersView(APIView):
         # The organisation's name and one line of promise, for the sign-in screen (public on purpose: no one's data).
         return Response({
             'providers': settings.CLICKER_SIGN_IN_PROVIDERS,
-            'organisation': {'name': settings.CLICKER_ORG_NAME, 'promise': settings.CLICKER_ORG_PROMISE},
+            'organisation': {
+                'name': settings.CLICKER_ORG_NAME,
+                'promise': settings.CLICKER_ORG_PROMISE,
+                'login_proof': settings.CLICKER_LOGIN_PROOF,
+            },
         })
 
 
