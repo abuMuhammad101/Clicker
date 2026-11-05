@@ -4,9 +4,12 @@
     "severity": "P2",
     "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
     "detail": "paddingRight 34px",
-    "count": 1,
+    "count": 4,
     "where": [
-      "Containers / hamza.farooqui / light / 1280x720"
+      "Recovery cases, needs an owner / ayesha.khan / light / 1280x720",
+      "Recovery cases, by stage / ayesha.khan / light / 1280x720",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, by stage / ayesha.khan / light / 1440x900"
     ]
   },
   {
@@ -14,9 +17,12 @@
     "severity": "P2",
     "selector": "div.list-toolbar > div.list-toolbar__actions > div.list-search > input.list-search__input",
     "detail": "paddingLeft 34px",
-    "count": 1,
+    "count": 4,
     "where": [
-      "Containers / hamza.farooqui / light / 1280x720"
+      "Recovery cases, needs an owner / ayesha.khan / light / 1280x720",
+      "Recovery cases, by stage / ayesha.khan / light / 1280x720",
+      "Recovery cases, needs an owner / ayesha.khan / light / 1440x900",
+      "Recovery cases, by stage / ayesha.khan / light / 1440x900"
     ]
   }
 ]

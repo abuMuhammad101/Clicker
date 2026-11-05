@@ -193,6 +193,8 @@ function chipColumnMin(labels: string[], floor: number, cap: number): number {
 }
 /** The strip at a row's right edge that holds its hover actions, so they never sit on top of a figure. */
 const ACTIONS_ROOM = 28
+/** The row's tick box (24px) and the gap after it, inside the first column. */
+const SELECT_ROOM = 32
 const OVERSCAN_ROWS = 12
 
 export function ListRenderer(props: ListRendererProps) {
@@ -539,7 +541,9 @@ function ListView({
       const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
       // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      const floor = Math.max(TYPE_MIN[field.type] ?? minWidth, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
+      // The tick box sits inside the first column of a list with bulk actions: it takes its own room.
+      const selectRoom = selectable && columnIndex === 0 ? SELECT_ROOM : 0
+      const floor = selectRoom + Math.max(TYPE_MIN[field.type] ?? minWidth, identifierMin, field.person ? PERSON_MIN : 0, !embedded && field.type === 'many_to_one' ? LINK_MIN : 0)
       // A related list is 660px wide: its chips may be cut (and say their full value on hover); a page list's never are.
       const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], floor, embedded ? 112 : 196)
       return {
