@@ -1,26 +1,20 @@
-/* ---------- Record summaries: a record's own figures under its title ---------- */
+/* ---------- Record summaries: a record's own figures under its title ----------
+   The same figures-not-boxes treatment as a list's strip: a label over a large
+   number, with room between, and a hairline closing the group. */
 .record-summaries {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  margin: 0;
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-9);
+  margin: 0 var(--form-pad-x, var(--space-8));
+  padding: var(--space-5) 0 var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .record-summaries__item {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
-  padding: var(--space-5) var(--space-6);
-  border-right: 1px solid var(--border-subtle);
-}
-
-.record-summaries__item:first-child {
-  padding-left: var(--form-pad-x, var(--space-8));
-}
-
-.record-summaries__item:last-child {
-  border-right: 0;
 }
 
 .record-summaries__label {
@@ -31,9 +25,10 @@
 .record-summaries__value {
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-xl, 18px);
+  font-size: var(--text-figure);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   color: var(--text);
   text-overflow: ellipsis;
@@ -42,5 +37,5 @@
 
 .record-summaries__value--empty {
   color: var(--text-muted);
-  font-weight: var(--weight-regular, 400);
+  font-weight: var(--weight-normal);
 }

@@ -183,10 +183,10 @@ The renderer composes screens without a designer present. Every component needs 
 Tokens live in `tokens.css` and are the source of truth. Never hardcode a colour, spacing value, radius, or control height.
 
 - **Typeface:** Inter (UI, self-hosted), IBM Plex Mono (record identifiers and codes **only** — not labels, not headings), Instrument Serif (the home greeting, once, nowhere else)
-- **Body size:** 13px. List cells 12px. Column headers 12px, sentence case, muted (no capitals).
+- **Type:** body 14px; list cells 13px; column headers 12px, sentence case, muted (no capitals); page titles 26px semibold (the one loud thing on a screen); the few figures a screen leads with 24px semibold. Hierarchy comes from size, weight and tone, never from borders.
 - **Accent:** ink violet `#4a3fcf`. Chosen because green/amber/red carry data meaning in status chips and the accent must not compete with them.
-- **Row height:** 34px default, 28px compact, 42px comfortable
-- **Control height:** 30px default
+- **Row height:** 40px default, 32px compact, 48px comfortable
+- **Control height:** 34px default (28px small, 40px large)
 - **No zebra striping.** Hairline row borders.
 - **Tabular figures** on all numeric columns.
 - **No shadows on cards.** Borders only — shadows cost vertical space and read as consumer software. Only popovers, the peek drawer and toasts float.
@@ -196,8 +196,15 @@ Tokens live in `tokens.css` and are the source of truth. Never hardcode a colour
 
 `tokens.css` contains a shadcn bridge at the bottom mapping Clicker tokens onto shadcn's variable names, so copied-in components inherit density and palette automatically.
 
-### Density is the thesis
-ERP users are power users in this software all day. The instinct toward generous consumer spacing is wrong here. Target: Odoo's information density with contemporary craft.
+### Density is the thesis, legibility is how it is delivered
+ERP users are power users in this software all day, so a screen still carries a lot. But *dense* is not *uniform*: every screen has one thing it is about, and it must read first. Mercury is the model for how.
+
+- **One loud thing per screen**: the title. Under it, at most four **figures** (a small label over a large number, set on the page, never in boxes). Then the work.
+- **A row is about its lead column** (a client, a consumer, a job): it is the strongest text in the row and is read whole (never truncated before anything beside it). Identifiers, ids and dates are quiet tags beside it.
+- **Say a thing once.** A column the list is grouped by is omitted (the group header says it); a state that is the same on every row is a filter, not a column; a type icon beside a column name is not shown.
+- **Navigation is tinted, pages are white.** The page is a flat white surface: no card inside a card, no outer table border. Whitespace separates sections; a hairline separates rows.
+- **Chips are for states and countdowns only**, soft and borderless; red solid is reserved for money being lost now.
+- **Targets are 34px**, text clears WCAG 2.x AA on every surface in both modes, focus is always visible.
 
 ### UX reference set
 Attio (closest analogue — user-definable records, effectively schema-driven), Twenty (open-source, inspectable), Linear (density with craft), Retool and Airtable (field-type vocabulary).

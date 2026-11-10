@@ -155,9 +155,9 @@ const TYPE_WIDTH: Record<string, number> = {
  */
 const IDENTIFIER_MIN = 132
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
-const PERSON_MIN = 136
+const PERSON_MIN = 150
 const LEAD_MIN = 220
-const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
+const TYPE_MIN: Record<string, number> = { date: 116, datetime: 164, currency: 152, decimal: 108 }
 
 /**
  * Column widths that use the room they're given. Wider viewport: every column
@@ -180,13 +180,13 @@ function fitSizes(sizes: number[], mins: number[], available: number): number[] 
 /**
  * The least a column may be squeezed to. Text can be cut with an ellipsis, but a chip is a status: cut
  * "Assessed" to "Assessec" and it reads as a typo. A column of chips never goes narrower than its longest
- * label (a rough 6.6px a letter at 12px, plus the chip's padding and the cell's).
+ * label (a rough 7px a letter at 12px, plus the chip's padding and the cell's).
  */
 function chipColumnMin(labels: string[], floor: number): number {
   const longest = labels.reduce((max, label) => Math.max(max, label.length), 0)
   // Capped: a very long label ("Examination labour") ellipsizes inside its chip, which is by design; it must
   // not take the room the other columns need in a narrow table (a related list is 660px wide).
-  return longest === 0 ? floor : Math.max(floor, Math.min(112, Math.ceil(longest * 6.6) + 52))
+  return longest === 0 ? floor : Math.max(floor, Math.min(168, Math.ceil(longest * 7) + 56))
 }
 const OVERSCAN_ROWS = 12
 
