@@ -64,3 +64,51 @@
   --chip-dot: var(--info);
   --chip-border: transparent;
 }
+
+/* ---------- The glyph ----------
+   Each tone has its own shape as well as its own colour, so a state reads for someone who can't tell
+   the colours apart, and at a glance down a column:
+     done / positive   filled circle        in progress / info   half circle
+     attention         diamond              trouble / danger     triangle
+     neutral           open ring            critical             filled circle on a solid chip */
+.status-chip__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+  background: var(--chip-dot);
+}
+
+.status-chip--positive .status-chip__dot {
+  border-radius: var(--radius-full);
+}
+
+.status-chip--info .status-chip__dot {
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--chip-dot) 50%, transparent 50%);
+  box-shadow: inset 0 0 0 1.5px var(--chip-dot);
+}
+
+.status-chip--warning .status-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 1.5px;
+  transform: rotate(45deg);
+}
+
+.status-chip--danger .status-chip__dot {
+  clip-path: polygon(50% 5%, 100% 95%, 0 95%);
+}
+
+.status-chip--neutral .status-chip__dot {
+  border-radius: var(--radius-full);
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--chip-dot);
+}
+
+.status-chip--critical .status-chip__dot {
+  border-radius: var(--radius-full);
+}
+
+.status-chip {
+  letter-spacing: 0.005em;
+}

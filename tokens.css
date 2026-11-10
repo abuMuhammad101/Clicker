@@ -400,3 +400,101 @@
   --shadcn-radius-lg: var(--radius-md);
   --shadcn-radius-xl: var(--radius-lg);
 }
+
+/* ==========================================================================
+   Signature details
+   --------------------------------------------------------------------------
+   The small things that make the product its own: pressed buttons, a thin
+   ink stroke on every icon, a checkbox with a drawn tick. They live here so
+   every screen inherits them and none restyles them.
+   ========================================================================== */
+
+svg.lucide,
+.lucide {
+  stroke-width: 1.6;
+}
+
+/* Primary: ink, with a lit top edge and a darker foot, so it reads as something you press. */
+[data-slot='button'][data-variant='default'] {
+  border-color: var(--accent-active);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+  color: var(--text-on-accent);
+  font-weight: var(--weight-semibold);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    0 1px 2px rgb(14 15 21 / 0.22);
+  transition:
+    background-color var(--duration-instant) var(--ease),
+    box-shadow var(--duration-instant) var(--ease),
+    transform var(--duration-instant) var(--ease);
+}
+
+[data-slot='button'][data-variant='default']:hover {
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent-hover));
+}
+
+[data-slot='button'][data-variant='default']:active {
+  background: var(--accent-active);
+  box-shadow: inset 0 1px 2px rgb(14 15 21 / 0.3);
+}
+
+/* Secondary: paper, with a hairline and a faint underside. */
+[data-slot='button'][data-variant='outline'] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+  box-shadow: 0 1px 0 rgb(14 15 21 / 0.04);
+}
+
+[data-slot='button'][data-variant='outline']:hover {
+  border-color: var(--border-control);
+  background: var(--surface-sunken);
+}
+
+[data-slot='button'][data-variant='ghost'] {
+  color: var(--text-secondary);
+  font-weight: var(--weight-medium);
+}
+
+:root[data-theme='dark'] [data-slot='button'][data-variant='default'] {
+  border-color: var(--accent-hover);
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.25),
+    0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+:root[data-theme='dark'] [data-slot='button'][data-variant='outline'] {
+  background: var(--surface-sunken);
+  box-shadow: none;
+}
+
+/* The tick box: a rounder square, a drawn border, ink when it is on. */
+[data-slot='checkbox'] {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-control);
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: none;
+}
+
+[data-slot='checkbox'][data-state='checked'],
+[data-slot='checkbox'][data-state='indeterminate'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+[data-slot='checkbox'] svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.6;
+}
+
+/* Scrollbars that don't shout. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}

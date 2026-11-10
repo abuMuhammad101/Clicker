@@ -17,6 +17,15 @@
   min-width: 0;
 }
 
+.record-summaries__item::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--text);
+}
+
 .record-summaries__label {
   font-size: var(--text-sm);
   color: var(--text-muted);

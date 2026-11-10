@@ -39,6 +39,17 @@ button.summary-strip__item:focus-visible {
   outline-offset: 0;
 }
 
+/* A short ink rule above each figure, like a column in a financial report: it says "this is a figure"
+   without a box. */
+.summary-strip__item::before {
+  content: '';
+  width: 24px;
+  height: 2px;
+  margin-bottom: var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--text);
+}
+
 .summary-strip__label {
   font-size: var(--text-sm);
   color: var(--text-muted);

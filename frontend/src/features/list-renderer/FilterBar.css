@@ -303,3 +303,14 @@
   font-size: var(--text-sm);
   color: var(--text-secondary);
 }
+
+/* A filter reads as a sentence: the field, a divider, what it must be. */
+.filter-chip__subject::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  margin-left: var(--space-4);
+  background: var(--border-strong);
+  vertical-align: -2px;
+}

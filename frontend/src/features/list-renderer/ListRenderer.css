@@ -921,3 +921,11 @@
   color: var(--text-muted);
   font-weight: var(--weight-regular, 400);
 }
+
+/* The row under the pointer, and the record open beside the list, carry a short ink bar on their edge:
+   you always know which line you are on, without a heavy fill. */
+.list-row:hover,
+.list-row--open,
+.list-row--open:hover {
+  box-shadow: inset 3px 0 0 var(--accent);
+}

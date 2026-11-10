@@ -194,3 +194,90 @@
 .workflow-steps--compact .workflow-step__line {
   width: 14px;
 }
+
+/* ---------- The rail ----------
+   A pipeline is one object, not a row of ten buttons: a segment per stage in a single track. Done
+   segments are filled, the current one is thicker and takes the state's tone, the rest are hairlines.
+   The names sit under their segments; where there is no room only the current one keeps its name. */
+.workflow-steps {
+  flex: 1 1 100%;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.workflow-step {
+  position: relative;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding-top: var(--space-1);
+  font-size: var(--text-micro);
+}
+
+.workflow-step__line {
+  display: none;
+}
+
+.workflow-step__marker {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--border);
+  box-shadow: none;
+}
+
+.workflow-step__marker svg {
+  display: none;
+}
+
+.workflow-step__label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.workflow-step--done .workflow-step__marker {
+  background: var(--text-secondary);
+}
+
+.workflow-step--done .workflow-step__label {
+  color: var(--text-secondary);
+}
+
+.workflow-step--current .workflow-step__marker,
+.workflow-step--exit .workflow-step__marker {
+  height: 6px;
+  margin-top: -1px;
+  background: var(--step-tone);
+  box-shadow: none;
+}
+
+.workflow-step--current .workflow-step__label,
+.workflow-step--exit .workflow-step__label {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+/* The next line of the panel: the sentence on the left, what to press on the right. */
+.workflow-bar__next {
+  flex: 1 1 100%;
+  justify-content: space-between;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.workflow-bar__sentence {
+  text-align: left;
+}
+
+.workflow-steps--compact .workflow-step--current,
+.workflow-steps--compact .workflow-step--exit {
+  flex-grow: 3;
+}
