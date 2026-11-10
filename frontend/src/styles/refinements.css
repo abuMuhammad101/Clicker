@@ -1,0 +1,192 @@
+/* ==========================================================================
+   Refinements: the shape of the small things
+   --------------------------------------------------------------------------
+   Inputs, selects, menus, popovers, dialogs, key caps. They come from shadcn
+   and are restyled here through its stable data-slot hooks, so every screen
+   that uses one inherits the same shape and none restyles it.
+
+   The `:root` prefix lifts each rule above any single-class rule in a
+   component's own stylesheet, whatever order the stylesheets load in. These
+   are unlayered, so they also beat Tailwind's layered utilities.
+   ========================================================================== */
+
+/* ---------- Fields ----------
+   One shape for every control you type into or pick from: a 1px edge that is a
+   true control edge (3:1 against the page), a soft ink halo on focus rather than
+   a hard ring, and a placeholder that reads as an invitation, not as data. */
+:root [data-slot='input'],
+:root [data-slot='textarea'],
+:root [data-slot='select-trigger'],
+:root [data-slot='popover-trigger'][role='combobox'] {
+  padding-inline: var(--space-5);
+  border-color: var(--border-control);
+  border-radius: var(--radius);
+  background-color: var(--surface);
+  font-weight: var(--weight-normal);
+  letter-spacing: -0.003em;
+}
+
+:root [data-slot='input']::placeholder,
+:root [data-slot='textarea']::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+:root [data-slot='input']:focus-visible,
+:root [data-slot='textarea']:focus-visible,
+:root [data-slot='select-trigger']:focus-visible,
+:root [data-slot='select-trigger'][data-state='open'],
+:root [data-slot='popover-trigger'][role='combobox']:focus-visible,
+:root [data-slot='popover-trigger'][role='combobox'][aria-expanded='true'] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-halo);
+  outline: none;
+}
+
+:root [data-slot='input'][aria-invalid='true'],
+:root [data-slot='textarea'][aria-invalid='true'],
+:root [data-slot='select-trigger'][aria-invalid='true'],
+:root [data-slot='popover-trigger'][role='combobox'][aria-invalid='true'] {
+  border-color: var(--danger-solid);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger-solid) 16%, transparent);
+}
+
+/* The little chevron on a select or picker: a hint, not a button. */
+:root [data-slot='select-trigger'] > svg,
+:root [data-slot='popover-trigger'][role='combobox'] > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+/* ---------- Floating surfaces ----------
+   Menus, pickers and popovers: a hairline, a soft two-layer shadow, a 12px
+   corner. The things inside them are 34px rows with an 8px corner of their
+   own, so a highlighted row nests in its container instead of fighting it. */
+:root [data-slot='popover-content'],
+:root [data-slot='select-content'],
+:root [data-slot='dropdown-menu-content'] {
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-popover);
+  overflow: hidden;
+}
+
+:root [data-slot='select-content'] {
+  padding: var(--space-2);
+}
+
+:root [data-slot='select-item'],
+:root [data-slot='command-item'] {
+  min-height: var(--control-height);
+  padding-block: 0;
+  padding-left: var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-base);
+  color: var(--text);
+}
+
+:root [data-slot='select-item'] {
+  padding-right: var(--space-9);
+}
+
+:root [data-slot='select-item']:focus,
+:root [data-slot='select-item'][data-highlighted],
+:root [data-slot='command-item'][data-selected='true'] {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+:root [data-slot='select-item'][data-state='checked'] {
+  font-weight: var(--weight-medium);
+}
+
+:root [data-slot='select-item'] svg,
+:root [data-slot='command-item'] > svg:last-child {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+:root [data-slot='command-group'] [cmdk-group-heading] {
+  padding: var(--space-4) var(--space-4) var(--space-2);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+
+:root [data-slot='command-empty'] {
+  padding-block: var(--space-8);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+/* The search row of a picker: no box of its own, just a line under it. */
+:root [data-slot='command-input-wrapper'] {
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+:root [data-slot='command-input-wrapper'] [data-slot='input-group'] {
+  height: var(--control-height-lg);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+:root [data-slot='command-input'] {
+  font-size: var(--text-base);
+}
+
+:root [data-slot='command-list'] {
+  padding: var(--space-2);
+}
+
+/* ---------- Dialogs ----------
+   A dialog interrupts, so it is the one place the page behind it goes soft. */
+:root [data-slot='dialog-overlay'],
+:root [data-slot='alert-dialog-overlay'] {
+  background: rgb(14 15 21 / 0.36);
+  backdrop-filter: blur(2px);
+}
+
+:root [data-slot='dialog-content'],
+:root [data-slot='alert-dialog-content'] {
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-modal);
+}
+
+:root [data-slot='alert-dialog-title'],
+:root [data-slot='dialog-title'] {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+:root [data-slot='alert-dialog-description'],
+:root [data-slot='dialog-description'] {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+}
+
+/* ---------- Key caps ---------- */
+.kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-family: var(--font-sans);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  color: var(--text-secondary);
+}

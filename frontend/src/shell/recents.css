@@ -23,11 +23,9 @@
   color: var(--text-muted);
 }
 
+/* No box: the rows sit on the page, a hairline under each. */
 .recents__table {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
   background: var(--surface);
-  overflow: hidden;
 }
 
 .recents__row {
@@ -53,14 +51,16 @@
 
 .recents__head {
   height: var(--table-header-height);
-  background: var(--surface-sunken);
-  font-size: var(--text-sm);
+  border-bottom-color: var(--border);
+  background: transparent;
+  font-size: var(--text-micro);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
 
 .recents__link:hover {
   background: var(--row-hover);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .recents__link:focus-visible {
@@ -75,8 +75,10 @@
   white-space: nowrap;
 }
 
+/* What you opened is the strongest thing in its row. */
 .recents__name {
   font-size: var(--text-base);
+  font-weight: var(--weight-medium);
 }
 
 .recents__muted {
@@ -115,8 +117,6 @@
 
 .recents__ghost {
   margin-bottom: var(--space-8);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
   background: var(--surface);
   overflow: hidden;
   opacity: 0.7;

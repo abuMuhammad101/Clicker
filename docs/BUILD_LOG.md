@@ -2057,3 +2057,24 @@ Runs (same commit `ac9eb74`, no code change between): from a fresh seed, run 1 p
 - Missing: the timings are cloud timings; the laptop numbers are Hassan's to take. The Windows PowerShell reset commands in `docs/DEMO_RESET.md` were written from the existing setup steps and **not run on Windows**.
 - Half-finished: nothing.
 - **Next single action:** Hassan's laptop rehearsal: follow `docs/DEMO_RESET.md` on the demo laptop, reset both journeys, run the clearing agency's gate-out of JOB-2026-0007 and the water board's aging view and statement by hand, and look at the 1280 and 1366 screenshots in `docs/design/s7/viewports/` by eye (the compact stepper above all).
+
+## 2026-11-10 | home | Mercury redesign of the frontend (branch `redesign/mercury`, not merged)
+
+Hassan's brief: the product looked overloaded with no visual hierarchy or accessibility; redo the frontend with Mercury as inspiration, dense but easy to track and read; then, twice, make every small element feel designed rather than a stock container. `main` stays the frozen demo; this branch merges only after Hassan's rehearsal and his say-so.
+
+**What changed (all CSS and tokens, no per-module code; the schema is still the only hook)**
+- **Hierarchy.** Tinted navigation, white flat pages (no card in a card, no outer table border). One loud thing per screen, the 26px title. Under it at most four figures (a small label over a 24px number, an ink rule above each). A row is about its lead column, which is read whole and strongest; ids and dates are quiet tags. The column a list is grouped by is omitted; type icons in headers are gone; chips are for states and countdowns only.
+- **Tokens.** Type 12/13/14/15/17/26/30/36 (+24 figure), radii 6/8/10/14, controls 28/34/40, rows 32/40/48, header 36, cell padding 14, sidebar 240, top bar 56, sheet 880, drawer 520. CLAUDE.md's design-system section carries the numbers and the "Density is the thesis, legibility is how it is delivered" principles.
+- **Details with their own shape.** Status glyphs by shape as well as colour (done filled circle, in progress half circle, attention diamond, trouble triangle, neutral open ring, critical solid chip). The ten-stage stepper is one segmented rail. Pressed primary button, paper secondary. Drawn tick box. Hovered or open row carries a 3px ink bar. Filters read as sentences. Row density is one segmented control. Slash breadcrumbs. Solid 24px avatar. Lucide stroke 1.6.
+- **Small things (`frontend/src/styles/refinements.css`).** Inputs, selects, textareas and pickers share one shape: control edge, ink halo on focus, danger halo on error. Menus and popovers: two-layer shadow, 12px corner, 34px items with an 8px corner, accent check. Picker search is a flat row under a hairline. Dialogs soften the page behind (2px blur). Tooltips and key caps restyled. Login is a column on a white page with 40px controls. Recents is flat rows with the same edge bar.
+- **Lists.** Counterparty-first `list_display` on Job, Bill, Payment and RecoveryCase (a model-author decision, in the schema). A column's minimum width now covers its own name (no more "Field a…"), tuned so the Jobs list fits at 1440 without sideways scroll.
+
+**Verified:** `tsc -b` clean, vitest 43 passed, backend billing/clearance/water/core 149 passed (before this pass; no backend change since). Seen in the browser pane in light and dark: Recents, Jobs list, job record, new job form with the Client picker, account menu, sign-in.
+
+**Known and open**
+- Jobs still truncates Goods and Field agent values at 1440 (nine columns in 1126px). Fix by schema, not renderer: mark `field_agent` as a person field or drop a column from the default view.
+- At 1280 and 1366 the Jobs list scrolls sideways (minimums sum to about 1130px). The S-7 viewport screenshots in `docs/design/s7/viewports/` predate this redesign and need retaking.
+- Not yet looked at after the redesign: Contacts forms, statement header, peek drawer, bulk bar, save bar, toasts, the Team page, View as role banner, empty states.
+- `scripts/rehearse.sh` has not been run against this branch.
+
+**Next single action:** Hassan looks at `redesign/mercury` on the running stack (water 5273, clearance 5274) and says what still reads as stock; then retake the 1280/1366 screenshots and run `scripts/rehearse.sh` before any merge.

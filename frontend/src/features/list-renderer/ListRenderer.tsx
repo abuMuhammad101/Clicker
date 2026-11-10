@@ -153,11 +153,11 @@ const TYPE_WIDTH: Record<string, number> = {
  * The least a column of this type may be squeezed to. A date or an amount cut with an ellipsis is wrong
  * data ("12 Nov 2…"), not a long name: they keep their whole value (a crore-sized amount included).
  */
-const IDENTIFIER_MIN = 132
+const IDENTIFIER_MIN = 124
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 150
-const LEAD_MIN = 220
-const TYPE_MIN: Record<string, number> = { date: 116, datetime: 164, currency: 152, decimal: 108 }
+const LEAD_MIN = 208
+const TYPE_MIN: Record<string, number> = { date: 116, datetime: 164, currency: 144, decimal: 108 }
 
 /**
  * Column widths that use the room they're given. Wider viewport: every column
@@ -541,7 +541,10 @@ function ListView({
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
       // The first column is what a row is about (a client, a consumer): it is read whole before anything beside it.
       const leadMin = columnIndex === 0 && !field.assigned && !TYPE_MIN[field.type] ? LEAD_MIN : 0
-      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, field.person ? PERSON_MIN : 0))
+      // A column's name is read whole too: "Field a…" tells you nothing. 12px text runs about 6.2px a letter,
+      // with the cell's padding either side. (The sort arrow only takes room on the column being sorted.)
+      const headerMin = Math.ceil(field.label.length * 6.2) + 2 * tokenPx('--cell-padding-x', 12)
+      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, headerMin, field.person ? PERSON_MIN : 0))
       return {
         id: name,
         header: field.label,

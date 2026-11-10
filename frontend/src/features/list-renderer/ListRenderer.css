@@ -929,3 +929,37 @@
 .list-row--open:hover {
   box-shadow: inset 3px 0 0 var(--accent);
 }
+
+/* ---------- Row density: one segmented control, not three loose buttons ----------
+   A sunken track with the chosen option raised out of it, so which one is on reads from its shape,
+   not only its colour. The other table controls stay quiet icons beside it. */
+.list-controls__group {
+  gap: 2px;
+  margin-right: var(--space-4);
+  padding: 2px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+}
+
+.list-controls__group .list-controls__button {
+  width: 30px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+}
+
+.list-controls__group .list-controls__button--on,
+.list-controls__group .list-controls__button--on:hover {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 1px 2px rgb(14 15 21 / 0.1);
+}
+
+:root[data-theme='dark'] .list-controls__group .list-controls__button--on,
+:root[data-theme='dark'] .list-controls__group .list-controls__button--on:hover {
+  background: var(--n-100);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}

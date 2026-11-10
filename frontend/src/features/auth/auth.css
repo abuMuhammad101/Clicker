@@ -11,7 +11,7 @@
   gap: var(--space-8);
   min-height: 100vh;
   padding: var(--space-8) var(--space-6) 12vh;
-  background: var(--ground);
+  background: var(--surface);
 }
 
 .login-brand {
@@ -56,14 +56,30 @@
   --form-field-max-width: none;
   width: 100%;
   max-width: 360px;
-  padding: var(--space-9) var(--space-8) var(--space-8);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* The sign-in page is a column on a white page: the brand, the one loud title, two fields, one button.
+   The fields and the button are a size up from the app's (40px) because here they are the whole screen. */
+.login-card [data-slot='input'],
+.login-card .sign-in-form__reveal {
+  height: var(--control-height-lg);
+}
+
+.login-card .sign-in-form__reveal {
+  width: var(--control-height-lg);
+}
+
+.login-card .sign-in-form__submit {
+  height: var(--control-height-lg);
+  font-size: var(--text-base);
 }
 
 .login-card__title {
-  margin: 0 0 var(--space-7);
+  margin: 0 0 var(--space-8);
   font-size: var(--text-xl);
   font-weight: var(--weight-semibold);
   letter-spacing: var(--tracking-tight);

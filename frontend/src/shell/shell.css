@@ -352,9 +352,9 @@
   align-items: center;
   gap: var(--space-4);
   width: 100%;
-  height: var(--row-height-compact);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius);
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-sm);
   font-size: var(--text-base);
   color: var(--text-secondary);
 }
@@ -391,12 +391,17 @@
   max-width: 200px;
 }
 
+/* A slash, not an arrow: a path is read, it isn't a flow. The icon stays for assistive tech's tree
+   but is not drawn. */
 .breadcrumbs__separator {
+  display: none;
+}
+
+.breadcrumbs__item:not(:last-child)::after {
+  content: '/';
   flex: none;
-  width: 14px;
-  height: 14px;
-  margin: 0 var(--space-2);
-  color: var(--text-disabled);
+  margin: 0 var(--space-4);
+  color: var(--border-strong);
 }
 
 .breadcrumbs__link,
@@ -448,14 +453,13 @@
   display: grid;
   flex: none;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
   border-radius: var(--radius-full);
-  background: var(--accent-subtle);
-  border: 1px solid var(--accent-border);
+  background: var(--accent);
   font-size: var(--text-micro);
-  font-weight: var(--weight-medium);
-  color: var(--accent);
+  font-weight: var(--weight-semibold);
+  color: var(--text-on-accent);
 }
 
 .user-menu__trigger {
@@ -465,11 +469,14 @@
 /* ---------- Tooltip (rail labels) ---------- */
 .tooltip {
   z-index: 60;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-5);
   border-radius: var(--radius);
   background: var(--toast-bg);
   color: var(--toast-fg);
-  font-size: var(--text-sm);
+  font-size: var(--text-micro);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0.005em;
+  box-shadow: var(--shadow-toast);
   animation: tooltip-in var(--duration-instant) var(--ease);
 }
 

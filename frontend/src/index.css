@@ -7,6 +7,7 @@
 @import '@fontsource/ibm-plex-mono/500.css';
 @import '@fontsource/instrument-serif/400.css';
 @import './fields/shared/fields.css';
+@import './styles/refinements.css';
 
 /* shadcn's `dark:` utilities follow the same switch as tokens.css. */
 @custom-variant dark (&:is([data-theme='dark'] *));
@@ -95,16 +96,8 @@ pre {
     @apply border-border outline-ring/50;
   }
 }
-/* A key hint: shown where the action lives (peek header, picker footer). */
-.kbd {
-  padding: 0 var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
-  font-family: var(--font-sans);
-  font-size: var(--text-micro);
-  color: var(--text-muted);
-}
+/* A key hint (.kbd) is shown where the action lives: peek header, picker footer. Its shape is in
+   styles/refinements.css with the other small things. */
 
 /* ---------- Interactive feedback ----------
    Everything clickable answers a hover in --duration-instant and a press one
