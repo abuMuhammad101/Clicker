@@ -6,7 +6,7 @@
   flex-direction: column;
   height: 100%;
   padding: 0 var(--page-gutter) var(--page-gutter);
-  background: var(--ground);
+  background: var(--surface);
 }
 
 .list-toolbar {
@@ -145,25 +145,24 @@
   align-items: center;
   gap: var(--space-2);
   height: var(--control-height);
-  padding: var(--space-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .list-controls__group {
   display: flex;
   align-items: center;
   gap: var(--space-1);
-  padding-right: var(--space-2);
-  margin-right: var(--space-1);
-  border-right: 1px solid var(--border-subtle);
+  padding-right: var(--space-3);
+  margin-right: var(--space-3);
+  border-right: 1px solid var(--border);
 }
 
 .list-controls__button {
   display: grid;
-  width: 24px;
-  height: 24px;
+  width: var(--control-height);
+  height: var(--control-height);
   place-items: center;
   border-radius: var(--radius-sm);
   color: var(--text-muted);
@@ -173,8 +172,8 @@
 }
 
 .list-controls__button svg {
-  width: 14px;
-  height: 14px;
+  width: 17px;
+  height: 17px;
 }
 
 .list-controls__button:hover {
@@ -267,8 +266,6 @@
   position: relative;
   flex: 1 1 auto;
   overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
   background: var(--surface);
 }
 
@@ -303,7 +300,7 @@
   gap: var(--space-2);
   min-width: 0;
   padding: 0 var(--cell-padding-x);
-  font-size: var(--text-sm);
+  font-size: var(--text-micro);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
   text-align: left;
@@ -331,12 +328,9 @@
   white-space: nowrap;
 }
 
+/* The type icon repeats what the label and the alignment already say. */
 .list-header__icon {
-  flex: none;
-  width: 12px;
-  height: 12px;
-  color: var(--text-muted);
-  opacity: 0.8;
+  display: none;
 }
 
 .list-header__arrow {
@@ -393,6 +387,7 @@
   width: 100%;
   height: var(--row-height);
   border-bottom: 1px solid var(--row-border);
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 
@@ -767,13 +762,21 @@
 }
 
 /* ---------- Document numbers and the archived switch ---------- */
-/* A document number is a record identifier: Plex Mono, tabular. */
+/* A document number is a record identifier: Plex Mono, tabular, a notch smaller so it reads as a tag, not a heading. */
 .list-cell--identifier {
   font-family: var(--font-mono);
+  font-size: var(--text-micro);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+
+/* What a row is about reads first: the lead column is the strongest text in it, an identifier beside it is a tag. */
+.list-row__cell:first-child .list-cell,
+.list-row__cell:first-child .list-cell--identifier {
   color: var(--cell-strong-text);
-  font-weight: var(--cell-strong-weight);
+  font-weight: var(--weight-medium);
 }
 
 /* The archived switch, on: reads as selected, not as a primary action. */
@@ -824,10 +827,10 @@
   display: flex;
   align-items: center;
   width: 100%;
-  height: var(--row-height);
+  height: calc(var(--row-height) + var(--space-3));
   border-bottom: 1px solid var(--border);
-  background: var(--surface-sunken);
-  font-size: var(--text-sm);
+  background: var(--surface);
+  font-size: var(--text-base);
   cursor: pointer;
   transition: background-color var(--duration-instant) var(--ease);
 }
@@ -874,6 +877,7 @@
 
 .list-group__label {
   overflow: hidden;
+  font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--text);
   text-overflow: ellipsis;

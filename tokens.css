@@ -34,14 +34,15 @@
      13px body is the ERP sweet spot. Small enough for density, large enough
      for an eight-hour day. Everything else is derived from it. Headers are
      sentence case, 12px / 500 / muted — not capitals. */
-  --text-micro: 11px; /* helper text, chip labels */
-  --text-sm: 12px; /* list cells, column headers, secondary text */
-  --text-base: 13px; /* body, form inputs, default */
-  --text-md: 14px; /* emphasised body */
-  --text-lg: 16px; /* section headings */
-  --text-xl: 20px; /* page titles */
-  --text-2xl: 28px; /* empty states, onboarding */
-  --text-display: 34px; /* the home greeting. Serif. Once. */
+  --text-micro: 12px; /* helper text, chip labels, column headers */
+  --text-sm: 13px; /* list cells, secondary text */
+  --text-base: 14px; /* body, form inputs, default */
+  --text-md: 15px; /* emphasised body, group headings */
+  --text-lg: 17px; /* section headings */
+  --text-xl: 26px; /* page titles: the one loud thing on a screen */
+  --text-2xl: 30px; /* empty states, onboarding */
+  --text-display: 36px; /* the home greeting. Serif. Once. */
+  --text-figure: 24px; /* the few numbers a screen leads with */
 
   --leading-tight: 1.25;
   --leading-normal: 1.45;
@@ -72,7 +73,7 @@
   --n-950: #0e0f15;
 
   /* ---------- Semantic surface & text ---------- */
-  --ground: var(--n-25); /* the canvas behind panels */
+  --ground: var(--n-50); /* the navigation's tint; the pages themselves are white */
   --surface: var(--n-0);
   --surface-sunken: var(--n-50);
   --surface-hover: var(--n-50);
@@ -168,35 +169,35 @@
   --space-10: 40px;
   --space-11: 48px;
 
-  --page-gutter: var(--space-8);
-  --content-max: 1120px;
+  --page-gutter: var(--space-9);
+  --content-max: 1200px;
 
   /* ---------- Radii ----------
      Small. Large radii read as consumer software and waste vertical space
      at row scale. Nothing above 12px except pills. */
-  --radius-sm: 4px;
-  --radius: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
   --radius-full: 9999px;
 
   /* ---------- Control heights ----------
      The single most consequential density decision. */
-  --control-height-sm: 24px;
-  --control-height: 30px;
-  --control-height-lg: 36px;
+  --control-height-sm: 28px;
+  --control-height: 34px;
+  --control-height-lg: 40px;
 
   --control-padding-x: var(--space-4);
   --control-padding-x-sm: var(--space-3);
 
   /* ---------- Table ----------
      Tokens no general design system has. These govern the list renderer. */
-  --row-height-compact: 28px;
-  --row-height: 34px;
-  --row-height-comfortable: 42px;
+  --row-height-compact: 32px;
+  --row-height: 40px;
+  --row-height-comfortable: 48px;
 
-  --table-header-height: 32px;
-  --cell-padding-x: var(--space-5);
+  --table-header-height: 36px;
+  --cell-padding-x: var(--space-6);
   --cell-padding-x-compact: var(--space-4);
 
   --column-min-width: 80px;
@@ -235,13 +236,13 @@
   --travel-drawer: 24px; /* the peek slides this far and fades, not its width */
 
   /* ---------- Layout ---------- */
-  --sidebar-width: 232px;
-  --sidebar-width-collapsed: 48px;
-  --topbar-height: 44px;
+  --sidebar-width: 248px;
+  --sidebar-width-collapsed: 56px;
+  --topbar-height: 56px;
   --form-label-width: 168px;
   --form-field-max-width: 420px;
-  --form-sheet-width: 760px;
-  --drawer-width: 480px;
+  --form-sheet-width: 880px;
+  --drawer-width: 520px;
 }
 
 /* ---------- Dark ----------

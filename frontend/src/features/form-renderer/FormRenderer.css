@@ -14,9 +14,9 @@
   container-type: inline-size;
   max-width: var(--form-sheet-max-width, var(--form-sheet-width));
   margin: 0;
-  background: var(--surface);
-  border: var(--form-sheet-border, 1px solid var(--border));
-  border-radius: var(--form-sheet-radius, var(--radius-md));
+  background: transparent;
+  border: var(--form-sheet-border, 0);
+  border-radius: var(--form-sheet-radius, 0);
 
   --field-direction: column;
   --field-items: stretch;
@@ -49,11 +49,7 @@
    a hairline between rows. Structure you can scan, not a form with its
    inputs taken away. */
 .form-sheet--view {
-  background: var(--ground);
-}
-
-.form-sheet--view .form-header {
-  border-bottom: 1px solid var(--border);
+  background: transparent;
 }
 
 .form-sheet--view .form-body {
@@ -64,7 +60,7 @@
   margin-top: var(--space-6);
 }
 
-.form-sheet--view /* Related lists placed between groups by the schema (a customer's statement). */
+/* Related lists placed between groups by the schema (a customer's statement). */
 .form-body > .related-lists {
   margin-top: var(--space-8);
   padding: 0;
@@ -82,14 +78,15 @@
 
 .form-sheet--view .form-section__fields {
   gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
+  border-radius: 0;
+  background: transparent;
   overflow: hidden;
 }
 
 .form-sheet--view .form-field {
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-4) 0;
 }
 
 .form-sheet--view .form-field + .form-field {
@@ -107,8 +104,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
-  padding: var(--space-6) var(--form-pad-x, var(--space-8));
-  border-bottom: 1px solid var(--border-subtle);
+  padding: var(--space-6) var(--form-pad-x, var(--space-8)) var(--space-5);
 }
 
 .form-header__text {
@@ -134,13 +130,17 @@
   color: var(--text);
   text-overflow: ellipsis;
   white-space: nowrap;
+  /* The name is the point of the page: it never shrinks to make room for chips; they wrap below it instead. */
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
-/* The title and its state chips on one line; the title gives way first. */
+/* The title and its state chips on one line while they fit; chips wrap under a long name. */
 .form-header__headline {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3) var(--space-4);
   min-width: 0;
 }
 
@@ -151,7 +151,7 @@
 .form-header__meta {
   display: flex;
   gap: var(--space-3);
-  margin: var(--space-1) 0 0;
+  margin: var(--space-3) 0 0;
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
@@ -197,20 +197,21 @@
 }
 
 .form-body {
-  padding: var(--space-6) var(--form-pad-x, var(--space-8)) var(--space-8);
+  padding: var(--space-7) var(--form-pad-x, var(--space-8)) var(--space-9);
 }
 
 .form-section + .form-section {
-  margin-top: var(--space-8);
+  margin-top: var(--space-9);
 }
 
+/* A section's name is a heading: it says what the next few fields are about. */
 .form-section__label {
-  margin: 0 0 var(--space-5);
-  padding-bottom: var(--space-3);
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  color: var(--text-muted);
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  border-bottom: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
 }
 
 .form-section__fields {
@@ -311,8 +312,8 @@
 .related-lists {
   display: flex;
   flex-direction: column;
-  gap: var(--space-8);
-  padding: 0 var(--form-pad-x, var(--space-8)) var(--space-8);
+  gap: var(--space-9);
+  padding: 0 var(--form-pad-x, var(--space-8)) var(--space-9);
 }
 
 .related-list__head {

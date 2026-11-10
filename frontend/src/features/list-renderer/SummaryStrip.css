@@ -1,14 +1,14 @@
-/* ---------- Summary strip: a few figures over the rows on screen ---------- */
+/* ---------- Summary strip: the few figures a list leads with ----------
+   Not cards: a label over a large number, set on the page, with room between.
+   The numbers are the second loudest thing on the screen, after its title. */
 .summary-strip {
-  display: grid;
+  display: flex;
   flex: none;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 220px));
-  gap: 0;
-  margin-bottom: var(--space-5);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface);
-  overflow: hidden;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-9);
+  margin: 0 0 var(--space-6);
+  padding: var(--space-2) 0 var(--space-6);
+  border-bottom: 1px solid var(--border-subtle);
   transition: opacity var(--duration-base) var(--ease);
 }
 
@@ -21,16 +21,13 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-1);
+  gap: var(--space-2);
   min-width: 0;
-  padding: var(--space-4) var(--space-6);
-  border-right: 1px solid var(--border-subtle);
+  margin: 0 calc(var(--space-4) * -1);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
   text-align: left;
   transition: background-color var(--duration-instant) var(--ease);
-}
-
-.summary-strip__item:last-child {
-  border-right: 0;
 }
 
 button.summary-strip__item:hover {
@@ -39,7 +36,7 @@ button.summary-strip__item:hover {
 
 button.summary-strip__item:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: -2px;
+  outline-offset: 0;
 }
 
 .summary-strip__label {
@@ -50,9 +47,10 @@ button.summary-strip__item:focus-visible {
 .summary-strip__value {
   overflow: hidden;
   max-width: 100%;
-  font-size: var(--text-lg);
+  font-size: var(--text-figure);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
+  line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   color: var(--text);
   text-overflow: ellipsis;

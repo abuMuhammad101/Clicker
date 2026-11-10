@@ -156,6 +156,7 @@ const TYPE_WIDTH: Record<string, number> = {
 const IDENTIFIER_MIN = 132
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 136
+const LEAD_MIN = 220
 const TYPE_MIN: Record<string, number> = { date: 104, datetime: 148, currency: 136, decimal: 100 }
 
 /**
@@ -337,6 +338,11 @@ function ListView({
   )
   const unavailable = embedded ? 0 : listState.filters.length - applicable.length
   const groupBy = !embedded && listState.groupBy && schema.list.groupable?.includes(listState.groupBy) ? listState.groupBy : null
+  // The column the list is grouped by says, on every row, what the group header above it already says.
+  const shownColumns = useMemo(() => {
+    const rest = groupBy ? visibleColumns.filter((name) => name !== groupBy) : visibleColumns
+    return rest.length > 0 ? rest : visibleColumns
+  }, [visibleColumns, groupBy])
 
   const query = useMemo(() => {
     const exact: Record<string, string> = Object.fromEntries(Object.entries(filter ?? {}).map(([k, v]) => [k, String(v)]))
@@ -526,14 +532,16 @@ function ListView({
   const columns = useMemo<ColumnDef<typeof features, Slot>[]>(() => {
     const defaultWidth = tokenPx('--column-default-width', 180)
     const minWidth = tokenPx('--column-min-width', 80)
-    return visibleColumns.map((name, columnIndex) => {
+    return shownColumns.map((name, columnIndex) => {
       const field = schema.fields[name]
-      const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.35 : 1)
+      const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.9 : 1)
       const stateLabels = schema.workflow?.field === name ? schema.workflow.states.map((state) => state.label) : []
       const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
       // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
       const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, field.person ? PERSON_MIN : 0))
+      // The first column is what a row is about (a client, a consumer): it is read whole before anything beside it.
+      const leadMin = columnIndex === 0 && !field.assigned && !TYPE_MIN[field.type] ? LEAD_MIN : 0
+      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, field.person ? PERSON_MIN : 0))
       return {
         id: name,
         header: field.label,
@@ -575,7 +583,7 @@ function ListView({
         },
       }
     })
-  }, [schema, visibleColumns])
+  }, [schema, shownColumns])
 
   const table = useTable({
     features,
@@ -981,7 +989,7 @@ function ListView({
                   )}
                   style={{ width: widths[headers.indexOf(header)] }}
                 >
-                  {selectable && !grouped && header.column.id === visibleColumns[0] && (
+                  {selectable && !grouped && header.column.id === shownColumns[0] && (
                     <span className="list-header__select">
                       <Checkbox
                         aria-label={`Select every ${schema.verbose_name} shown`}
@@ -1104,7 +1112,7 @@ function ListView({
                       start={virtualRow.start}
                       collapsed={listState.collapsed.includes(group.key)}
                       onToggle={() => toggleGroup(group.key)}
-                      columns={visibleColumns.map((name) => ({ name, width: widthOf(name), type: schema.fields[name].type }))}
+                      columns={shownColumns.map((name) => ({ name, width: widthOf(name), type: schema.fields[name].type }))}
                       tabIndex={virtualRow.index === activeIndex ? 0 : -1}
                       onFocus={() => setActiveIndex(virtualRow.index)}
                       onKeyDown={(event) => onRowKeyDown(event, virtualRow.index)}
@@ -1171,7 +1179,7 @@ function ListView({
                             />
                           ) : (
                             <>
-                              {selectable && loaded && name === visibleColumns[0] && (
+                              {selectable && loaded && name === shownColumns[0] && (
                                 <span className="list-row__select" onClick={(event) => event.stopPropagation()}>
                                   <Checkbox
                                     aria-label={`Select ${record.display}`}

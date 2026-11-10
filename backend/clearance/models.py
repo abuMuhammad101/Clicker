@@ -100,7 +100,7 @@ class Job(ClickerModel):
         empty_groups = ['state']
         search_fields = ['number', 'reference', 'bl_number', 'vessel', 'goods']
         list_display = [
-            'number', 'client', 'goods', 'state', 'demurrage_status', 'demurrage_next_deadline',
+            'client', 'number', 'goods', 'state', 'demurrage_status', 'demurrage_next_deadline',
             'assigned_to', 'days_in_stage', 'billable_total',
         ]
         list_sort = [{'field': 'number', 'direction': 'desc'}]
@@ -184,7 +184,7 @@ class Job(ClickerModel):
                 'label': 'Jobs by stage',
                 'group_by': 'state',
                 'filters': ['state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released,gate_out'],
-                'columns': ['number', 'client', 'goods', 'demurrage_status', 'demurrage_next_deadline', 'assigned_to', 'days_in_stage', 'billable_total'],
+                'columns': ['client', 'number', 'goods', 'demurrage_status', 'demurrage_next_deadline', 'assigned_to', 'days_in_stage', 'billable_total'],
                 # The early stages are just counts and sums; the stages where the money and the risk are stay open.
                 'collapsed': ['booked', 'documents_in', 'gd_filed', 'gate_out'],
                 'ordering': 'number',
@@ -193,7 +193,7 @@ class Job(ClickerModel):
                 'key': 'at_risk',
                 'label': 'Demurrage at risk',
                 'filters': ['demurrage_status:in:soon,urgent,accruing', 'state:in:booked,documents_in,gd_filed,assessed,duty_paid,examined,released'],
-                'columns': ['number', 'client', 'state', 'demurrage_status', 'demurrage_next_deadline', 'assigned_to', 'billable_total'],
+                'columns': ['client', 'number', 'state', 'demurrage_status', 'demurrage_next_deadline', 'assigned_to', 'billable_total'],
                 'ordering': 'demurrage_next_deadline',
             },
             {

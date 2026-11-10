@@ -447,7 +447,7 @@ class RecoveryCase(ClickerModel):
         bulk_actions = [{'key': 'assign_owner', 'label': 'Assign owner', 'field': 'owner'}]
         search_fields = ['number', 'next_action']
         field_types = {'amount_opened': 'currency'}
-        list_display = ['number', 'consumer', 'state', 'owner', 'outstanding', 'oldest_overdue_days', 'next_action_date']
+        list_display = ['consumer', 'number', 'state', 'owner', 'outstanding', 'oldest_overdue_days', 'next_action_date']
         list_sort = [{'field': 'next_action_date', 'direction': 'asc'}]
         groups = [
             {'label': 'The case', 'fields': ['number', 'consumer', 'owner']},

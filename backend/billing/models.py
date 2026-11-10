@@ -144,7 +144,7 @@ class Bill(ClickerModel):
         numbering = {'field': 'number', 'prefix': 'BILL', 'digits': 5}
         on_save = 'on_save'
         search_fields = ['number']
-        list_display = ['number', 'customer', 'issue_date', 'due_date', 'amount_total', 'balance', 'payment_status', 'state']
+        list_display = ['customer', 'number', 'issue_date', 'due_date', 'amount_total', 'balance', 'payment_status', 'state']
         list_sort = [{'field': 'issue_date', 'direction': 'desc'}]
 
         groups = [
@@ -424,7 +424,7 @@ class Payment(ClickerModel):
         domains = {'customer': {'is_customer': True}}
         numbering = {'field': 'number', 'prefix': 'PAY', 'digits': 5}
         search_fields = ['number', 'reference']
-        list_display = ['number', 'customer', 'payment_date', 'method', 'reference', 'amount', 'advance', 'state']
+        list_display = ['customer', 'number', 'payment_date', 'method', 'reference', 'amount', 'advance', 'state']
         list_sort = [{'field': 'payment_date', 'direction': 'desc'}]
         groups = [
             {'label': 'Payment', 'fields': ['number', 'customer', 'payment_date', 'amount']},
