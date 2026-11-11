@@ -356,16 +356,21 @@
   text-decoration: underline;
 }
 
-/* ---------- Record view: reading a record with room ----------
-   Two columns under the header: what the record has (tabs) and what it is (its fields, as details). The details
-   are a quiet label/value list in a 340px column, set off by a hairline, not a card. A narrower sheet stacks
-   them, details first, because they say what the record is before what it has. */
+/* ---------- Record view: reading a record ----------
+   With room, two columns under the header: what the record has (tabs) and what it is (its fields, as details).
+   The details are a quiet label/value list in a 340px column, set off by a hairline, not a card. Narrower (a
+   drawer), the view measures itself and makes Details the first tab instead (RecordView). */
 .record-view {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   align-items: start;
   gap: var(--space-10);
   padding: var(--space-7) var(--form-pad-x, var(--space-8)) var(--space-10);
+}
+
+.record-view--narrow {
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: var(--space-4);
 }
 
 .record-view__main {
@@ -378,7 +383,6 @@
   min-width: 0;
   padding-left: var(--space-8);
   border-left: 1px solid var(--border-subtle);
-  --form-label-width: 112px;
 }
 
 .record-view__heading {
@@ -389,40 +393,29 @@
   color: var(--text);
 }
 
-/* In the details column a section's name is a small quiet heading, and the fields sit close. */
-.record-view__details .form-body {
+/* The details, in their column or in their tab: a section's name is a small quiet heading, the fields sit close. */
+.record-details {
+  --form-label-width: 112px;
+}
+
+.record-details .form-body {
   padding: 0;
 }
 
-.record-view__details .form-section + .form-section {
+.record-details .form-section + .form-section {
   margin-top: var(--space-7);
 }
 
-.record-view__details .form-section__label {
+.record-details .form-section__label {
   margin: var(--space-5) 0 var(--space-2);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
   color: var(--text-muted);
 }
 
-.record-view__details .form-field {
+.record-details .form-field {
   padding: var(--space-2) 0;
 }
-
-@container (max-width: 900px) {
-  .record-view {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-8);
-  }
-
-  .record-view__details {
-    position: static;
-    order: -1;
-    padding-left: 0;
-    border-left: 0;
-  }
-}
-
 /* Editing on a wide sheet keeps a form's width: a field 1200px wide is harder to fill, not easier. */
 .form-sheet:not(.form-sheet--view) > .form-body {
   max-width: var(--form-sheet-width);

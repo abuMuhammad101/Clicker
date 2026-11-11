@@ -3,7 +3,26 @@
    the name. Lists with nothing in them fold into one More tab at the end. On a very narrow sheet the strip
    scrolls sideways before it ever wraps. */
 .record-tabs {
+  position: relative;
   min-width: 0;
+}
+
+/* The unseen copy the strip measures itself against: the same tabs at their natural width, inside a box of no
+   size, so however wide the copy is it never widens the drawer or page into a sideways scroll. */
+.record-tabs__ruler-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.record-tabs__ruler {
+  width: max-content;
+  border: 0;
 }
 
 .record-tabs__list {
@@ -12,6 +31,11 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--border-subtle);
   scrollbar-width: none;
+}
+
+/* A narrow view (a drawer) spaces its tabs a step closer, so one more fits before More. */
+.record-view--narrow .record-tabs__list {
+  gap: var(--space-7);
 }
 
 /* More sits a little apart from the tabs before it: what the record has, then what it could. */
@@ -67,6 +91,17 @@
 
 .record-tabs__menu-item--on {
   font-weight: var(--weight-semibold);
+}
+
+.record-tabs__menu-label {
+  margin-right: auto;
+  padding-right: var(--space-6);
+}
+
+.record-tabs__menu-rule {
+  margin: var(--space-2) 0;
+  border: 0;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .record-tabs__tab {

@@ -296,6 +296,8 @@ function PeekLayer({
         recordId={target.id === 'new' ? undefined : target.id}
         prefill={target.prefill}
         mode={mode}
+        // The drawer reads a record the way a page does, in tabs; at its width the details become the first tab.
+        layout="tabs"
         // No icon tile beside the name: the bar above already says "Contact" with its icon, and the name
         // reads strongest flush with everything under it.
         onLabelChange={onLabelChange}

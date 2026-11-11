@@ -29,7 +29,7 @@ import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema, WorkflowTransition } from '@/types/schema'
 import { WorkflowBar } from '../workflow/WorkflowBar'
 import { ActivityTrail } from './ActivityTrail'
-import { RecordTabs } from './RecordTabs'
+import { RecordView } from './RecordTabs'
 import { RecordSummaries } from './RecordSummaries'
 import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
@@ -774,27 +774,23 @@ function EditableForm({
       )}
 
       {tabbed && record ? (
-        // Reading a record with room: what it has in tabs, its fields as details beside them.
-        <div className="record-view">
-          <div className="record-view__main">
-            <RecordTabs
-              // A transition or a save changes what the lists show: a new version is a fresh fetch of them.
-              key={record.meta?.updated_at ?? record.id}
-              parent={{ app_label: appLabel, model, id: record.id }}
-              lists={schema.related_lists ?? []}
-              activity={
-                <ActivityTrail
-                  appLabel={appLabel}
-                  model={model}
-                  recordId={record.id}
-                  schema={schema}
-                  version={record.meta?.updated_at}
-                />
-              }
+        // Reading a record: what it has in tabs, its fields as details beside them, or as the first tab when
+        // the sheet is narrow (it measures itself).
+        <RecordView
+          // A transition or a save changes what the lists show: a new version is a fresh fetch of them.
+          key={record.meta?.updated_at ?? record.id}
+          parent={{ app_label: appLabel, model, id: record.id }}
+          lists={schema.related_lists ?? []}
+          activity={
+            <ActivityTrail
+              appLabel={appLabel}
+              model={model}
+              recordId={record.id}
+              schema={schema}
+              version={record.meta?.updated_at}
             />
-          </div>
-          <aside className="record-view__details" aria-label="Details">
-            <h2 className="record-view__heading">Details</h2>
+          }
+          details={
             <FormBody
               schema={schema}
               values={values}
@@ -804,8 +800,8 @@ function EditableForm({
               title={record.display}
               restricted={record.restricted}
             />
-          </aside>
-        </div>
+          }
+        />
       ) : (
         <>
           <FormBody
