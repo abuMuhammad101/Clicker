@@ -1,4 +1,6 @@
 /* ---------- View as role ---------- */
+/* A slim strip across the top of the page area, in the inverse surface: the mode is unmissable on every
+   screen, yet it is one line of quiet type and one way out, not a coloured alert. */
 .view-as-banner {
   position: sticky;
   top: 0;
@@ -7,42 +9,110 @@
   flex: none;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-3) var(--space-6);
-  border-bottom: 1px solid var(--info-border);
-  background: var(--info-subtle);
-  color: var(--info);
+  min-height: var(--control-height);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--page-gutter);
+  background: var(--toast-bg);
+  color: var(--toast-fg);
+  font-size: var(--text-sm);
 }
 
 .view-as-banner__icon {
   flex: none;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--toast-fg) 72%, transparent);
 }
 
 .view-as-banner__text {
-  margin: 0;
-  margin-right: auto;
-  font-size: var(--text-base);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-4);
+  min-width: 0;
+  margin: 0 auto 0 0;
+  color: color-mix(in srgb, var(--toast-fg) 72%, transparent);
+}
+
+.view-as-banner__role {
+  font-weight: var(--weight-semibold);
+  color: var(--toast-fg);
+}
+
+.view-as-banner__rule {
+  width: 1px;
+  height: 14px;
+  background: color-mix(in srgb, var(--toast-fg) 24%, transparent);
+}
+
+/* The way out: a soft pill inside the strip, like a toast's Undo. */
+.view-as-banner__exit {
+  flex: none;
+  height: var(--control-height-sm);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--toast-fg) 14%, transparent);
+  font-weight: var(--weight-semibold);
+  color: var(--toast-fg);
+  transition: background-color var(--duration-instant) var(--ease);
+}
+
+.view-as-banner__exit:hover {
+  background: color-mix(in srgb, var(--toast-fg) 22%, transparent);
+}
+
+.view-as-banner__exit:focus-visible {
+  outline: 2px solid var(--toast-fg);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .view-as-banner__rule,
+  .view-as-banner__note {
+    display: none;
+  }
 }
 
 .view-as__roles {
   display: grid;
-  gap: var(--space-3);
-  margin: 0;
+  gap: var(--space-1);
+  margin: 0 calc(var(--space-4) * -1);
   padding: 0;
   list-style: none;
 }
 
 .view-as__role {
   display: flex;
+  gap: var(--space-4);
   width: 100%;
-  height: var(--control-height);
-  justify-content: space-between;
+  height: var(--control-height-lg);
+  padding: 0 var(--space-4);
+  justify-content: flex-start;
+  font-weight: var(--weight-normal);
+}
+
+.view-as__name {
+  margin-right: auto;
+  font-weight: var(--weight-medium);
+  color: var(--text);
 }
 
 .view-as__count {
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
+}
+
+.view-as__go {
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--duration-instant) var(--ease);
+}
+
+.view-as__role:hover .view-as__go,
+.view-as__role:focus-visible .view-as__go {
+  opacity: 1;
 }
 
 .view-as__error {

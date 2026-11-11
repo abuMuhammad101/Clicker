@@ -16,6 +16,7 @@ import './StatePanel.css'
  */
 export function StatePanel({
   icon: Icon,
+  mark,
   title,
   message,
   tone = 'neutral',
@@ -23,6 +24,8 @@ export function StatePanel({
   className,
 }: {
   icon: LucideIcon
+  /** A short code set in the tile instead of the icon ("404"): a code is recognised before it is read. */
+  mark?: string
   title: string
   message?: ReactNode
   /** `danger` for failures; everything else is neutral. */
@@ -33,8 +36,8 @@ export function StatePanel({
 }) {
   return (
     <div className={cn('state-panel', `state-panel--${tone}`, className)} role={tone === 'danger' ? 'alert' : 'status'}>
-      <span className="state-panel__icon" aria-hidden>
-        <Icon />
+      <span className={cn('state-panel__icon', mark && 'state-panel__icon--mark')} aria-hidden>
+        {mark ?? <Icon />}
       </span>
       <p className="state-panel__title">{title}</p>
       {message && <p className="state-panel__message">{message}</p>}

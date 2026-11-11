@@ -12,7 +12,11 @@ import { PeekHost } from '@/surfaces/PeekHost'
 import { LIST_STATE_KEYS, listStateFromSearch, listStateToSearch } from '@/lib/listQuery'
 import { navigate, useLocation } from '@/lib/router'
 import { parseListPath, parseRecordPath, recordPath, sameTarget, useSurface } from '@/records'
+import { ArrowLeft, Compass } from 'lucide-react'
+import { StatePanel } from '@/components/StatePanel'
 import { Toaster } from '@/components/Toaster'
+import { Button } from '@/components/ui/button'
+import { Link } from '@/lib/Link'
 import { toast } from '@/lib/toast'
 import { useOnline } from '@/lib/useOnline'
 import { RecentsPage } from './RecentsPage'
@@ -161,7 +165,8 @@ function breadcrumbs(pathname: string, apps: RegistryApp[] | null, pageLabel: st
   const record = parseRecordPath(pathname)
   const list = record ? null : parseListPath(pathname)
   const target = record ?? list
-  if (!target || !apps) return []
+  if (!target) return [{ label: 'Not found' }]
+  if (!apps) return []
 
   const found = findInRegistry(apps, target.app_label, target.model)
   if (!found) return [{ label: 'Not found' }]
@@ -204,12 +209,13 @@ function Page({
   const record = parseRecordPath(pathname)
   const list = record ? null : parseListPath(pathname)
   const target = record ?? list
-  if (!target) return null
+  // An address with no list or record shape (/foo, /a/b/c/d) is no page either, never a blank screen.
+  if (!target) return <NotFound pathname={pathname} onLabelChange={onLabelChange} />
   const { app_label: appLabel, model } = target
 
   // Only what the registry lists is a page. (Before the registry has
   // loaded, render optimistically: the renderers have their own errors.)
-  if (apps && !findInRegistry(apps, appLabel, model)) return <NotFound />
+  if (apps && !findInRegistry(apps, appLabel, model)) return <NotFound pathname={pathname} onLabelChange={onLabelChange} />
 
   // Everything in the query except the peek stack and a list's own state
   // (filters, sort, grouping, view: `listState…`): a list's exact-match
@@ -289,11 +295,36 @@ function OfflineBanner() {
   )
 }
 
-function NotFound() {
+/**
+ * An address that is no page: mistyped, an old link, or a module this role doesn't have (the registry lists only
+ * what the user may open, so the two look the same here, and saying which would tell them what exists). It says
+ * the address back, so a typo is seen, and offers the two ways on: back where you were, or home.
+ */
+function NotFound({ pathname, onLabelChange }: { pathname: string; onLabelChange: (label: string | null) => void }) {
+  useEffect(() => onLabelChange('Not found'), [onLabelChange])
+  const canGoBack = typeof window !== 'undefined' && window.history.length > 1
   return (
-    <div className="shell-message" role="alert">
-      <h1 className="shell-message__title">Nothing here</h1>
-      <p className="shell-message__text">This address doesn’t match any module in Clicker.</p>
-    </div>
+    <StatePanel
+      icon={Compass}
+      mark="404"
+      className="state-panel--page"
+      title="Nothing at this address"
+      message={
+        <>
+          No page in Clicker lives at <code className="state-panel__path">{pathname}</code>, or it isn’t one your
+          role can open.
+        </>
+      }
+    >
+      {canGoBack && (
+        <Button variant="outline" className="h-[var(--control-height)]" onClick={() => window.history.back()}>
+          <ArrowLeft className="size-4" aria-hidden />
+          Go back
+        </Button>
+      )}
+      <Button asChild className="h-[var(--control-height)]">
+        <Link to="/">Open Recent</Link>
+      </Button>
+    </StatePanel>
   )
 }

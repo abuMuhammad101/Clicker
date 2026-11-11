@@ -2102,3 +2102,10 @@ Hassan's brief: the product looked overloaded with no visual hierarchy or access
 - **Empty states** are centred in the visible width of the list (`.list-scroll` is an inline-size container), with a 44px soft tile and a faint outer ring, a 17px title, a muted line, and the action. The archived empty state uses the model's own verbs ("No deactivated team").
 - tsc clean, 46 frontend tests (initials added), 337 backend tests pass. Checked in the browser, light and dark.
 - Still not reviewed after the redesign: View as role banner, the "Nothing here" not-found page.
+
+**Addendum, same branch: View as role and not found** (Mobbin: Mural's private-mode strip, Height and Coinbase not-found states).
+- **View as banner** is a slim dark strip across the page area in the inverse surface (toast and bulk-bar family), not a blue info alert: an eye, "Viewing as **Cashier**", a rule, "Read only. Nothing you open can be changed.", and "Exit view" as a soft pill. Below 720px only the role and the exit stay. The role picker is a list of 40px rows (role, how many people, an arrow on hover), not a stack of outlined buttons; the chosen row says "Opening…".
+- **Not found** is a page-sized StatePanel: a mono "404" in the tile (StatePanel has a `mark` prop now), "Nothing at this address" at a page title's size, the address said back in mono so a typo is seen, and "Go back" / "Open Recent". It does not say whether the page exists for another role (the registry only lists what this user may open). An address with no list or record shape (`/foo`) now shows it too, where before it was a blank page; the breadcrumb and tab title say "Not found".
+- Checked in the browser: `/core/contacts` and `/foo`, the role picker, the banner as Cashier, exit. tsc clean, 46 tests pass.
+- Everything in the post-redesign review list has now been looked at. Recents' own empty state ("Nothing here yet", left-aligned with ghost rows under the greeting) was left as it is.
+- **Next single action:** Hassan reviews `redesign/mercury` on the running stack; then retake the 1280/1366 screenshots and run `scripts/rehearse.sh` before any merge.

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { apiGet, apiSend, ApiError } from '@/lib/api'
@@ -56,16 +57,25 @@ export function ViewAsDialog({ open, onOpenChange }: { open: boolean; onOpenChan
         <ul className="view-as__roles">
           {(roles ?? []).map((row) => (
             <li key={row.role}>
+              {/* A list of roles, not a stack of boxed buttons: a row lights up under the pointer, and an arrow
+                  says where it goes. */}
               <Button
-                variant="outline"
+                variant="ghost"
                 className="view-as__role"
                 disabled={busy != null}
                 onClick={() => void start(row.role)}
               >
-                <span>{row.role}</span>
+                <span className="view-as__name">{row.role}</span>
                 <span className="view-as__count">
-                  {row.members === 0 ? 'no one yet' : row.members === 1 ? '1 person' : `${row.members} people`}
+                  {busy === row.role
+                    ? 'Opening…'
+                    : row.members === 0
+                      ? 'No one yet'
+                      : row.members === 1
+                        ? '1 person'
+                        : `${row.members} people`}
                 </span>
+                <ArrowRight className="view-as__go" aria-hidden />
               </Button>
             </li>
           ))}

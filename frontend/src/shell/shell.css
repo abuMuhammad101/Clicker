@@ -432,23 +432,6 @@
 }
 
 /* ---------- Page-level messages ---------- */
-.shell-message {
-  padding: var(--space-10) var(--space-6);
-}
-
-.shell-message__title {
-  margin: 0 0 var(--space-2);
-  font-size: var(--text-lg);
-  font-weight: var(--weight-semibold);
-  color: var(--text);
-}
-
-.shell-message__text {
-  margin: 0;
-  font-size: var(--text-base);
-  color: var(--text-muted);
-}
-
 .user-menu__avatar {
   display: grid;
   flex: none;
