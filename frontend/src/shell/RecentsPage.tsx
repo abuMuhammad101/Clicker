@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
+import { CloudOff, History } from 'lucide-react'
+import { StatePanel } from '@/components/StatePanel'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiGet, ApiError } from '@/lib/api'
@@ -72,7 +74,8 @@ export function RecentsPage({
       <h1 className="recents__greeting">
         {greeting()}, {firstName(user.display_name)}
       </h1>
-      <p className="recents__sub">Pick up where you left off.</p>
+      {/* With nothing to pick up, the line under the greeting would promise what isn't there. */}
+      {!(state.status === 'ready' && state.items.length === 0) && <p className="recents__sub">Pick up where you left off.</p>}
 
       {state.status === 'loading' && (
         <div className="recents__table" aria-busy="true" aria-label="Loading recent records">
@@ -93,33 +96,27 @@ export function RecentsPage({
         </div>
       )}
 
+      {/* The same state panel as every list and page: centred under the greeting, a mark, one line, one way on. */}
       {state.status === 'error' && (
-        <div className="recents__state" role="alert">
-          <p className="recents__state-title">Couldn’t load your recent records</p>
-          <p className="recents__state-text">{state.message}</p>
+        <StatePanel icon={CloudOff} tone="danger" title="Couldn’t load your recent records" message={state.message}>
           <Button variant="outline" onClick={retry} className="h-[var(--control-height)]">
             Try again
           </Button>
-        </div>
+        </StatePanel>
       )}
 
       {state.status === 'ready' && state.items.length === 0 && (
-        <div className="recents__empty">
-          <div className="recents__ghost" aria-hidden="true">
-            {[72, 56, 64, 48].map((width, i) => (
-              <div key={i} className="recents__ghost-row">
-                <span style={{ width: `${width}%` }} />
-              </div>
-            ))}
-          </div>
-          <p className="recents__state-title">Nothing here yet</p>
-          <p className="recents__state-text">The records you open will show up here, newest first.</p>
+        <StatePanel
+          icon={History}
+          title="Nothing here yet"
+          message="The records you open will show up here, newest first."
+        >
           {firstModel && (
             <Button asChild variant="outline" className="h-[var(--control-height)]">
               <Link to={firstModel.route}>Browse {firstModel.label.toLowerCase()}</Link>
             </Button>
           )}
-        </div>
+        </StatePanel>
       )}
 
       {state.status === 'ready' && state.items.length > 0 && (
