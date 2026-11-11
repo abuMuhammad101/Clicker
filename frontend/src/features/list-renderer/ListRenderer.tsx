@@ -153,7 +153,7 @@ const TYPE_WIDTH: Record<string, number> = {
  * The least a column of this type may be squeezed to. A date or an amount cut with an ellipsis is wrong
  * data ("12 Nov 2…"), not a long name: they keep their whole value (a crore-sized amount included).
  */
-const IDENTIFIER_MIN = 124
+const IDENTIFIER_MIN = 140
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 150
 const LEAD_MIN = 208
@@ -187,6 +187,43 @@ function chipColumnMin(labels: string[], floor: number): number {
   // Capped: a very long label ("Examination labour") ellipsizes inside its chip, which is by design; it must
   // not take the room the other columns need in a narrow table (a related list is 660px wide).
   return longest === 0 ? floor : Math.max(floor, Math.min(168, Math.ceil(longest * 7) + 56))
+}
+
+/** The least this column may be squeezed to: its type, its role in the row, its chips and its own name. */
+function columnMinFor(schema: ModelSchema, name: string, columnIndex: number): number {
+  const field = schema.fields[name]
+  const minWidth = tokenPx('--column-min-width', 80)
+  const stateLabels = schema.workflow?.field === name ? schema.workflow.states.map((state) => state.label) : []
+  const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
+  // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
+  const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
+  // The first column is what a row is about (a client, a consumer): it is read whole before anything beside it.
+  const leadMin = columnIndex === 0 && !field.assigned && !TYPE_MIN[field.type] ? LEAD_MIN : 0
+  // A column's name is read whole too: "Field a…" tells you nothing. 12px text runs about 6.2px a letter,
+  // with the cell's padding either side. (The sort arrow only takes room on the column being sorted.)
+  const headerMin = Math.ceil(field.label.length * 6.2) + 2 * tokenPx('--cell-padding-x', 12)
+  return chipColumnMin(
+    [...stateLabels, ...choiceLabels],
+    Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, headerMin, field.person ? PERSON_MIN : 0),
+  )
+}
+
+/**
+ * An embedded list (a record's related list, on a page or in a peek) never scrolls sideways: it shows as many of
+ * its columns, in the schema's order, as fit whole, and the rest are one "View all" away. A narrower container
+ * gets fewer columns, not cut ones; the renderer never asks which container it is in.
+ */
+function columnsThatFit(schema: ModelSchema, names: string[], available: number): string[] {
+  if (!available) return names
+  const kept: string[] = []
+  let used = 0
+  for (const [index, name] of names.entries()) {
+    const min = columnMinFor(schema, name, index)
+    if (kept.length >= 2 && used + min > available) break
+    kept.push(name)
+    used += min
+  }
+  return kept
 }
 const OVERSCAN_ROWS = 12
 
@@ -339,10 +376,13 @@ function ListView({
   const unavailable = embedded ? 0 : listState.filters.length - applicable.length
   const groupBy = !embedded && listState.groupBy && schema.list.groupable?.includes(listState.groupBy) ? listState.groupBy : null
   // The column the list is grouped by says, on every row, what the group header above it already says.
+  // The room the table has (measured once it is on screen).
+  const [viewportWidth, setViewportWidth] = useState(0)
   const shownColumns = useMemo(() => {
     const rest = groupBy ? visibleColumns.filter((name) => name !== groupBy) : visibleColumns
-    return rest.length > 0 ? rest : visibleColumns
-  }, [visibleColumns, groupBy])
+    const base = rest.length > 0 ? rest : visibleColumns
+    return embedded ? columnsThatFit(schema, base, viewportWidth) : base
+  }, [visibleColumns, groupBy, embedded, schema, viewportWidth])
 
   const query = useMemo(() => {
     const exact: Record<string, string> = Object.fromEntries(Object.entries(filter ?? {}).map(([k, v]) => [k, String(v)]))
@@ -531,20 +571,10 @@ function ListView({
   const rowHeight = useMemo(() => tokenPx(DENSITY_TOKEN[density], 34), [density])
   const columns = useMemo<ColumnDef<typeof features, Slot>[]>(() => {
     const defaultWidth = tokenPx('--column-default-width', 180)
-    const minWidth = tokenPx('--column-min-width', 80)
     return shownColumns.map((name, columnIndex) => {
       const field = schema.fields[name]
       const share = (TYPE_WIDTH[field.type] ?? 1) * (columnIndex === 0 ? 1.9 : 1)
-      const stateLabels = schema.workflow?.field === name ? schema.workflow.states.map((state) => state.label) : []
-      const choiceLabels = field.type === 'selection' ? (field.choices ?? []).map((choice) => choice.label) : []
-      // A document number (JOB-2026-0001, BILL-2026-00001) is read whole: a mono identifier never wraps or is cut.
-      const identifierMin = field.assigned ? IDENTIFIER_MIN : 0
-      // The first column is what a row is about (a client, a consumer): it is read whole before anything beside it.
-      const leadMin = columnIndex === 0 && !field.assigned && !TYPE_MIN[field.type] ? LEAD_MIN : 0
-      // A column's name is read whole too: "Field a…" tells you nothing. 12px text runs about 6.2px a letter,
-      // with the cell's padding either side. (The sort arrow only takes room on the column being sorted.)
-      const headerMin = Math.ceil(field.label.length * 6.2) + 2 * tokenPx('--cell-padding-x', 12)
-      const columnMin = chipColumnMin([...stateLabels, ...choiceLabels], Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, headerMin, field.person ? PERSON_MIN : 0))
+      const columnMin = columnMinFor(schema, name, columnIndex)
       return {
         id: name,
         header: field.label,
@@ -615,8 +645,7 @@ function ListView({
     overscan: OVERSCAN_ROWS,
   })
 
-  // The room the table has, and whether the person has taken over sizing.
-  const [viewportWidth, setViewportWidth] = useState(0)
+  // Whether the person has taken over sizing.
   const [userSized, setUserSized] = useState(false)
   useEffect(() => {
     const element = scrollRef.current

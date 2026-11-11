@@ -1,3 +1,5 @@
+import { ArrowRight } from 'lucide-react'
+import { FigureNumber } from '@/components/FigureNumber'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Summary } from '@/lib/listQuery'
 import { aggregateDisplay } from '@/fields/aggregateDisplay'
@@ -43,9 +45,12 @@ export function SummaryStrip({
         const clickable = onApply && summary.filter.length > 0
         const content = (
           <>
-            <span className="summary-strip__label">{summary.label}</span>
+            <span className="summary-strip__label">
+              {summary.label}
+              {clickable && <ArrowRight className="summary-strip__go" aria-hidden />}
+            </span>
             <span className={cn('summary-strip__value', isZero(summary.value) && 'summary-strip__value--zero')}>
-              {short}
+              <FigureNumber text={short} />
             </span>
           </>
         )

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -73,18 +74,27 @@ export function BulkBar({
   const field = open ? schema.fields[open.field] : null
   return (
     <>
-      <div className="bulk-bar" role="region" aria-label="Selected rows">
-        <span className="bulk-bar__count">
-          {count} {noun} selected
+      {/* Docked at the foot of the list, over the rows, so ticking a row never moves the page under you. */}
+      <div
+        className="bulk-bar"
+        role="region"
+        aria-label="Selected rows"
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && !open) onClear()
+        }}
+      >
+        <button type="button" className="bulk-bar__clear" onClick={onClear} aria-label="Clear selection" title="Clear selection (Esc)">
+          <X aria-hidden />
+        </button>
+        <span className="bulk-bar__count" aria-live="polite">
+          <span className="bulk-bar__number">{count.toLocaleString()}</span> {noun} selected
         </span>
+        {actions.length > 0 && <span className="bulk-bar__rule" aria-hidden />}
         {actions.map((action) => (
-          <Button key={action.key} variant="outline" className="h-[var(--control-height)]" onClick={() => setOpen(action)}>
+          <button key={action.key} type="button" className="bulk-bar__action" onClick={() => setOpen(action)}>
             {action.label}
-          </Button>
+          </button>
         ))}
-        <Button variant="ghost" className="h-[var(--control-height)]" onClick={onClear}>
-          Clear
-        </Button>
       </div>
 
       <Dialog open={open != null} onOpenChange={(next) => !next && close()}>

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { FigureNumber } from '@/components/FigureNumber'
 import { groupThousands, formatMoney, formatMoneyCompact } from '@/lib/money'
 import type { RecordSummary } from '@/types/record'
 import './RecordSummaries.css'
@@ -68,7 +69,7 @@ function Figure({ summary }: { summary: RecordSummary }) {
   }, [exact, compact, canCompact])
   return (
     <dd ref={element} className="record-summaries__value" title={compact ? exact : undefined}>
-      {compact ? formatMoneyCompact(summary.value as string) : exact}
+      <FigureNumber text={compact ? formatMoneyCompact(summary.value as string) : exact} />
     </dd>
   )
 }

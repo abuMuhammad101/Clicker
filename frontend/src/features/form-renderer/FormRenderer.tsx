@@ -641,7 +641,7 @@ function EditableForm({
             {archived && <StatusChip label={verbs.archived} />}
           </div>
           <p className="form-header__meta">
-            <span className="form-header__model">{schema.verbose_name_plural}</span>
+            <span className="form-header__model">{record ? schema.verbose_name : schema.verbose_name_plural}</span>
             {record && !displayCarriesId && (
               <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>
             )}

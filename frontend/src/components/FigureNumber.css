@@ -1,0 +1,30 @@
+/* The parts of a figure that qualify it: smaller, quieter, never competing with the number. */
+.figure-number {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.figure-number__unit {
+  margin-right: 0.08em;
+  font-size: 0.62em;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}
+
+.figure-number__unit--after {
+  margin-right: 0;
+  margin-left: 0.04em;
+}
+
+/* Paisa: raised and small, so the eye lands on the rupees. Positioned rather than vertical-aligned, so the
+   line box keeps the figure's own height. */
+.figure-number__fraction {
+  position: relative;
+  top: -0.5em;
+  margin-left: 0.04em;
+  font-size: 0.56em;
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  color: var(--text-secondary);
+}

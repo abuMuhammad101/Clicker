@@ -2085,3 +2085,12 @@ Hassan's brief: the product looked overloaded with no visual hierarchy or access
 - **Selects** open below their field at its width (popper), not over their own label.
 - Looked at and left as they are: the new-contact form, the unsaved-changes bar, the Type select.
 - Still not reviewed after the redesign: statement header, bulk bar, toasts, Team page, View as role banner, empty states, the "Nothing here" not-found page.
+
+**Addendum, same branch: figures, statement header, bulk bar, related lists in a drawer** (references from Mobbin: Mercury's transactions summary and bulk pill, Copilot and YNAB bulk bars, Midday and Linear detail panels).
+- **Figures** (a list's summary strip and a record's statement header) lose the ink rule over each figure: beside an empty value's "—" it read as one, which breaks the placeholder rule. A figure is now a small label over the number, and the number's parts are sized: the currency and a unit word ("Rs", "lakh", "crore") small and quiet, paisa raised and small after the rupees (`components/FigureNumber`; the text itself is unchanged). A figure you can click no longer turns into a grey box on hover: its label darkens and an arrow arrives beside it.
+- **Statement header** sits on a grid of equal columns (min 200px), so in the peek four figures are two rows of two, aligned, instead of three and an orphan.
+- **Record meta line** says the singular ("Contact #35", not "Contacts #35") and wraps between its parts in a narrow container, never inside "Updated … by …".
+- **Bulk bar** is a dark pill docked at the foot of the list (the toast's inverse surface): clear (×, or Esc), "3 recovery cases selected", a rule, the schema's actions. It floats over the rows, so ticking a row no longer pushes the page down, and the list gets room under its last row while it is up.
+- **Related lists in a narrow container** never scroll sideways: an embedded list shows as many of its columns, in the schema's order, as fit whole (at least two); the rest are a "View all" away. Identifier columns are 140px at least, so BILL-2026-02382 is read whole.
+- Checked in the browser at 1440 (water: contacts list, Air Maintenance Depot peek, recovery cases bulk selection as the Manager), the bulk bar also in dark. tsc clean, 43 tests pass.
+- Still not reviewed after the redesign: toasts, Team page, View as role banner, empty states, the "Nothing here" not-found page.

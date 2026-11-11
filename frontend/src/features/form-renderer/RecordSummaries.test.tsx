@@ -11,7 +11,8 @@ const figures: RecordSummary[] = [
 ]
 
 describe('RecordSummaries', () => {
-  const html = renderToStaticMarkup(<RecordSummaries summaries={figures} />)
+  // The figure's parts are sized separately (currency, rupees, paisa); the text read out is unchanged.
+  const html = renderToStaticMarkup(<RecordSummaries summaries={figures} />).replace(/<(?!\/div>)[^>]+>/g, '')
 
   it("shows a record's own amounts exactly, in lakh grouping, paisa included", () => {
     expect(html).toContain('Rs 27,32,468.47')
@@ -20,8 +21,7 @@ describe('RecordSummaries', () => {
   it('shows a real zero as a value, and a missing figure as a dash, never as 0', () => {
     expect(html).toContain('Rs 0.00')
     const overdue = html.split('Oldest overdue (days)')[1].split('</div>')[0]
-    expect(overdue).toContain('—')
-    expect(overdue).not.toMatch(/>0</)
+    expect(overdue.trim()).toBe('—')
   })
 
   it('groups counts the same way', () => {

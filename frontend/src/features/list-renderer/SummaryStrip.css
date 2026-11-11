@@ -1,13 +1,13 @@
 /* ---------- Summary strip: the few figures a list leads with ----------
-   Not cards: a label over a large number, set on the page, with room between.
-   The numbers are the second loudest thing on the screen, after its title. */
+   Not cards and not rules: a small label over a large number, set on the page with room between. The numbers
+   are the second loudest thing on the screen, after its title. A hairline closes the group. */
 .summary-strip {
   display: flex;
   flex: none;
   flex-wrap: wrap;
-  gap: var(--space-3) var(--space-9);
+  gap: var(--space-6) var(--space-11);
   margin: 0 0 var(--space-6);
-  padding: var(--space-2) 0 var(--space-6);
+  padding: var(--space-2) 0 var(--space-7);
   border-bottom: 1px solid var(--border-subtle);
   transition: opacity var(--duration-base) var(--ease);
 }
@@ -21,38 +21,53 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-2);
+  gap: var(--space-3);
   min-width: 0;
-  margin: 0 calc(var(--space-4) * -1);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   text-align: left;
-  transition: background-color var(--duration-instant) var(--ease);
 }
 
-button.summary-strip__item:hover {
-  background: var(--surface-hover);
+/* A figure you can click narrows the list to what it counts. It says so without becoming a box: the label
+   darkens and an arrow arrives beside it, the way a link does. */
+.summary-strip__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  transition: color var(--duration-instant) var(--ease);
+}
+
+.summary-strip__go {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition:
+    opacity var(--duration-instant) var(--ease),
+    transform var(--duration-instant) var(--ease);
+}
+
+button.summary-strip__item:hover .summary-strip__label,
+button.summary-strip__item:focus-visible .summary-strip__label {
+  color: var(--text);
+}
+
+button.summary-strip__item:hover .summary-strip__go,
+button.summary-strip__item:focus-visible .summary-strip__go {
+  opacity: 1;
+  transform: none;
 }
 
 button.summary-strip__item:focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 0;
+  outline-offset: 4px;
 }
 
-/* A short ink rule above each figure, like a column in a financial report: it says "this is a figure"
-   without a box. */
-.summary-strip__item::before {
-  content: '';
-  width: 24px;
-  height: 2px;
-  margin-bottom: var(--space-3);
-  border-radius: var(--radius-full);
-  background: var(--text);
-}
-
-.summary-strip__label {
-  font-size: var(--text-sm);
-  color: var(--text-muted);
+@media (prefers-reduced-motion: reduce) {
+  .summary-strip__go {
+    transform: none;
+  }
 }
 
 .summary-strip__value {
@@ -71,4 +86,8 @@ button.summary-strip__item:focus-visible {
 /* Zero is a real answer, shown as one, just quieter. */
 .summary-strip__value--zero {
   color: var(--text-muted);
+}
+
+.summary-strip__value--zero .figure-number__unit {
+  color: inherit;
 }
