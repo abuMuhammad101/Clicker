@@ -365,7 +365,7 @@
   grid-template-columns: minmax(0, 1fr) 340px;
   align-items: start;
   gap: var(--space-10);
-  padding: var(--space-5) var(--form-pad-x, var(--space-8)) var(--space-10);
+  padding: var(--space-7) var(--form-pad-x, var(--space-8)) var(--space-10);
 }
 
 .record-view__main {
