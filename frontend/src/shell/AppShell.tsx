@@ -200,6 +200,8 @@ function Page({
   // It's the same form — keep it mounted (with its "Saved" state) rather
   // than letting the key change remount it. path → the key it inherited.
   const [aliases, setAliases] = useState<Record<string, string>>({})
+  // Which record page is being edited (by its key), so moving to another record reads it, not edits it.
+  const [editing, setEditing] = useState<string | null>(null)
 
   if (pathname === '/') return <RecentsPage user={user} apps={apps} onLabelChange={onLabelChange} />
   if (pathname === '/dev/gallery') return <FieldGallery />
@@ -248,6 +250,9 @@ function Page({
 
   const id = record.id
   const key = aliases[pathname] ?? pathname
+  // A record page opens to read: Edit switches it to its form, Save or Done switches back. A new record has
+  // nothing to read yet, so it opens as a form.
+  const mode = id === 'new' || editing === key ? 'edit' : 'view'
   return (
     // The page is what puts a form on a sunken sheet with room around it.
     <div className="record-page">
@@ -260,9 +265,15 @@ function Page({
         onLabelChange={onLabelChange}
         onStateChange={onFormState}
         actions="external"
+        mode={mode}
+        layout="tabs"
+        onModeChange={(next) => setEditing(next === 'edit' ? key : null)}
         onSaved={(saved) => {
           toast({ message: `Saved ${saved.display}` })
-          if (id !== 'new') return
+          if (id !== 'new') {
+            setEditing(null)
+            return
+          }
           const realPath = recordPath({ ...record, id: saved.id })
           // Commit the alias before the URL changes, so the render the URL
           // change triggers already sees it and keeps the same key.

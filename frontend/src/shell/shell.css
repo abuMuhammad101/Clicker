@@ -31,6 +31,9 @@
 
 .record-page {
   --form-pad-x: 0px;
+  /* A page reads a record as tabs and a details column: it has the room for both. Editing narrows back to a
+     form's width inside the form (see FormRenderer.css). */
+  --form-sheet-max-width: 1280px;
 }
 
 .record-page .form-sheet {

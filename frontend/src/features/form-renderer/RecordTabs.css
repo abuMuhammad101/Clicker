@@ -1,0 +1,96 @@
+/* ---------- Record tabs: what a record has, one tab each ----------
+   Text tabs on a hairline, the selected one in ink with a 2px rule under it. The counts are quiet figures beside
+   the name; a list with nothing in it is quieter still. The strip scrolls sideways before it ever wraps. */
+.record-tabs {
+  min-width: 0;
+}
+
+.record-tabs__list {
+  display: flex;
+  gap: var(--space-6);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border-subtle);
+  scrollbar-width: none;
+}
+
+.record-tabs__list--more {
+  mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+
+/* Empty lists, after Activity, are set apart by a little more room: what the record has, then what it could. */
+.record-tabs__tab--empty:not(.record-tabs__tab--empty ~ .record-tabs__tab--empty) {
+  margin-left: var(--space-4);
+}
+
+.record-tabs__tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-3);
+  height: var(--control-height-lg);
+  padding: var(--space-4) 0 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color var(--duration-instant) var(--ease);
+}
+
+.record-tabs__tab:hover {
+  color: var(--text);
+}
+
+.record-tabs__tab--active {
+  color: var(--text);
+}
+
+.record-tabs__tab--active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: var(--radius-full) var(--radius-full) 0 0;
+  background: var(--text);
+}
+
+.record-tabs__tab--empty:not(.record-tabs__tab--active) {
+  color: color-mix(in srgb, var(--text-muted) 70%, transparent);
+}
+
+.record-tabs__tab:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.record-tabs__count {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-normal);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.record-tabs__panel {
+  padding-top: var(--space-5);
+}
+
+/* In a tab the tab is the title: the list keeps only its way to add, at the right, over its rows. */
+.related-list__tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+
+/* The activity trail says "Activity" itself; in a tab the tab says it. */
+.record-tabs__panel .activity__head {
+  display: none;
+}
+
+.record-tabs__panel .activity {
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  border: 0;
+}

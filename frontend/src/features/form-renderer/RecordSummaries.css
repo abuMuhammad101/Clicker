@@ -4,9 +4,10 @@
    aligned, instead of three and an orphan. A hairline closes the group. */
 .record-summaries {
   display: grid;
+  /* As many 200px-or-wider columns as fit: two in a drawer, five or six on a page (the four figures take the
+     first four), while the closing hairline runs the sheet's width. */
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: var(--space-8) var(--space-8);
-  max-width: 960px;
   margin: 0 var(--form-pad-x, var(--space-8));
   padding: var(--space-4) 0 var(--space-8);
   border-bottom: 1px solid var(--border-subtle);

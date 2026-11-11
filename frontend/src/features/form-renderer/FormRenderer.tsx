@@ -10,7 +10,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { archiveVerbs } from '@/lib/archiveVerbs'
-import { Archive, ArchiveRestore, CloudOff, FileQuestion, LockKeyhole } from 'lucide-react'
+import { Archive, ArchiveRestore, CloudOff, FileQuestion, LockKeyhole, Pencil } from 'lucide-react'
 import { StatePanel } from '@/components/StatePanel'
 import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,7 @@ import type { RecordEnvelope } from '@/types/record'
 import type { ModelSchema, WorkflowTransition } from '@/types/schema'
 import { WorkflowBar } from '../workflow/WorkflowBar'
 import { ActivityTrail } from './ActivityTrail'
+import { RecordTabs } from './RecordTabs'
 import { RecordSummaries } from './RecordSummaries'
 import { RelatedLists } from './RelatedLists'
 import './FormRenderer.css'
@@ -91,6 +92,18 @@ interface FormRendererProps {
    * shows only its "Saved" confirmation.
    */
   actions?: 'inline' | 'external'
+  /**
+   * How a record reads when it is viewed. `stack` (default): everything top to bottom, for a narrow container
+   * (a drawer). `tabs`: what the record has (its related lists, its activity) in tabs, with its fields as a
+   * details column beside them, for a container with room (a page). Editing always shows just the fields.
+   * The container chooses; the form never asks where it is.
+   */
+  layout?: 'stack' | 'tabs'
+  /**
+   * Given, the form offers the switch between reading and editing in its header ("Edit"; "Done" once there is
+   * nothing unsaved) and asks for it through this event. The container owns the mode, as it does `mode`.
+   */
+  onModeChange?: (mode: 'edit' | 'view') => void
 }
 
 export function FormRenderer(props: FormRendererProps) {
@@ -116,6 +129,8 @@ function FormSheet({
   leading,
   prefill,
   actions,
+  layout,
+  onModeChange,
   onRetry,
 }: FormRendererProps & { onRetry: () => void }) {
   const schemaState = useModelSchema(appLabel, model)
@@ -219,6 +234,8 @@ function FormSheet({
       leading={leading}
       prefill={recordState.record ? undefined : prefill}
       actions={actions}
+      layout={layout}
+      onModeChange={onModeChange}
     />
   )
 }
@@ -292,6 +309,8 @@ function EditableForm({
   leading,
   prefill,
   actions = 'inline',
+  layout = 'stack',
+  onModeChange,
 }: {
   schema: ModelSchema
   record: RecordEnvelope | null
@@ -305,6 +324,8 @@ function EditableForm({
   leading?: ReactNode
   prefill?: Record<string, string>
   actions?: 'inline' | 'external'
+  layout?: 'stack' | 'tabs'
+  onModeChange?: (mode: 'edit' | 'view') => void
 }) {
   // A new record's prefilled values start it and stay locked: the form was
   // opened *for* that parent, so changing it here would be a different act.
@@ -593,6 +614,10 @@ function EditableForm({
     if (destination) navigate(destination, { force: true })
   }
 
+  // A container with room reads a record as tabs and details, and edits it as just its fields.
+  const tabbed = layout === 'tabs' && viewing && record != null
+  const fieldsOnly = layout === 'tabs' && !viewing
+
   // The record's name already carries its document number ("JOB-2026-0041 · Karachi…"): say it once.
   const documentId = record ? (documentNumber(schema, record) ?? `#${record.id}`) : null
   const displayCarriesId = !!record && !!documentId && record.display.includes(documentId)
@@ -672,6 +697,20 @@ function EditableForm({
               {verbs.archive}
             </Button>
           )}
+          {/* Reading and editing are two states of the record, switched here when the container offers it:
+              Edit when the record can be changed, Done once there is nothing unsaved (the save bar has Save
+              and Discard until then). */}
+          {record && onModeChange && mode === 'view' && canUpdate && !locked && !archived && (
+            <Button type="button" variant="outline" onClick={() => onModeChange('edit')} className="h-[var(--control-height)]">
+              <Pencil className="size-4" aria-hidden />
+              Edit
+            </Button>
+          )}
+          {record && onModeChange && mode === 'edit' && !isDirty && !saving && (
+            <Button type="button" variant="outline" onClick={() => onModeChange('view')} className="h-[var(--control-height)]">
+              Done
+            </Button>
+          )}
           {!viewing && actions === 'inline' && (
             <>
             <Button
@@ -734,31 +773,71 @@ function EditableForm({
         </div>
       )}
 
-      <FormBody
-        schema={schema}
-        values={values}
-        labels={labels}
-        errors={fieldErrors}
-        dirtyFields={dirtyFields}
-        readOnly={viewing}
-        title={viewing ? record?.display : undefined}
-        locked={prefilled}
-        restricted={record?.restricted}
-        onChange={setValue}
-        // Where the schema asks for them, the related lists sit between the groups.
-        between={schema.related_lists_after ? { after: schema.related_lists_after, node: relatedLists } : undefined}
-      />
+      {tabbed && record ? (
+        // Reading a record with room: what it has in tabs, its fields as details beside them.
+        <div className="record-view">
+          <div className="record-view__main">
+            <RecordTabs
+              // A transition or a save changes what the lists show: a new version is a fresh fetch of them.
+              key={record.meta?.updated_at ?? record.id}
+              parent={{ app_label: appLabel, model, id: record.id }}
+              lists={schema.related_lists ?? []}
+              activity={
+                <ActivityTrail
+                  appLabel={appLabel}
+                  model={model}
+                  recordId={record.id}
+                  schema={schema}
+                  version={record.meta?.updated_at}
+                />
+              }
+            />
+          </div>
+          <aside className="record-view__details" aria-label="Details">
+            <h2 className="record-view__heading">Details</h2>
+            <FormBody
+              schema={schema}
+              values={values}
+              labels={labels}
+              errors={fieldErrors}
+              readOnly
+              title={record.display}
+              restricted={record.restricted}
+            />
+          </aside>
+        </div>
+      ) : (
+        <>
+          <FormBody
+            schema={schema}
+            values={values}
+            labels={labels}
+            errors={fieldErrors}
+            dirtyFields={dirtyFields}
+            readOnly={viewing}
+            title={viewing ? record?.display : undefined}
+            locked={prefilled}
+            restricted={record?.restricted}
+            onChange={setValue}
+            // Where the schema asks for them, the related lists sit between the groups (a stacked read). Editing
+            // with room is just the fields: the lists and the trail are what you read, not what you change.
+            between={
+              !fieldsOnly && schema.related_lists_after ? { after: schema.related_lists_after, node: relatedLists } : undefined
+            }
+          />
 
-      {!schema.related_lists_after && relatedLists}
+          {!fieldsOnly && !schema.related_lists_after && relatedLists}
 
-      {record && (
-        <ActivityTrail
-          appLabel={appLabel}
-          model={model}
-          recordId={record.id}
-          schema={schema}
-          version={record.meta?.updated_at}
-        />
+          {record && !fieldsOnly && (
+            <ActivityTrail
+              appLabel={appLabel}
+              model={model}
+              recordId={record.id}
+              schema={schema}
+              version={record.meta?.updated_at}
+            />
+          )}
+        </>
       )}
 
       {/* A transition that asks first names the record and says the
