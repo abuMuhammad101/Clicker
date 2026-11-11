@@ -45,19 +45,19 @@
   min-height: 24px;
 }
 
-/* Reading a record: each section is a card on the ground, a row per field,
-   a hairline between rows. Structure you can scan, not a form with its
-   inputs taken away. */
+/* Reading a record: a quiet label/value list under a section name. No rule between rows: the label column and
+   the rhythm hold the rows together, so the only lines on the sheet are the ones that end a section. Structure
+   you can scan, not a form with its inputs taken away. */
 .form-sheet--view {
   background: transparent;
 }
 
 .form-sheet--view .form-body {
-  padding-top: var(--space-5);
+  padding-top: var(--space-7);
 }
 
 .form-sheet--view .form-section + .form-section {
-  margin-top: var(--space-6);
+  margin-top: var(--space-9);
 }
 
 /* Related lists placed between groups by the schema (a customer's statement). */
@@ -79,18 +79,13 @@
 .form-sheet--view .form-section__fields {
   gap: 0;
   border: 0;
-  border-top: 1px solid var(--border-subtle);
   border-radius: 0;
   background: transparent;
   overflow: hidden;
 }
 
 .form-sheet--view .form-field {
-  padding: var(--space-4) 0;
-}
-
-.form-sheet--view .form-field + .form-field {
-  border-top: 1px solid var(--border-subtle);
+  padding: var(--space-3) 0;
 }
 
 .form-header {
@@ -226,7 +221,7 @@
 
 .form-sheet--view .form-section__fields {
   --form-columns: 1;
-  gap: var(--space-4);
+  gap: 0;
 }
 
 @container (min-width: 600px) {
@@ -311,7 +306,7 @@
   white-space: nowrap;
 }
 
-.form-header__updated::before {
+.form-header__meta > * + .form-header__updated::before {
   content: '·';
   margin-right: var(--space-3);
 }

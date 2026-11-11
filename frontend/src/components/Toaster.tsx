@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, CircleAlert, Info } from 'lucide-react'
+import { Check, Info, X } from 'lucide-react'
 import { dismissToast, useToasts, type ToastItem, type ToastKind } from '@/lib/toast'
 import './Toaster.css'
 
+/** Drawn inside a filled disc (done, could not); the info mark brings its own ring. */
 const ICONS: Record<ToastKind, typeof Check> = {
   success: Check,
-  error: CircleAlert,
+  error: X,
   info: Info,
 }
 
@@ -57,7 +58,9 @@ function ToastView({ item }: { item: ToastItem }) {
         if (leaving && event.animationName === 'toast-out') dismissToast(item.id)
       }}
     >
-      <Icon className="toast__icon" aria-hidden />
+      <span className="toast__badge" aria-hidden>
+        <Icon />
+      </span>
       <span className="toast__message">{item.message}</span>
       {item.action && (
         <button

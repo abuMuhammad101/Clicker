@@ -30,7 +30,8 @@
 .record-summaries__value {
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-figure);
+  /* A container may set them a step smaller (the drawer does, under a title of the same size). */
+  font-size: var(--record-figure-size, var(--text-figure));
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;
   line-height: var(--leading-tight);
@@ -38,6 +39,13 @@
   color: var(--text);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Zero is a real answer, shown as one, just quieter: "nothing held" should not shout like a debt. */
+.record-summaries__value--zero,
+.record-summaries__value--zero .figure-number__unit,
+.record-summaries__value--zero .figure-number__fraction {
+  color: var(--text-muted);
 }
 
 .record-summaries__value--empty {

@@ -72,6 +72,8 @@ export interface FieldSchema {
   buckets?: { label: string; min?: number; max?: number }[]
   /** A link to a person (who requested, who owns): named, never linked. */
   person?: boolean
+  /** A link to a record that is a person (a team member): their initials beside the name, still a link. */
+  people?: boolean
   /** A selection whose values read as chips (a payment status): the tone of each value. */
   tones?: Record<string, Tone>
 }
@@ -200,6 +202,8 @@ export interface ModelSchema {
   workflow?: WorkflowSchema | null
   /** A boolean field where false means archived; null when the model can't be archived. */
   archive_field?: string | null
+  /** Each record is a person (the team): a list leads each row with their initials. */
+  people?: boolean
   /** What archiving is called for this model (the schema's words); null means the generic ones. */
   archive_verbs?: ArchiveVerbs | null
   actions: SchemaActions

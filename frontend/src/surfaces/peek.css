@@ -112,9 +112,11 @@
   --form-sheet-radius: 0;
   --form-sheet-max-width: none;
   --form-header-position: sticky;
-  /* The name is read whole here: a size down from a page's title, and free to wrap. */
-  --form-title-size: var(--text-lg);
+  /* The name is the loudest thing in the drawer, read whole and free to wrap; the record's figures sit a step
+     under it, so the eye goes name, then numbers, then fields. */
+  --form-title-size: var(--text-figure);
   --form-title-white-space: normal;
+  --record-figure-size: var(--text-figure-sm);
 }
 
 .peek__layer {
@@ -127,22 +129,7 @@
   height: 14px;
 }
 
-/* ---------- Identity and footer: what makes the drawer feel anchored ---------- */
-.peek__avatar {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-  border-radius: var(--radius);
-  background: var(--surface-sunken);
-  color: var(--text-secondary);
-}
-
-.peek__avatar-icon {
-  width: 18px;
-  height: 18px;
-}
-
+/* ---------- Footer: what makes the drawer feel anchored ---------- */
 /* Pinned to the bottom edge, outside the scrolling body. */
 .peek__footer {
   display: flex;

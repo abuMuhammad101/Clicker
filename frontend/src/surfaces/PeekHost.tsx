@@ -194,7 +194,6 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
                   <PeekLayer
                     layerKey={key}
                     target={target}
-                    icon={apps ? findInRegistry(apps, target.app_label, target.model)?.model.icon : undefined}
                     visible={isTop}
                     mode={target.id === 'new' || editing.has(key) ? 'edit' : 'view'}
                     onLabel={setLabel}
@@ -270,7 +269,6 @@ export function PeekHost({ apps }: { apps: RegistryApp[] | null }) {
 function PeekLayer({
   layerKey,
   target,
-  icon,
   visible,
   mode,
   onLabel,
@@ -280,7 +278,6 @@ function PeekLayer({
 }: {
   layerKey: string
   target: RecordTarget
-  icon?: string | null
   visible: boolean
   mode: 'edit' | 'view'
   onLabel: (key: string, label: string | null) => void
@@ -299,11 +296,8 @@ function PeekLayer({
         recordId={target.id === 'new' ? undefined : target.id}
         prefill={target.prefill}
         mode={mode}
-        leading={
-          <span className="peek__avatar">
-            <ModelIcon name={icon} className="peek__avatar-icon" />
-          </span>
-        }
+        // No icon tile beside the name: the bar above already says "Contact" with its icon, and the name
+        // reads strongest flush with everything under it.
         onLabelChange={onLabelChange}
         onStateChange={onStateChange}
         actions="external"

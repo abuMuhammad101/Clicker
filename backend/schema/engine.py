@@ -148,6 +148,10 @@ def _field_schema(field, overrides):
         entry['target'] = {'app_label': related_meta.app_label, 'model': related_meta.model_name}
         if field.related_model is get_user_model():
             entry['person'] = True
+        elif getattr(getattr(field.related_model, 'Schema', None), 'people', False):
+            # A link to a model whose records are people (a case's owner): shown with their initials,
+            # and still a link, because unlike an account a team member has a page.
+            entry['people'] = True
         domain = overrides['domains'].get(name)
         if domain:
             entry['domain'] = domain
@@ -692,6 +696,8 @@ def build_schema(model, user, mode=None):
         'workflow': workflow.schema_for(user, model),
         'archive_field': archive_field if archive_field in fields else None,
         'archive_verbs': _archive_verbs(schema_cls) if archive_field in fields else None,
+        # Each record is a person (the team): a list leads each row with their initials.
+        'people': bool(getattr(schema_cls, 'people', False)),
         'actions': {
             'view': True,
             'create': may_create,

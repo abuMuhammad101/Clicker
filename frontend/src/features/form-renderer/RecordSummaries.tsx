@@ -68,7 +68,11 @@ function Figure({ summary }: { summary: RecordSummary }) {
     return () => observer.disconnect()
   }, [exact, compact, canCompact])
   return (
-    <dd ref={element} className="record-summaries__value" title={compact ? exact : undefined}>
+    <dd
+      ref={element}
+      className={Number(summary.value) === 0 ? 'record-summaries__value record-summaries__value--zero' : 'record-summaries__value'}
+      title={compact ? exact : undefined}
+    >
       <FigureNumber text={compact ? formatMoneyCompact(summary.value as string) : exact} />
     </dd>
   )

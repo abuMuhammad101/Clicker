@@ -1,3 +1,7 @@
+/* Toasts: what the system just did, in one short sentence, at the foot of the screen. The same dark pill as
+   the bulk bar (both are about what you just did, not about the page). Kind reads by shape and colour together:
+   a filled disc with a tick (done), a filled disc with a cross (could not), an open "i" ring (for your
+   information). */
 .toaster {
   position: fixed;
   right: 0;
@@ -16,15 +20,21 @@
   align-items: center;
   gap: var(--space-4);
   max-width: min(520px, calc(100vw - 2 * var(--space-6)));
-  min-height: 36px;
-  padding: var(--space-3) var(--space-6) var(--space-3) var(--space-5);
+  min-height: var(--control-height-lg);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
   border-radius: var(--radius-full);
   background: var(--toast-bg);
   color: var(--toast-fg);
   box-shadow: var(--shadow-toast);
   font-size: var(--text-base);
+  font-weight: var(--weight-medium);
   pointer-events: auto;
   animation: toast-in var(--duration-slow) var(--ease-out);
+}
+
+/* No action: the pill closes evenly on its text. */
+.toast:not(:has(.toast__action)) {
+  padding-right: var(--space-7);
 }
 
 /* It arrives from just below and settles; it leaves with a quick fade. */
@@ -46,19 +56,39 @@
   }
 }
 
-.toast__icon {
+.toast__badge {
+  display: grid;
   flex: none;
-  width: 14px;
-  height: 14px;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-full);
+  color: var(--toast-bg);
 }
 
-/* Colour only ever means state, and here it is the icon alone. */
-.toast[data-kind='success'] .toast__icon {
-  color: var(--toast-positive);
+.toast__badge svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 3;
 }
 
-.toast[data-kind='error'] .toast__icon {
-  color: var(--toast-danger);
+.toast[data-kind='success'] .toast__badge {
+  background: var(--toast-positive);
+}
+
+.toast[data-kind='error'] .toast__badge {
+  background: var(--toast-danger);
+}
+
+/* Lucide's info mark carries its own ring. */
+.toast[data-kind='info'] .toast__badge {
+  color: color-mix(in srgb, var(--toast-fg) 80%, transparent);
+}
+
+.toast[data-kind='info'] .toast__badge svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
 }
 
 .toast__message {
@@ -66,22 +96,29 @@
   overflow-wrap: anywhere;
 }
 
+/* The one action (usually Undo): a soft pill inside the pill, so it reads as a button, not as more text. */
 .toast__action {
   flex: none;
+  height: var(--control-height-sm);
   margin-left: var(--space-2);
-  padding-left: var(--space-5);
-  border-left: 1px solid color-mix(in srgb, var(--toast-fg) 28%, transparent);
-  font-weight: var(--weight-medium);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--toast-fg) 14%, transparent);
+  font-weight: var(--weight-semibold);
   color: inherit;
-  transition: opacity var(--duration-instant) var(--ease);
+  transition: background-color var(--duration-instant) var(--ease);
 }
 
 .toast__action:hover {
-  opacity: 0.8;
+  background: color-mix(in srgb, var(--toast-fg) 22%, transparent);
 }
 
 .toast__action:focus-visible {
   outline: 2px solid var(--toast-fg);
   outline-offset: 2px;
-  border-radius: var(--radius-sm);
+}
+
+/* The bulk bar sits where toasts arrive: while it is up, they arrive above it. */
+body:has(.bulk-bar) .toaster {
+  bottom: calc(var(--space-8) * 2 + var(--control-height-lg));
 }

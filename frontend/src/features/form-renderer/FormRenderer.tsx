@@ -640,8 +640,10 @@ function EditableForm({
               })}
             {archived && <StatusChip label={verbs.archived} />}
           </div>
+          {/* What kind of record this is, the breadcrumb or the drawer's bar already says: the meta line
+              carries only what is particular to this one. */}
           <p className="form-header__meta">
-            <span className="form-header__model">{record ? schema.verbose_name : schema.verbose_name_plural}</span>
+            {!record && <span className="form-header__model">{schema.verbose_name_plural}</span>}
             {record && !displayCarriesId && (
               <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>
             )}
@@ -739,6 +741,7 @@ function EditableForm({
         errors={fieldErrors}
         dirtyFields={dirtyFields}
         readOnly={viewing}
+        title={viewing ? record?.display : undefined}
         locked={prefilled}
         restricted={record?.restricted}
         onChange={setValue}
@@ -888,6 +891,7 @@ function FormBody({
   onChange,
   loading,
   between,
+  title,
 }: {
   schema: ModelSchema
   values: Record<string, unknown>
@@ -895,6 +899,8 @@ function FormBody({
   errors: Record<string, string>
   dirtyFields?: Set<string>
   readOnly?: boolean
+  /** Read-only only: the record's name as the header shows it. A field that says exactly that is not said again. */
+  title?: string
   /** Prefilled on a new record: shown, never editable here. */
   locked?: Set<string>
   /** Links whose target this user can't see. */
@@ -912,7 +918,11 @@ function FormBody({
         // The workflow state is drawn by the workflow bar (stepper and chip),
         // not repeated as a field.
         const visible = group.fields.filter(
-          (name) => name !== schema.workflow?.field && (loading || isVisible(schema.fields[name], values)),
+          (name) =>
+            name !== schema.workflow?.field &&
+            (loading || isVisible(schema.fields[name], values)) &&
+            // Say it once: the title already reads "Air Maintenance Depot", so a Name row saying the same is noise.
+            !(title && values[name] === title),
         )
         const after = between && group.label === between.after ? between.node : null
         if (visible.length === 0) return after

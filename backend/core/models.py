@@ -402,7 +402,7 @@ class Staff(ClickerModel):
     a record names a person and never a username. Shared by every journey.
     """
 
-    display_name = models.CharField(max_length=150)
+    display_name = models.CharField(max_length=150, verbose_name='name')
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -425,6 +425,8 @@ class Staff(ClickerModel):
 
     class Schema:
         icon = 'id-card'
+        # Each record is a person: lists and links show their initials beside their name.
+        people = True
         display_field = 'display_name'
         archive_field = 'active'
         # On the team page "archive" is deactivating a person's account, and says so.

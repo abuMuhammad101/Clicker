@@ -43,6 +43,7 @@
   --text-2xl: 30px; /* empty states, onboarding */
   --text-display: 36px; /* the home greeting. Serif. Once. */
   --text-figure: 24px; /* the few numbers a screen leads with */
+  --text-figure-sm: 20px; /* the same figures in a narrow container (a drawer), a step under its title */
 
   --leading-tight: 1.25;
   --leading-normal: 1.45;

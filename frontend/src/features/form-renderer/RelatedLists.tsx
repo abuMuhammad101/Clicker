@@ -37,13 +37,15 @@ function RelatedList({ parent, list }: { parent: ModelRef & { id: number }; list
       <header className="related-list__head">
         <h2 className="related-list__title">
           {list.label}
-          {total != null && <span className="related-list__count">{total.toLocaleString()}</span>}
+          {/* Zero is said once, by the line under the title ("No adjustments yet"). */}
+          {total != null && total > 0 && <span className="related-list__count">{total.toLocaleString()}</span>}
         </h2>
         {list.can_add && (
           <Button
             type="button"
-            variant="outline"
-            className="h-[var(--control-height-sm)] gap-[var(--space-2)] px-[var(--control-padding-x)] text-[length:var(--text-sm)]"
+            // Quiet until wanted: one per list, so a statement with six lists does not carry six boxed buttons.
+            variant="ghost"
+            className="h-[var(--control-height-sm)] gap-[var(--space-2)] px-[var(--control-padding-x)] text-[length:var(--text-sm)] text-[color:var(--text-secondary)]"
             // A new related record opens in a peek, its link to this record
             // already set and locked.
             onClick={() =>

@@ -61,6 +61,7 @@ const LIST_CELLS: Partial<Record<FieldType, Renderer>> = {
       restricted={a.restricted}
       // A person is named, never linked: there is no page for them.
       target={a.schema.person ? undefined : a.schema.target}
+      person={a.schema.person || a.schema.people}
       id={typeof a.value === 'number' ? a.value : null}
     />
   ),

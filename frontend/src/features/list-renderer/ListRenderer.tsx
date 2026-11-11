@@ -26,6 +26,7 @@ import {
   SearchX,
 } from 'lucide-react'
 import { StatePanel } from '@/components/StatePanel'
+import { PersonMark } from '@/components/PersonMark'
 import { StatusChip } from '@/components/StatusChip'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -156,6 +157,8 @@ const TYPE_WIDTH: Record<string, number> = {
 const IDENTIFIER_MIN = 140
 /** A person's name is read, not skimmed: "Kamran Lashari", not "Kamran L…". */
 const PERSON_MIN = 150
+/** The initials disc beside a person's name and the gap after it (22px + 8px). */
+const PERSON_MARK = 30
 const LEAD_MIN = 208
 const TYPE_MIN: Record<string, number> = { date: 116, datetime: 164, currency: 144, decimal: 108 }
 
@@ -202,9 +205,11 @@ function columnMinFor(schema: ModelSchema, name: string, columnIndex: number): n
   // A column's name is read whole too: "Field a…" tells you nothing. 12px text runs about 6.2px a letter,
   // with the cell's padding either side. (The sort arrow only takes room on the column being sorted.)
   const headerMin = Math.ceil(field.label.length * 6.2) + 2 * tokenPx('--cell-padding-x', 12)
+  // A person is read whole too, and when the initials mark leads the name it takes its own room.
+  const personMin = field.person || field.people ? PERSON_MIN + PERSON_MARK : 0
   return chipColumnMin(
     [...stateLabels, ...choiceLabels],
-    Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, headerMin, field.person ? PERSON_MIN : 0),
+    Math.max(minWidth, TYPE_MIN[field.type] ?? 0, identifierMin, leadMin, headerMin, personMin),
   )
 }
 
@@ -381,7 +386,12 @@ function ListView({
   const shownColumns = useMemo(() => {
     const rest = groupBy ? visibleColumns.filter((name) => name !== groupBy) : visibleColumns
     const base = rest.length > 0 ? rest : visibleColumns
-    return embedded ? columnsThatFit(schema, base, viewportWidth) : base
+    if (embedded) return columnsThatFit(schema, base, viewportWidth)
+    // The archive field is the same on every row of a page list (the toolbar's switch says which side you are
+    // looking at): a column of ticks says it again on every row.
+    const archive = schema.archive_field
+    const kept = archive ? base.filter((name) => name !== archive) : base
+    return kept.length > 0 ? kept : base
   }, [visibleColumns, groupBy, embedded, schema, viewportWidth])
 
   const query = useMemo(() => {
@@ -606,6 +616,18 @@ function ListView({
           if (field.assigned) {
             const value = record.values[name]
             return value ? <ListCell className="list-cell--identifier" title={String(value)}>{String(value)}</ListCell> : <ListCell empty />
+          }
+          // A list of people (the team): each row leads with the person's initials, recognised before it is read.
+          const lead = record.values[name]
+          if (schema.people && columnIndex === 0 && typeof lead === 'string' && lead) {
+            return (
+              <ListCell title={lead}>
+                <span className="person-name">
+                  <PersonMark name={lead} />
+                  <span className="list-cell__text">{lead}</span>
+                </span>
+              </ListCell>
+            )
           }
           return renderListCell({
             schema: field,
@@ -841,7 +863,12 @@ function ListView({
 
   return (
     <div
-      className={cn('list-page', embedded && 'list-page--embedded')}
+      className={cn(
+        'list-page',
+        embedded && 'list-page--embedded',
+        // Nothing to list: column names over no rows are noise, so the state panel (or the one line) stands alone.
+        status === 'ready' && total === 0 && 'list-page--empty',
+      )}
       style={
         // The default row height is --row-height itself; the others replace it.
         density === 'default' || embedded ? undefined : { ['--row-height' as string]: `var(${DENSITY_TOKEN[density]})` }
@@ -1001,7 +1028,10 @@ function ListView({
         // Embedded: exactly as tall as its header and rows, no inner scroll.
         style={
           embedded
-            ? { height: `calc(var(--table-header-height) + ${Math.max(shownRows, 1)} * var(--row-height) + 2px)`, flex: 'none' }
+            ? status === 'ready' && total === 0
+              ? // Empty: just its one line, no header and no room held for rows that are not there.
+                { height: 'auto', flex: 'none' }
+              : { height: `calc(var(--table-header-height) + ${Math.max(shownRows, 1)} * var(--row-height) + 2px)`, flex: 'none' }
             : undefined
         }
       >
@@ -1073,14 +1103,14 @@ function ListView({
           )}
 
           {embedded && status === 'ready' && total === 0 && (
-            <p className="list-embedded-empty">None yet.</p>
+            <p className="list-embedded-empty">No {plural} yet.</p>
           )}
 
           {!embedded && status === 'ready' && total === 0 && (
             listState.q ? (
               <StatePanel
                 icon={SearchX}
-                title={`No ${showArchived ? 'archived ' : ''}${plural} match “${listState.q}”`}
+                title={`No ${showArchived ? `${verbs.archived.toLowerCase()} ` : ''}${plural} match “${listState.q}”`}
                 message={`Search looks in ${schema.list.search_fields.map((f) => schema.fields[f]?.label ?? f).join(', ')}.`}
               >
                 <Button variant="outline" onClick={() => setSearchInput('')} className="h-[var(--control-height)]">
@@ -1100,8 +1130,9 @@ function ListView({
             ) : showArchived ? (
               <StatePanel
                 icon={Archive}
-                title={`No archived ${plural}`}
-                message={`Archiving a ${schema.verbose_name} takes it out of the list without deleting it. Archived ones show up here.`}
+                // In the model's own words: on the team page this is "deactivated", not "archived".
+                title={`No ${verbs.archived.toLowerCase()} ${plural}`}
+                message={`${verbs.archive} takes a ${schema.verbose_name} out of the list without deleting anything. ${verbs.archived} ones show up here.`}
               >
                 <Button variant="outline" onClick={() => setShowArchived(false)} className="h-[var(--control-height)]">
                   Back to {plural}

@@ -266,6 +266,8 @@
   position: relative;
   flex: 1 1 auto;
   overflow: auto;
+  /* What is visible, for anything that must stay within it while a wide table scrolls (the empty state). */
+  container-type: inline-size;
   background: var(--surface);
 }
 
@@ -719,9 +721,20 @@
   background: transparent;
 }
 
+.list-page--empty .list-header {
+  display: none;
+}
+
+/* A related list is read in the order its schema gives; an arrow on one header would only take that header's
+   room ("Payment d… ↓") in a narrow drawer. */
+.list-page--embedded .list-header__arrow {
+  display: none;
+}
+
+/* An embedded list with nothing in it is one quiet line under its title, not a table frame. */
 .list-embedded-empty {
   margin: 0;
-  padding: var(--space-4) var(--cell-padding-x);
+  padding: var(--space-2) 0 0;
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
