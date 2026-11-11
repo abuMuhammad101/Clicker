@@ -3,21 +3,131 @@
    --form-label-width / --form-field-max-width tokens. Two fields don't need
    a 168px label column, so the card narrows those same tokens locally
    rather than introducing a second field layout. */
+/* Two halves on a white page: the form, and an inset panel carrying the product's own marks. The panel is
+   decoration only (aria-hidden, no data) and goes away below 960px, where the form takes the whole page. */
 .login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--surface);
+}
+
+.login-main {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-8);
-  min-height: 100vh;
-  padding: var(--space-8) var(--space-6) 12vh;
-  background: var(--surface);
+  min-width: 0;
+  padding: var(--space-4) var(--space-8) var(--space-6);
 }
 
 .login-brand {
   display: flex;
   align-items: center;
+  align-self: flex-start;
   gap: var(--space-4);
+}
+
+/* The form sits in the optical middle, a little above true centre. */
+.login-main .login-card {
+  margin-block: auto;
+  padding-bottom: 6vh;
+}
+
+.login-foot {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.login-aside {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-11);
+  padding: var(--space-10);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(90% 70% at 85% 0%, var(--accent-subtle), transparent 70%),
+    var(--ground);
+}
+
+.login-aside__stage {
+  width: 100%;
+  max-width: 440px;
+}
+
+/* The pipeline rail, large: done, the stage you are at, what is still ahead. */
+.login-aside__rail {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.login-aside__segment {
+  flex: 1 1 0;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+}
+
+.login-aside__segment--done {
+  background: var(--text-secondary);
+}
+
+.login-aside__segment--current {
+  height: 14px;
+  background: var(--accent);
+}
+
+.login-aside__states {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: var(--space-9) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-aside__states .status-chip {
+  height: 30px;
+  padding: 0 var(--space-6) 0 var(--space-5);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  font-size: var(--text-sm);
+}
+
+.login-aside__copy {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login-aside__title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+}
+
+.login-aside__text {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 960px) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-aside {
+    display: none;
+  }
 }
 
 .login-brand__name {
@@ -45,6 +155,9 @@
   justify-content: flex-start;
   padding-top: 0;
   text-align: left;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
 }
 
 .login-card .field-shell__body {
