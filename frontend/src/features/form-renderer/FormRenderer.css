@@ -123,13 +123,15 @@
 .form-header__title {
   margin: 0;
   overflow: hidden;
-  font-size: var(--text-xl);
+  font-size: var(--form-title-size, var(--text-xl));
   font-weight: var(--weight-semibold);
   line-height: var(--leading-tight);
   letter-spacing: var(--tracking-tight);
   color: var(--text);
   text-overflow: ellipsis;
-  white-space: nowrap;
+  /* A container with room for it (the drawer) lets the name wrap instead of cutting it. */
+  white-space: var(--form-title-white-space, nowrap);
+  overflow-wrap: anywhere;
   /* The name is the point of the page: it never shrinks to make room for chips; they wrap below it instead. */
   flex: 0 0 auto;
   max-width: 100%;

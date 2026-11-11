@@ -79,7 +79,7 @@
   --surface-hover: var(--n-50);
   --surface-selected: #ecefff;
   --surface-overlay: var(--n-0);
-  --scrim: rgb(14 15 21 / 0.32);
+  --scrim: rgb(14 15 21 / 0.18);
 
   /* Hairlines are decorative and stay quiet. The control edge is not: it is
      what identifies an input, so it clears 3:1 (WCAG 1.4.11). */
@@ -273,7 +273,7 @@
   --surface-hover: #1c1e23;
   --surface-selected: #1d2035;
   --surface-overlay: #1c1e23;
-  --scrim: rgb(0 0 0 / 0.55);
+  --scrim: rgb(0 0 0 / 0.45);
 
   --border-subtle: #25262c;
   --border: #2e3037;

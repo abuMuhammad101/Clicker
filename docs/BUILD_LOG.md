@@ -2078,3 +2078,10 @@ Hassan's brief: the product looked overloaded with no visual hierarchy or access
 - `scripts/rehearse.sh` has not been run against this branch.
 
 **Next single action:** Hassan looks at `redesign/mercury` on the running stack (water 5273, clearance 5274) and says what still reads as stock; then retake the 1280/1366 screenshots and run `scripts/rehearse.sh` before any merge.
+
+**Addendum, same branch: sign-in, peek and form details.**
+- **Sign-in** is a split page from Mobbin references (Mercury, Midday, Origin, Airwallex, Retool): the form on the left, an inset panel on the right drawn from the product's own rail and state shapes (decorative, aria-hidden, no data, gone below 960px). No Google, Apple, passkey, forgot-password or sign-up controls: the backend has none, and a control that does nothing is worse than none.
+- **Peek.** The record's name is read whole (a container can now let the title wrap and set its size through `--form-title-size` and `--form-title-white-space`, set by the drawer; the renderer still knows nothing of the drawer). The document number is said once (hidden from the meta line when the name already carries it). In a narrow container the pipeline rail keeps only the current stage's name, by container query. The icon tile is a quiet sunken glyph, the scrim is lighter (0.18 light, 0.45 dark), the footer rule is a hairline.
+- **Selects** open below their field at its width (popper), not over their own label.
+- Looked at and left as they are: the new-contact form, the unsaved-changes bar, the Type select.
+- Still not reviewed after the redesign: statement header, bulk bar, toasts, Team page, View as role banner, empty states, the "Nothing here" not-found page.

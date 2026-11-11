@@ -281,3 +281,18 @@
 .workflow-steps--compact .workflow-step--exit {
   flex-grow: 3;
 }
+
+/* Where there is no room for ten names (the drawer), the rail keeps one: the stage the record is at, in
+   full. The others are named by the sentence beneath, and the segment is still there to read as progress. */
+@container (max-width: 560px) {
+  .workflow-step:not(.workflow-step--current):not(.workflow-step--exit) .workflow-step__label {
+    visibility: hidden;
+  }
+
+  .workflow-step--current .workflow-step__label,
+  .workflow-step--exit .workflow-step__label {
+    overflow: visible;
+    max-width: none;
+    text-overflow: clip;
+  }
+}

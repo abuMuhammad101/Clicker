@@ -593,6 +593,10 @@ function EditableForm({
     if (destination) navigate(destination, { force: true })
   }
 
+  // The record's name already carries its document number ("JOB-2026-0041 · Karachi…"): say it once.
+  const documentId = record ? (documentNumber(schema, record) ?? `#${record.id}`) : null
+  const displayCarriesId = !!record && !!documentId && record.display.includes(documentId)
+
   const relatedLists =
     record && schema.related_lists && schema.related_lists.length > 0 ? (
       <RelatedLists
@@ -638,7 +642,9 @@ function EditableForm({
           </div>
           <p className="form-header__meta">
             <span className="form-header__model">{schema.verbose_name_plural}</span>
-            {record && <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>}
+            {record && !displayCarriesId && (
+              <span className="form-header__id">{documentNumber(schema, record) ?? `#${record.id}`}</span>
+            )}
             {record?.meta && (
               // Relative where it's glanced at; the exact time on hover.
               <span className="form-header__updated">

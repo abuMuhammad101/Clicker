@@ -74,7 +74,14 @@
 }
 
 :root [data-slot='select-content'] {
+  min-width: var(--radix-select-trigger-width);
   padding: var(--space-2);
+}
+
+/* Opens below its field, as wide as the field, never over its own label. The viewport must not be held to
+   the trigger's height. */
+:root [data-slot='select-content'] [data-radix-select-viewport] {
+  height: auto;
 }
 
 :root [data-slot='select-item'],

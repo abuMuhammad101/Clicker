@@ -112,6 +112,9 @@
   --form-sheet-radius: 0;
   --form-sheet-max-width: none;
   --form-header-position: sticky;
+  /* The name is read whole here: a size down from a page's title, and free to wrap. */
+  --form-title-size: var(--text-lg);
+  --form-title-white-space: normal;
 }
 
 .peek__layer {
@@ -127,13 +130,12 @@
 /* ---------- Identity and footer: what makes the drawer feel anchored ---------- */
 .peek__avatar {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border: 1px solid var(--accent-border);
-  border-radius: var(--radius-md);
-  background: var(--accent-subtle);
-  color: var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--text-secondary);
 }
 
 .peek__avatar-icon {
@@ -147,7 +149,7 @@
   flex: none;
   align-items: center;
   gap: var(--space-4);
-  padding: var(--space-4) var(--form-pad-x);
-  border-top: 1px solid var(--border);
+  padding: var(--space-5) var(--form-pad-x);
+  border-top: 1px solid var(--border-subtle);
   background: var(--surface);
 }
